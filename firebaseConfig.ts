@@ -17,13 +17,13 @@ import { getFirestore } from 'firebase/firestore';
 // 4. Firestore Security Rules not deployed or misconfigured.
 //
 const firebaseConfig = {
-  apiKey: "AIzaSyDUNFxBWKfa1DySUcfq-XSFwtm578FgLOk", // REPLACE WITH YOUR ACTUAL API KEY
-  authDomain: "kaash-d3ed8.firebaseapp.com", // REPLACE
-  projectId: "kaash-d3ed8", // REPLACE
-  storageBucket: "kaash-d3ed8.firebasestorage.app", // REPLACE
-  messagingSenderId: "95728040571", // REPLACE
-  appId: "1:95728040571:web:6e3e5937a9f1cdc84f00de", // REPLACE
-  measurementId: "G-WS9GMLW5XB" // REPLACE (Optional)
+  apiKey: "AIzaSyDUNFxBWKfa1DySUcfq-XSFwtm578FgLOk",
+  authDomain: "kaash-d3ed8.firebaseapp.com",
+  projectId: "kaash-d3ed8",
+  storageBucket: "kaash-d3ed8.firebasestorage.app",
+  messagingSenderId: "95728040571",
+  appId: "1:95728040571:web:6e3e5937a9f1cdc84f00de",
+  measurementId: "G-WS9GMLW5XB"
 };
 
 // Initialize Firebase
