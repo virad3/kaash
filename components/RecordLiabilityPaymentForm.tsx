@@ -13,16 +13,21 @@ export const RecordLiabilityPaymentForm: React.FC<RecordLiabilityPaymentFormProp
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   
   const calculateNextMonthDate = (isoDate: string): string => {
-    const currentDate = new Date(isoDate);
-    currentDate.setMonth(currentDate.getMonth() + 1);
-    // Handle cases like Jan 31st -> Feb 28th/29th or Mar 3rd if Feb 31st doesn't exist.
-    // For simplicity, this just adds a month. More robust date logic might be needed for edge cases.
-    // A library like date-fns would be better for complex date manipulations.
+    const currentDate = new Date(isoDate + 'T00:00:00Z'); // Ensure parsing as UTC then local adjustments
+    currentDate.setUTCMonth(currentDate.getUTCMonth() + 1);
     return currentDate.toISOString().split('T')[0];
   };
 
   const [newNextDueDate, setNewNextDueDate] = useState(calculateNextMonthDate(liability.nextDueDate));
-  const [notes, setNotes] = useState(`Payment for ${liability.name}`);
+  const [notes, setNotes] = useState(`Payment for ${liability.name || liability.category}`); // Use category if name is missing
+
+  useEffect(() => {
+    // Re-calculate if the liability prop changes (e.g., if the modal is reused without remounting)
+    setPaymentAmount(liability.emiAmount?.toString() || '');
+    setNewNextDueDate(calculateNextMonthDate(liability.nextDueDate));
+    setNotes(`Payment for ${liability.name || liability.category}`);
+  }, [liability]);
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +40,7 @@ export const RecordLiabilityPaymentForm: React.FC<RecordLiabilityPaymentFormProp
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 p-2 text-gray-100">
-      <h2 className="text-xl font-semibold text-center text-sky-400">Record Payment for {liability.name}</h2>
+      <h2 className="text-xl font-semibold text-center text-sky-400">Record Payment for {liability.name || liability.category}</h2>
       
       <div>
         <label htmlFor="paymentAmount" className="block text-sm font-medium text-gray-300 mb-1">Payment Amount (₹)</label>
@@ -84,7 +89,7 @@ export const RecordLiabilityPaymentForm: React.FC<RecordLiabilityPaymentFormProp
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           className="w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-md shadow-sm p-3 focus:ring-sky-500 focus:border-sky-500 transition"
-          placeholder={`Payment for ${liability.name}`}
+          placeholder={`Payment for ${liability.name || liability.category}`}
         />
       </div>
 

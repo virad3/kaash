@@ -1,5 +1,6 @@
 {
   "name": "Kaash - Income & Expense Tracker",
   "description": "A web application to track income and expenses, featuring an AI chatbot assistant to provide insights on your financial data.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "prompt": ""
 }

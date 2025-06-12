@@ -1,6 +1,8 @@
+
 export enum TransactionType {
   INCOME = 'INCOME',
   EXPENSE = 'EXPENSE',
+  SAVING = 'SAVING', 
 }
 
 export enum ExpenseCategory {
@@ -15,20 +17,53 @@ export enum ExpenseCategory {
   SAVINGS = 'Savings (General)',
   DEBT = 'Debt Repayment',
   LIABILITY_PAYMENT = 'Liability Payment',
-  SAVINGS_GOAL_CONTRIBUTION = 'Savings Goal Contribution',
   OTHER = 'Other',
 }
 
+export enum IncomeCategory {
+  SALARY = 'Salary',
+  BONUS = 'Bonus',
+  FREELANCE = 'Freelance/Contract',
+  INVESTMENTS = 'Investment/Dividends',
+  GIFTS = 'Gifts Received',
+  RENTAL_INCOME = 'Rental Income',
+  GOVERNMENT_BENEFITS = 'Government Benefits',
+  OTHER = 'Other Income',
+}
+
+export enum SavingCategory {
+  EMERGENCY_FUND = 'Emergency Fund',
+  VACATION = 'Vacation/Travel',
+  NEW_VEHICLE = 'New Car/Vehicle',
+  HOME_DOWN_PAYMENT = 'House Down Payment',
+  EDUCATION_FUND = 'Education Fund',
+  RETIREMENT = 'Retirement Fund',
+  INVESTMENT_POOL = 'Investment Pool',
+  GENERAL_SAVINGS = 'General Savings',
+  OTHER = 'Other Savings',
+}
+
+export enum LiabilityCategory {
+  MORTGAGE = 'Mortgage/Home Loan',
+  AUTO_LOAN = 'Auto Loan',
+  STUDENT_LOAN = 'Student Loan',
+  PERSONAL_LOAN = 'Personal Loan',
+  CREDIT_CARD_DEBT = 'Credit Card Debt',
+  MEDICAL_BILL = 'Medical Bill',
+  BUSINESS_LOAN = 'Business Loan',
+  TAX_DEBT = 'Tax Debt',
+  OTHER = 'Other Liability',
+}
+
 export interface Transaction {
-  id: string; // Firestore document ID
+  id: string; 
   type: TransactionType;
-  description: string;
+  description?: string; // Made optional
   amount: number;
-  date: string; // ISO string date YYYY-MM-DD for consistency, Firestore might store as Timestamp
-  category?: ExpenseCategory | string;
+  date: string; 
+  category: string; // Made mandatory
   relatedLiabilityId?: string;
-  relatedSavingsGoalId?: string;
-  createdAt?: any; // Firestore ServerTimestamp or Date for ordering
+  createdAt?: any; 
   userId?: string; 
 }
 
@@ -40,32 +75,23 @@ export interface ChatMessage {
 }
 
 export interface Liability {
-  id: string; // Firestore document ID
-  name: string;
+  id: string; 
+  name?: string; // Made optional
   initialAmount: number;
-  amountRepaid: number;
+  amountRepaid: number; // This will now track total PRINCIPAL repaid
+  category: string; // Made mandatory
   emiAmount?: number;
-  nextDueDate: string; // ISO YYYY-MM-DD
-  interestRate?: number;
+  nextDueDate: string; 
+  interestRate?: number; // Annual interest rate percentage
+  loanTermInMonths?: number; // Optional: total loan term
   notes?: string;
-  createdAt: any; // Firestore ServerTimestamp or ISO string date
-  userId?: string;
-}
-
-export interface SavingsGoal {
-  id: string; // Firestore document ID
-  name: string;
-  targetAmount: number;
-  currentAmount: number;
-  createdAt: any; // Firestore ServerTimestamp or ISO string date
+  createdAt: any; 
   userId?: string;
 }
 
 export interface User {
-  uid: string; // Firebase User ID
+  uid: string; 
   email: string | null;
   name?: string | null;
   photoURL?: string | null;
 }
-
-// localStorage key generators are no longer needed.

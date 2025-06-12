@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Matches the users collection and their direct documents (like profile or custom categories)
+    match /users/{userId} {
+      allow read, write, create, delete: if request.auth != null && request.auth.uid == userId;
+
+      // Matches subcollections like income, expenses, etc.
+      match /{collection}/{docId} {
+        allow read, write, create, delete: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+  }
+}

@@ -1,4 +1,5 @@
-import { db } from '../firebaseConfig'; // Corrected path
+
+import { db } from '../firebaseConfig'; 
 import { 
   collection, 
   query, 
@@ -7,13 +8,12 @@ import {
   doc, 
   updateDoc, 
   deleteDoc,
-  Timestamp, // Import Timestamp if you expect to handle it explicitly
+  Timestamp, 
   orderBy,
-  serverTimestamp // For setting server-side timestamps
+  serverTimestamp 
 } from 'firebase/firestore';
-import { Transaction, Liability, SavingsGoal } from '../types';
+import { Transaction, Liability, TransactionType } from '../types'; 
 
-// Helper to remove undefined fields, as Firestore doesn't allow them
 const sanitizeDataForFirestore = (data: any) => {
   const sanitized: any = {};
   for (const key in data) {
@@ -26,26 +26,47 @@ const sanitizeDataForFirestore = (data: any) => {
 
 // --- Transactions ---
 export const subscribeToTransactions = (userId: string, callback: (transactions: Transaction[]) => void): (() => void) => {
-  if (!userId) return () => {}; // Return a no-op unsubscribe function if no userId
+  if (!userId) return () => {}; 
   const transactionsCol = collection(db, 'users', userId, 'transactions');
-  // Order by 'date' (which should be YYYY-MM-DD string) and then 'createdAt' for tie-breaking if needed
   const q = query(transactionsCol, orderBy('date', 'desc'), orderBy('createdAt', 'desc'));
 
   return onSnapshot(q, (querySnapshot) => {
     const transactions: Transaction[] = [];
-    querySnapshot.forEach((docSnap) => { // Renamed to docSnap to avoid conflict with doc function
+    querySnapshot.forEach((docSnap) => { 
       const data = docSnap.data();
-      transactions.push({ 
-        id: docSnap.id, 
-        ...data,
-        date: data.date, // Assuming date is stored as YYYY-MM-DD string
-        createdAt: data.createdAt, // Keep as is, could be Timestamp or null
-      } as Transaction);
+      
+      const transactionItem: Transaction = {
+        id: docSnap.id,
+        type: data.type as TransactionType, 
+        description: data.description as (string | undefined), 
+        amount: data.amount as number,
+        date: data.date as string, 
+        category: data.category as string, 
+        relatedLiabilityId: data.relatedLiabilityId as (string | undefined),
+        createdAt: data.createdAt, 
+        userId: data.userId as (string | undefined) 
+      };
+
+      if (!transactionItem.type || 
+          (transactionItem.type !== TransactionType.INCOME && transactionItem.type !== TransactionType.EXPENSE && transactionItem.type !== TransactionType.SAVING) ||
+          !transactionItem.date || typeof transactionItem.date !== 'string' || 
+          (transactionItem.description !== undefined && typeof transactionItem.description !== 'string') || 
+          typeof transactionItem.amount !== 'number' ||
+          typeof transactionItem.category !== 'string' || !transactionItem.category.trim() 
+        ) {
+        console.warn(
+          `Transaction ${transactionItem.id} from Firestore is missing critical fields (amount, date, category), has an invalid type/date format, or they are undefined. Skipping. Received data:`, 
+          JSON.stringify(data)
+        );
+        return; 
+      }
+      
+      transactions.push(transactionItem);
     });
     callback(transactions);
   }, (error) => {
     console.error("Error fetching transactions:", error);
-    callback([]);
+    callback([]); 
   });
 };
 
@@ -53,7 +74,7 @@ export const addTransaction = async (userId: string, transactionData: Omit<Trans
   const transactionsCol = collection(db, 'users', userId, 'transactions');
   const docRef = await addDoc(transactionsCol, sanitizeDataForFirestore({
     ...transactionData,
-    userId, // Explicitly add userId
+    userId, 
     createdAt: serverTimestamp() 
   }));
   return docRef.id;
@@ -77,16 +98,40 @@ export const subscribeToLiabilities = (userId: string, callback: (liabilities: L
   const q = query(liabilitiesCol, orderBy('nextDueDate', 'asc'));
 
   return onSnapshot(q, (querySnapshot) => {
-    const liabilities: Liability[] = [];
+    const liabilitiesData: Liability[] = [];
     querySnapshot.forEach((docSnap) => {
       const data = docSnap.data();
-      liabilities.push({ 
-        id: docSnap.id, 
-        ...data,
-        createdAt: data.createdAt,
-      } as Liability);
+      const liabilityItem: Liability = {
+        id: docSnap.id,
+        name: data.name as (string | undefined), 
+        initialAmount: data.initialAmount as number,
+        amountRepaid: data.amountRepaid as number,
+        category: data.category as string, 
+        emiAmount: data.emiAmount as number | undefined,
+        nextDueDate: data.nextDueDate as string,
+        interestRate: data.interestRate as number | undefined,
+        loanTermInMonths: data.loanTermInMonths as number | undefined,
+        notes: data.notes as string | undefined,
+        createdAt: data.createdAt, 
+        userId: data.userId as (string | undefined)
+      };
+
+      if ((liabilityItem.name !== undefined && typeof liabilityItem.name !== 'string') || 
+          typeof liabilityItem.initialAmount !== 'number' ||
+          typeof liabilityItem.amountRepaid !== 'number' ||
+          typeof liabilityItem.nextDueDate !== 'string' ||
+          typeof liabilityItem.category !== 'string' || !liabilityItem.category.trim() || 
+          (liabilityItem.loanTermInMonths !== undefined && typeof liabilityItem.loanTermInMonths !== 'number') ||
+          !liabilityItem.createdAt) {
+           console.warn(
+            `Liability ${liabilityItem.id} from Firestore is missing critical fields or has invalid types. Skipping. Received data:`,
+            JSON.stringify(data)
+           );
+           return;
+      }
+      liabilitiesData.push(liabilityItem);
     });
-    callback(liabilities);
+    callback(liabilitiesData);
   }, (error) => {
     console.error("Error fetching liabilities:", error);
     callback([]);
@@ -111,47 +156,4 @@ export const updateLiability = async (userId: string, liabilityId: string, liabi
 export const deleteLiability = async (userId: string, liabilityId: string): Promise<void> => {
   const liabilityDoc = doc(db, 'users', userId, 'liabilities', liabilityId);
   await deleteDoc(liabilityDoc);
-};
-
-// --- Savings Goals ---
-export const subscribeToSavingsGoals = (userId: string, callback: (savingsGoals: SavingsGoal[]) => void): (() => void) => {
-  if (!userId) return () => {};
-  const savingsGoalsCol = collection(db, 'users', userId, 'savingsGoals');
-  const q = query(savingsGoalsCol, orderBy('createdAt', 'desc'));
-
-  return onSnapshot(q, (querySnapshot) => {
-    const savingsGoals: SavingsGoal[] = [];
-    querySnapshot.forEach((docSnap) => {
-      const data = docSnap.data();
-      savingsGoals.push({ 
-        id: docSnap.id, 
-        ...data,
-        createdAt: data.createdAt,
-      } as SavingsGoal);
-    });
-    callback(savingsGoals);
-  }, (error) => {
-    console.error("Error fetching savings goals:", error);
-    callback([]);
-  });
-};
-
-export const addSavingsGoal = async (userId: string, goalData: Omit<SavingsGoal, 'id'| 'createdAt' | 'userId'>): Promise<string> => {
-  const savingsGoalsCol = collection(db, 'users', userId, 'savingsGoals');
-  const docRef = await addDoc(savingsGoalsCol, sanitizeDataForFirestore({
-    ...goalData,
-    userId,
-    createdAt: serverTimestamp()
-  }));
-  return docRef.id;
-};
-
-export const updateSavingsGoal = async (userId: string, goalId: string, goalData: Partial<Omit<SavingsGoal, 'id'|'userId'|'createdAt'>>): Promise<void> => {
-  const goalDoc = doc(db, 'users', userId, 'savingsGoals', goalId);
-  await updateDoc(goalDoc, sanitizeDataForFirestore(goalData));
-};
-
-export const deleteSavingsGoal = async (userId: string, goalId: string): Promise<void> => {
-  const goalDoc = doc(db, 'users', userId, 'savingsGoals', goalId);
-  await deleteDoc(goalDoc);
 };

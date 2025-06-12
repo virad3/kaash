@@ -8,9 +8,10 @@ interface ChatbotProps {
   messages: ChatMessage[];
   onSubmit: (message: string) => void;
   isLoading: boolean;
+  onClose?: () => void; // Optional close handler
 }
 
-export const Chatbot: React.FC<ChatbotProps> = ({ messages, onSubmit, isLoading }) => {
+export const Chatbot: React.FC<ChatbotProps> = ({ messages, onSubmit, isLoading, onClose }) => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
 
@@ -29,9 +30,18 @@ export const Chatbot: React.FC<ChatbotProps> = ({ messages, onSubmit, isLoading 
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-800 rounded-xl">
-      <header className="p-3 sm:p-4 border-b border-slate-700">
-        <h2 className="text-lg sm:text-xl font-semibold text-sky-400 text-center">Kaash AI Assistant</h2>
+    <div className="flex flex-col h-full bg-slate-800 rounded-xl sm:rounded-t-none"> {/* Ensure top corners are not rounded if it's part of an overlay with rounded top */}
+      <header className="p-3 sm:p-4 border-b border-slate-700 flex items-center relative">
+        <h2 className="text-lg sm:text-xl font-semibold text-sky-400 text-center w-full">Kaash AI Assistant</h2>
+        {onClose && (
+            <button 
+                onClick={onClose} 
+                className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors p-1" 
+                aria-label="Close chat"
+            >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+        )}
       </header>
       
       <div className="flex-grow p-2.5 sm:p-4 space-y-3 sm:space-y-4 overflow-y-auto chat-messages">
