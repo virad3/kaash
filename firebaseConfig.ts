@@ -1,20 +1,29 @@
 
-import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
+import 'firebase/compat/firestore';
 //
-// CRITICAL: PLEASE READ AND UPDATE THIS CONFIGURATION!
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// CRITICAL: YOU MUST REPLACE THE PLACEHOLDER VALUES BELOW WITH YOUR ACTUAL FIREBASE PROJECT CONFIGURATION.
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 //
-// The values below MUST be replaced with your actual Firebase project's configuration.
-// If these are incorrect, or if your Firebase project is not set up correctly,
-// Firestore and Authentication WILL NOT WORK.
+// IF YOU DO NOT REPLACE THESE VALUES, YOUR APPLICATION WILL NOT CONNECT TO FIREBASE.
+// THIS IS THE CAUSE OF THE "Could not reach Cloud Firestore backend" ERROR.
 //
-// Common issues leading to "Could not reach Cloud Firestore backend":
-// 1. Incorrect apiKey, authDomain, projectId, etc.
-// 2. Firestore Database not created in your Firebase project (Build > Firestore Database > Create database).
-// 3. API Key restrictions in Google Cloud Console preventing access (check HTTP referrers & enabled APIs for the key).
-// 4. Firestore Security Rules not deployed or misconfigured.
+// HOW TO GET YOUR CONFIGURATION:
+// 1. Go to your Firebase project console: https://console.firebase.google.com/
+// 2. Select your project.
+// 3. Click the gear icon (Project settings) next to "Project Overview".
+// 4. In the "General" tab, scroll down to the "Your apps" section.
+// 5. If you haven't registered a web app, click "Add app" and choose the web icon (</>). Follow instructions.
+// 6. Click on your web app's name.
+// 7. Scroll to the "SDK setup and configuration" section and select "Config".
+// 8. Copy the `firebaseConfig` object values provided there.
+// 9. Paste them below, replacing EACH "REPLACE..." string with your project's actual value.
+//
+// ALSO ENSURE IN YOUR FIREBASE PROJECT (Firebase Console):
+// - Firestore Database IS CREATED: (Build > Firestore Database > Create database -> Start in TEST MODE for development).
+// - Authentication Methods ARE ENABLED: (Build > Authentication > Sign-in method > Enable Email/Password and Google).
 //
 const firebaseConfig = {
   apiKey: "AIzaSyDUNFxBWKfa1DySUcfq-XSFwtm578FgLOk",
@@ -27,18 +36,22 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const googleProvider = new GoogleAuthProvider();
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+const googleProvider = new firebase.auth.GoogleAuthProvider();
 
 export { auth, db, googleProvider };
 
-// Instructions for the user (reiterated from before):
-// 1. Go to your Firebase project console (https://console.firebase.google.com/).
-// 2. In Project settings (gear icon near "Project Overview"), find your web app's Firebase SDK snippet.
-// 3. Copy the config object values (apiKey, authDomain, etc.) into the firebaseConfig object above.
-// 4. Ensure you have enabled in your Firebase project:
-//    - Firebase Authentication (Build > Authentication > Sign-in method): Enable Email/Password and Google.
-//    - Firestore Database (Build > Firestore Database > Create database): Start in test mode for development if prompted, then select a region.
-// 5. Set up Firestore Security Rules. An example 'firestore.rules' file is now provided. Deploy them via the Firebase console (Build > Firestore Database > Rules tab).
+// AFTER UPDATING THE CONFIG ABOVE AND VERIFYING FIREBASE PROJECT SETUP:
+// Ensure your Firestore Security Rules are set up.
+// A 'firestore.rules' file has been provided and should be deployed to your project.
+// You can deploy these rules via:
+// Firebase Console > Build > Firestore Database > Rules tab > Paste rules & Publish.
+// OR using Firebase CLI: `firebase deploy --only firestore:rules`
+//
+// If the error persists AFTER TRIPLE-CHECKING the config and project setup,
+// check your internet connection and any browser extensions that might block Firebase.
