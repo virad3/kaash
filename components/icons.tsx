@@ -11,6 +11,53 @@ export const PlusIcon: React.FC<IconProps> = ({ className }) => (
   </svg>
 );
 
+// New Icon for Add Income (Bill with Plus)
+export const AddIncomeIcon: React.FC<IconProps> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 10.5v8.25c0 .966.784 1.75 1.75 1.75h15.5c.966 0 1.75-.784 1.75-1.75V10.5M4 10.5H20M4 10.5V6a2 2 0 012-2h12a2 2 0 012 2v4.5m-16 0h16" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 13.5v3M10.5 15h3" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 2.25v4.5M9.75 4.5h4.5" />
+  </svg>
+);
+
+// New Icon for Add Expense (Wallet with Plus)
+export const AddExpenseIcon: React.FC<IconProps> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5v10.5a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18V7.5m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 7.5m18 0v-2.25c0-.966-.784-1.75-1.75-1.75H19.5" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 7.5V18M16.5 7.5c0-1.036-.84-1.875-1.875-1.875H12" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 3.75v3M3.75 5.25h3" />
+  </svg>
+);
+
+// New Icon for Add Liability (Document with Plus)
+export const AddLiabilityIcon: React.FC<IconProps> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 17.25v3M6 18.75h3" /> {/* Plus sign */}
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0M14.25 18a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5H15a.75.75 0 01-.75-.75z" /> {/* Currency symbol */}
+  </svg>
+);
+
+export const BanknotesIcon: React.FC<IconProps> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6A.75.75 0 012.25 5.25V4.5m19.5 0v.75a.75.75 0 01-.75.75a.75.75 0 01-.75-.75V4.5m0 0H2.25m19.5 0h.008v.008h-.008V4.5zM2.25 4.5V18.75m19.5-14.25V18.75M3.75 7.5h16.5M3.75 12h16.5m-16.5 4.5h16.5" />
+  </svg>
+);
+
+export const WalletIcon: React.FC<IconProps> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5v10.5a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18V7.5m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 7.5m18 0v-2.25c0-.966-.784-1.75-1.75-1.75H19.5M16.5 7.5V18M16.5 7.5c0-1.036-.84-1.875-1.875-1.875H12" />
+  </svg>
+);
+
+export const DocumentTextIcon: React.FC<IconProps> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 7.5h4.5M9.75 12h4.5m-4.5 3h.75" />
+  </svg>
+);
+
+
 export const TrashIcon: React.FC<IconProps> = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12.56 0c1.153 0 2.243.032 3.223.094M7.5 3.75l.608 .608A14.93 14.93 0 0012 5.344a14.93 14.93 0 003.892-1.025l.608-.608M7.5 3.75V2.25A1.5 1.5 0 019 1.5h6A1.5 1.5 0 0116.5 2.25v1.5m0 0h1.5a1.5 1.5 0 011.5 1.5v.75a1.5 1.5 0 01-1.5 1.5h-15a1.5 1.5 0 01-1.5-1.5V6a1.5 1.5 0 011.5-1.5H7.5" />
@@ -124,5 +171,25 @@ export const BackIcon: React.FC<IconProps> = ({ className }) => (
 export const MenuIcon: React.FC<IconProps> = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+  </svg>
+);
+
+// Summary Icons (without plus)
+export const IncomeSummaryIcon: React.FC<IconProps> = ({ className }) => ( // Renamed to be more specific
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6A.75.75 0 012.25 5.25V4.5m19.5 0v.75a.75.75 0 01-.75.75a.75.75 0 01-.75-.75V4.5m0 0H2.25m19.5 0h.008v.008h-.008V4.5zM2.25 4.5V18.75m19.5-14.25V18.75M3.75 7.5h16.5M3.75 12h16.5m-16.5 4.5h16.5" />
+  </svg>
+);
+
+export const ExpenseSummaryIcon: React.FC<IconProps> = ({ className }) => ( // Renamed
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5v10.5a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18V7.5m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 7.5m18 0v-2.25c0-.966-.784-1.75-1.75-1.75H19.5M16.5 7.5V18M16.5 7.5c0-1.036-.84-1.875-1.875-1.875H12" />
+  </svg>
+);
+
+export const LiabilitySummaryIcon: React.FC<IconProps> = ({ className }) => ( // Renamed
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 7.5h4.5M9.75 12h4.5m-4.5 3h.75" />
   </svg>
 );

@@ -1,8 +1,7 @@
-
 import React, { useState, useMemo } from 'react';
 import { Transaction, TransactionType, ExpenseCategory } from '../types';
 import { TransactionList } from './TransactionList';
-import { BackIcon } from './icons';
+import { BackIcon, PlusIcon } from './icons'; // Added PlusIcon
 import { EXPENSE_CATEGORIES } from '../constants';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -11,6 +10,7 @@ interface ExpenseDetailsPageProps {
   onBack: () => void;
   onEditTransaction: (transaction: Transaction) => void;
   onDeleteTransaction: (id: string) => void;
+  onOpenNewTransactionForm: (type: TransactionType) => void; // New prop
 }
 
 const PIE_COLORS = ['#FF8042', '#FFBB28', '#00C49F', '#0088FE', '#8884D8', '#82CA9D', '#FFC0CB', '#A0522D', '#D2691E', '#FF5733'];
@@ -44,7 +44,13 @@ const renderPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, n
 };
 
 
-export const ExpenseDetailsPage: React.FC<ExpenseDetailsPageProps> = ({ expenseTransactions, onBack, onEditTransaction, onDeleteTransaction }) => {
+export const ExpenseDetailsPage: React.FC<ExpenseDetailsPageProps> = ({ 
+  expenseTransactions, 
+  onBack, 
+  onEditTransaction, 
+  onDeleteTransaction,
+  onOpenNewTransactionForm // Destructure new prop
+}) => {
   const [selectedMonth, setSelectedMonth] = useState<string>('all'); 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
@@ -107,7 +113,13 @@ export const ExpenseDetailsPage: React.FC<ExpenseDetailsPageProps> = ({ expenseT
         {expenseTransactions.length === 0 ? (
           <div className="text-center py-10">
             <p className="text-xl text-gray-400">No expenses recorded yet.</p>
-            <p className="text-gray-500 mt-2">Add some from the dashboard to see details here.</p>
+            <p className="text-gray-500 mt-2 mb-4">Add some from the dashboard or directly here to see details.</p>
+            <button
+              onClick={() => onOpenNewTransactionForm(TransactionType.EXPENSE)}
+              className="mt-4 px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-75 flex items-center justify-center gap-2 mx-auto"
+            >
+              <PlusIcon className="h-5 w-5" /> Add First Expense
+            </button>
           </div>
         ) : (
           <>
@@ -145,7 +157,7 @@ export const ExpenseDetailsPage: React.FC<ExpenseDetailsPageProps> = ({ expenseT
             </div>
 
             <div className="mb-6 p-4 bg-slate-800 rounded-lg border border-slate-700 text-center">
-              <p className="text-sm text-gray-400 uppercase tracking-wider">Total Filtered Expenses</p>
+              <p className="text-sm text-gray-400 uppercase tracking-wider">Expense Summary</p>
               <p className="text-3xl font-bold text-red-400">₹{totalFilteredExpenses.toFixed(2)}</p>
             </div>
 

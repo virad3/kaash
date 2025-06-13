@@ -1,8 +1,7 @@
-
 import React, { useState, useMemo } from 'react';
 import { Liability, LiabilityCategory } from '../types';
 import { LiabilityList } from './LiabilityList'; 
-import { BackIcon } from './icons';
+import { BackIcon, PlusIcon } from './icons'; // Added PlusIcon
 import { LIABILITY_CATEGORIES } from '../constants';
 
 interface LiabilityDetailsPageProps {
@@ -11,11 +10,18 @@ interface LiabilityDetailsPageProps {
   onEditLiability: (liability: Liability) => void;
   onDeleteLiability: (id: string) => void;
   onRecordPayment: (liability: Liability) => void;
-  onViewEMIs?: (liabilityId: string) => void; // New prop for App.tsx to pass
+  onViewEMIs?: (liabilityId: string) => void; 
+  onOpenNewLiabilityForm: () => void; // New prop
 }
 
 export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({ 
-  liabilities, onBack, onEditLiability, onDeleteLiability, onRecordPayment, onViewEMIs
+  liabilities, 
+  onBack, 
+  onEditLiability, 
+  onDeleteLiability, 
+  onRecordPayment, 
+  onViewEMIs,
+  onOpenNewLiabilityForm // Destructure new prop
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
@@ -57,7 +63,13 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
         {liabilities.length === 0 ? (
           <div className="text-center py-10">
             <p className="text-xl text-gray-400">No liabilities recorded yet.</p>
-            <p className="text-gray-500 mt-2">Add some from the dashboard to see details here.</p>
+            <p className="text-gray-500 mt-2 mb-4">Add some from the dashboard or directly here to see details.</p>
+            <button
+              onClick={onOpenNewLiabilityForm}
+              className="mt-4 px-6 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-75 flex items-center justify-center gap-2 mx-auto"
+            >
+              <PlusIcon className="h-5 w-5" /> Add First Liability
+            </button>
           </div>
         ) : (
           <>
@@ -79,7 +91,7 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
             </div>
 
             <div className="mb-6 p-4 bg-slate-800 rounded-lg border border-slate-700 text-center">
-              <p className="text-sm text-gray-400 uppercase tracking-wider">Total Filtered Outstanding Liabilities</p>
+              <p className="text-sm text-gray-400 uppercase tracking-wider">Liabilities Summary</p>
               <p className="text-3xl font-bold text-orange-400">₹{totalFilteredOutstanding.toFixed(2)}</p>
             </div>
 

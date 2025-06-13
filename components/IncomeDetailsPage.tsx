@@ -1,8 +1,7 @@
-
 import React, { useState, useMemo } from 'react';
 import { Transaction, TransactionType } from '../types';
 import { TransactionList } from './TransactionList';
-import { BackIcon } from './icons';
+import { BackIcon, PlusIcon } from './icons'; // Added PlusIcon for the new button
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface IncomeDetailsPageProps {
@@ -10,6 +9,7 @@ interface IncomeDetailsPageProps {
   onBack: () => void;
   onEditTransaction: (transaction: Transaction) => void;
   onDeleteTransaction: (id: string) => void;
+  onOpenNewTransactionForm: (type: TransactionType) => void; // New prop
 }
 
 const PIE_COLORS = ['#00C49F', '#0088FE', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC0CB', '#A0522D', '#D2691E', '#FFD700'];
@@ -44,7 +44,13 @@ const renderPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, n
 };
 
 
-export const IncomeDetailsPage: React.FC<IncomeDetailsPageProps> = ({ incomeTransactions, onBack, onEditTransaction, onDeleteTransaction }) => {
+export const IncomeDetailsPage: React.FC<IncomeDetailsPageProps> = ({ 
+  incomeTransactions, 
+  onBack, 
+  onEditTransaction, 
+  onDeleteTransaction,
+  onOpenNewTransactionForm // Destructure new prop
+}) => {
   const [selectedMonth, setSelectedMonth] = useState<string>('all'); // e.g., "2024-07"
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
@@ -105,7 +111,13 @@ export const IncomeDetailsPage: React.FC<IncomeDetailsPageProps> = ({ incomeTran
         {incomeTransactions.length === 0 ? (
           <div className="text-center py-10">
             <p className="text-xl text-gray-400">No income recorded yet.</p>
-            <p className="text-gray-500 mt-2">Add some from the dashboard to see details here.</p>
+            <p className="text-gray-500 mt-2 mb-4">Add some from the dashboard or directly here to see details.</p>
+            <button
+              onClick={() => onOpenNewTransactionForm(TransactionType.INCOME)}
+              className="mt-4 px-6 py-2.5 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75 flex items-center justify-center gap-2 mx-auto"
+            >
+              <PlusIcon className="h-5 w-5" /> Add First Income
+            </button>
           </div>
         ) : (
           <div className="mt-6 space-y-6 md:grid md:grid-cols-12 md:gap-x-8 md:space-y-0">
@@ -147,7 +159,7 @@ export const IncomeDetailsPage: React.FC<IncomeDetailsPageProps> = ({ incomeTran
 
               {/* Summary of Filtered Data */}
               <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 text-center">
-                <p className="text-sm text-gray-400 uppercase tracking-wider">Total Filtered Income</p>
+                <p className="text-sm text-gray-400 uppercase tracking-wider">Income Summary</p>
                 <p className="text-3xl font-bold text-green-400">₹{totalFilteredIncome.toFixed(2)}</p>
               </div>
             </div>

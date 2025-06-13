@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { PlusIcon, KaashLogoIcon, BackIcon } from './icons'; // Assuming BackIcon can be repurposed or a ChevronDownIcon for submenu
+import { KaashLogoIcon, AddIncomeIcon, AddExpenseIcon, PiggyBankIcon, AddLiabilityIcon } from './icons'; 
 import { TransactionType } from '../types';
 
 interface SideMenuProps {
@@ -9,7 +10,6 @@ interface SideMenuProps {
   onOpenExpenseForm: () => void;
   onOpenSavingForm: () => void;
   onOpenLiabilityForm: () => void;
-  // Add more props for other menu items if needed in the future
 }
 
 export const SideMenu: React.FC<SideMenuProps> = ({ 
@@ -20,7 +20,7 @@ export const SideMenu: React.FC<SideMenuProps> = ({
   onOpenSavingForm,
   onOpenLiabilityForm
 }) => {
-  const [isRecordSubmenuOpen, setIsRecordSubmenuOpen] = useState(true); // Changed initial state to true
+  const [isRecordSubmenuOpen, setIsRecordSubmenuOpen] = useState(true);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,7 +35,7 @@ export const SideMenu: React.FC<SideMenuProps> = ({
 
   const handleActionClick = (action: () => void) => {
     action();
-    onClose(); // Close the main menu after an action is taken
+    onClose(); 
   };
 
   if (!isOpen) {
@@ -100,42 +100,33 @@ export const SideMenu: React.FC<SideMenuProps> = ({
                   onClick={() => handleActionClick(onOpenIncomeForm)}
                   className="w-full text-left p-2.5 text-sm text-gray-300 hover:bg-slate-600 hover:text-green-400 rounded-md transition-colors flex items-center"
                 >
-                  <PlusIcon className="w-4 h-4 mr-2.5 text-green-500" /> Add Income
+                  <AddIncomeIcon className="w-4 h-4 mr-2.5 text-green-500" /> Add Income
                 </button>
                 <button
                   onClick={() => handleActionClick(onOpenExpenseForm)}
                   className="w-full text-left p-2.5 text-sm text-gray-300 hover:bg-slate-600 hover:text-red-400 rounded-md transition-colors flex items-center"
                 >
-                  <PlusIcon className="w-4 h-4 mr-2.5 text-red-500" /> Add Expense
+                  <AddExpenseIcon className="w-4 h-4 mr-2.5 text-red-500" /> Add Expense
                 </button>
                 <button
                   onClick={() => handleActionClick(onOpenSavingForm)}
                   className="w-full text-left p-2.5 text-sm text-gray-300 hover:bg-slate-600 hover:text-teal-400 rounded-md transition-colors flex items-center"
                 >
-                  <PlusIcon className="w-4 h-4 mr-2.5 text-teal-500" /> Add Saving
+                  <PiggyBankIcon className="w-4 h-4 mr-2.5 text-teal-500" /> Add Saving
                 </button>
                 <button
                   onClick={() => handleActionClick(onOpenLiabilityForm)}
                   className="w-full text-left p-2.5 text-sm text-gray-300 hover:bg-slate-600 hover:text-orange-400 rounded-md transition-colors flex items-center"
                 >
-                  <PlusIcon className="w-4 h-4 mr-2.5 text-orange-500" /> Add Liability
+                  <AddLiabilityIcon className="w-4 h-4 mr-2.5 text-orange-500" /> Add Liability
                 </button>
               </div>
             )}
           </div>
-
-          {/* Other future menu items can go here, e.g.:
-          <button className="w-full text-left p-3 text-gray-200 hover:bg-slate-700 rounded-md transition-colors focus:outline-none focus:bg-slate-700 font-medium">
-            View Reports
-          </button>
-          <button className="w-full text-left p-3 text-gray-200 hover:bg-slate-700 rounded-md transition-colors focus:outline-none focus:bg-slate-700 font-medium">
-            Settings
-          </button>
-          */}
         </nav>
         
         {/* Menu Footer */}
-        <div className="p-4 border-t border-slate-700 mt-auto"> {/* mt-auto pushes to bottom */}
+        <div className="p-4 border-t border-slate-700 mt-auto">
           <p className="text-xs text-gray-500 text-center">&copy; 2025 Kaash. Track Smarter, Live Better</p>
         </div>
       </div>

@@ -602,13 +602,13 @@ const App: React.FC = () => {
     
     switch (activeView) {
       case 'incomeDetails':
-        return <IncomeDetailsPage incomeTransactions={incomeTransactions} onBack={navigateToDashboard} onEditTransaction={handleOpenEditTransactionForm} onDeleteTransaction={handleDeleteTransaction} />;
+        return <IncomeDetailsPage incomeTransactions={incomeTransactions} onBack={navigateToDashboard} onEditTransaction={handleOpenEditTransactionForm} onDeleteTransaction={handleDeleteTransaction} onOpenNewTransactionForm={handleOpenNewTransactionForm} />;
       case 'expenseDetails':
-        return <ExpenseDetailsPage expenseTransactions={expenseTransactions} onBack={navigateToDashboard} onEditTransaction={handleOpenEditTransactionForm} onDeleteTransaction={handleDeleteTransaction} />;
+        return <ExpenseDetailsPage expenseTransactions={expenseTransactions} onBack={navigateToDashboard} onEditTransaction={handleOpenEditTransactionForm} onDeleteTransaction={handleDeleteTransaction} onOpenNewTransactionForm={handleOpenNewTransactionForm} />;
       case 'savingsDetails':
-        return <SavingsDetailsPage savingTransactions={savingTransactions} onBack={navigateToDashboard} onEditTransaction={handleOpenEditTransactionForm} onDeleteTransaction={handleDeleteTransaction} />;
+        return <SavingsDetailsPage savingTransactions={savingTransactions} onBack={navigateToDashboard} onEditTransaction={handleOpenEditTransactionForm} onDeleteTransaction={handleDeleteTransaction} onOpenNewTransactionForm={handleOpenNewTransactionForm} />;
       case 'liabilityDetails':
-        return <LiabilityDetailsPage liabilities={liabilities} onBack={navigateToDashboard} onEditLiability={handleOpenEditLiabilityForm} onDeleteLiability={handleDeleteLiability} onRecordPayment={handleOpenRecordPaymentForm} onViewEMIs={handleViewEMIs} />;
+        return <LiabilityDetailsPage liabilities={liabilities} onBack={navigateToDashboard} onEditLiability={handleOpenEditLiabilityForm} onDeleteLiability={handleDeleteLiability} onRecordPayment={handleOpenRecordPaymentForm} onViewEMIs={handleViewEMIs} onOpenNewLiabilityForm={handleOpenNewLiabilityForm} />;
       case 'liabilityEMIDetail':
         if (selectedLiabilityForEMIs) {
           return <LiabilityEMIDetailPage liability={selectedLiabilityForEMIs} allTransactions={transactions} onBack={navigateToDashboard} onEditEMI={handleEditEMI} onDeleteEMI={handleDeleteEMI} />;
@@ -703,6 +703,9 @@ const App: React.FC = () => {
               </h1>
             </div>
             <div className="relative flex items-center space-x-2 sm:space-x-4" ref={profileDropdownRef}>
+               <p className="text-sm text-gray-300 mr-2 hidden sm:inline-block truncate max-w-[100px] md:max-w-[150px]">
+                {currentUser.name || currentUser.email}
+              </p>
               <button 
                 onClick={toggleProfileDropdown} 
                 className="p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-800"

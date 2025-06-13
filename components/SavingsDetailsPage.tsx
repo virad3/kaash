@@ -1,8 +1,7 @@
-
 import React, { useState, useMemo } from 'react';
 import { Transaction, TransactionType, SavingCategory } from '../types';
 import { TransactionList } from './TransactionList';
-import { BackIcon } from './icons';
+import { BackIcon, PlusIcon } from './icons'; // Added PlusIcon
 import { SAVING_CATEGORIES } from '../constants';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -11,6 +10,7 @@ interface SavingsDetailsPageProps {
   onBack: () => void;
   onEditTransaction: (transaction: Transaction) => void;
   onDeleteTransaction: (id: string) => void;
+  onOpenNewTransactionForm: (type: TransactionType) => void; // New prop
 }
 
 const PIE_COLORS = ['#30B098', '#4FD3B8', '#6EE8A3', '#2FB47C', '#8884D8', '#FFBB28', '#FF8042', '#0088FE', '#A0522D', '#D2691E'];
@@ -44,7 +44,13 @@ const renderPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, n
 };
 
 
-export const SavingsDetailsPage: React.FC<SavingsDetailsPageProps> = ({ savingTransactions, onBack, onEditTransaction, onDeleteTransaction }) => {
+export const SavingsDetailsPage: React.FC<SavingsDetailsPageProps> = ({ 
+  savingTransactions, 
+  onBack, 
+  onEditTransaction, 
+  onDeleteTransaction,
+  onOpenNewTransactionForm // Destructure new prop
+}) => {
   const [selectedMonth, setSelectedMonth] = useState<string>('all'); 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
@@ -106,7 +112,13 @@ export const SavingsDetailsPage: React.FC<SavingsDetailsPageProps> = ({ savingTr
         {savingTransactions.length === 0 ? (
           <div className="text-center py-10">
             <p className="text-xl text-gray-400">No savings recorded yet.</p>
-            <p className="text-gray-500 mt-2">Add some from the dashboard to see details here.</p>
+            <p className="text-gray-500 mt-2 mb-4">Add some from the dashboard or directly here to see details.</p>
+            <button
+              onClick={() => onOpenNewTransactionForm(TransactionType.SAVING)}
+              className="mt-4 px-6 py-2.5 bg-teal-500 hover:bg-teal-600 text-white font-semibold rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-opacity-75 flex items-center justify-center gap-2 mx-auto"
+            >
+              <PlusIcon className="h-5 w-5" /> Add First Saving
+            </button>
           </div>
         ) : (
           <>
@@ -144,7 +156,7 @@ export const SavingsDetailsPage: React.FC<SavingsDetailsPageProps> = ({ savingTr
             </div>
 
             <div className="mb-6 p-4 bg-slate-800 rounded-lg border border-slate-700 text-center">
-              <p className="text-sm text-gray-400 uppercase tracking-wider">Total Filtered Savings</p>
+              <p className="text-sm text-gray-400 uppercase tracking-wider">Savings Summary</p>
               <p className="text-3xl font-bold text-teal-400">₹{totalFilteredSavings.toFixed(2)}</p>
             </div>
 
