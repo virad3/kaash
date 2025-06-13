@@ -127,10 +127,19 @@ const App: React.FC = () => {
       await authService.logoutUser();
     } catch (error: any) { setAuthError(error.message || "Failed to log out."); }
   };
-  const clearAuthError = () => setAuthError(null);
+  const clearAuthError = useCallback(() => setAuthError(null), []);
 
-  const handleOpenNewTransactionForm = (type: TransactionType) => { setCurrentTransactionType(type); setEditingTransaction(null); setShowTransactionModal(true); };
-  const handleOpenEditTransactionForm = (transaction: Transaction) => { setCurrentTransactionType(transaction.type); setEditingTransaction(transaction); setShowTransactionModal(true); };
+  const handleOpenNewTransactionForm = useCallback((type: TransactionType) => { 
+    setCurrentTransactionType(type); 
+    setEditingTransaction(null); 
+    setShowTransactionModal(true); 
+  }, []);
+
+  const handleOpenEditTransactionForm = useCallback((transaction: Transaction) => { 
+    setCurrentTransactionType(transaction.type); 
+    setEditingTransaction(transaction); 
+    setShowTransactionModal(true); 
+  }, []);
 
   const handleAddOrEditTransaction = useCallback(async (data: { 
     id?: string; 
@@ -167,7 +176,6 @@ const App: React.FC = () => {
 
     try {
       if (id && editingTransaction && editingTransaction.relatedLiabilityId) {
-        // This is an edit of an existing EMI transaction
         const oldAmount = editingTransaction.amount;
         const newAmount = payload.amount;
         const amountDifferenceForLiabilityRepaid = newAmount - oldAmount;
@@ -180,15 +188,12 @@ const App: React.FC = () => {
           amountDifferenceForLiabilityRepaid
         );
       } else if (id) { 
-        // Generic transaction update (not an EMI or EMI handling is not active)
         await storageService.updateTransaction(currentUser.uid, id, payload as Partial<Omit<Transaction, 'id' | 'createdAt' | 'userId'>>);
       } else { 
-        // New transaction
         await storageService.addTransaction(currentUser.uid, payload as Omit<Transaction, 'id' | 'createdAt' | 'userId'>);
       }
       
-      // Save new custom category if applicable (for non-EMI or initial EMI add)
-      if (!id || (editingTransaction && !editingTransaction.relatedLiabilityId) ) { // Only run for new transactions or non-EMI edits regarding category addition
+      if (!id || (editingTransaction && !editingTransaction.relatedLiabilityId) ) {
         let baseCategoriesForType: readonly string[] = [];
         let currentUserCategoriesForType: string[] = [];
         let categoryTypeIdentifier: CategoryTypeIdentifier = data.type;
@@ -225,12 +230,11 @@ const App: React.FC = () => {
   }, [currentUser, userDefinedCategories, editingTransaction]);
 
 
-  const handleEditEMI = (transaction: Transaction) => {
-    // This correctly sets up editingTransaction for handleAddOrEditTransaction
+  const handleEditEMI = useCallback((transaction: Transaction) => {
     handleOpenEditTransactionForm(transaction); 
-  };
+  }, [handleOpenEditTransactionForm]);
 
-  const handleDeleteEMI = async (transactionId: string, relatedLiabilityId: string, emiAmount: number) => {
+  const handleDeleteEMI = useCallback(async (transactionId: string, relatedLiabilityId: string, emiAmount: number) => {
     if (!currentUser?.uid) return;
     if (window.confirm("Are you sure you want to delete this EMI payment? This will also adjust the principal repaid on the liability.")) {
       try {
@@ -238,23 +242,22 @@ const App: React.FC = () => {
           currentUser.uid,
           transactionId,
           relatedLiabilityId,
-          emiAmount // Simplified: assume full EMI amount was principal for adjustment
+          emiAmount 
         );
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error deleting EMI and updating liability:", error);
-        alert(`Failed to delete EMI. Error: ${error}`);
+        alert(`Failed to delete EMI. Error: ${error.message}`);
       }
     }
-  };
+  }, [currentUser]);
 
-  // General transaction delete, does NOT adjust liability
   const handleDeleteTransaction = useCallback(async (id: string) => {
     if (!currentUser?.uid) return;
     if (window.confirm("Are you sure you want to delete this transaction?")) {
       try { 
         await storageService.deleteTransaction(currentUser.uid, id); 
       } 
-      catch (error) { console.error("Error deleting transaction:", error); alert("Failed to delete transaction."); }
+      catch (error: any) { console.error("Error deleting transaction:", error); alert(`Failed to delete transaction. Error: ${error.message}`); }
     }
   }, [currentUser]);
 
@@ -295,14 +298,14 @@ const App: React.FC = () => {
       }
 
       closeModal();
-    } catch (error) { console.error("Error saving liability:", error); alert("Failed to save liability."); }
+    } catch (error: any) { console.error("Error saving liability:", error); alert(`Failed to save liability. Error: ${error.message}`); }
   }, [currentUser, liabilities, userDefinedCategories]);
 
   const handleDeleteLiability = useCallback(async (id: string) => {
     if (!currentUser?.uid) return;
     if (window.confirm("Are you sure you want to delete this liability? This will NOT delete associated EMI payments from expenses.")) {
       try { await storageService.deleteLiability(currentUser.uid, id); }
-      catch (error) { console.error("Error deleting liability:", error); alert("Failed to delete liability."); }
+      catch (error: any) { console.error("Error deleting liability:", error); alert(`Failed to delete liability. Error: ${error.message}`); }
     }
   }, [currentUser]);
 
@@ -354,14 +357,14 @@ const App: React.FC = () => {
         };
         await storageService.addTransaction(currentUser.uid, expenseTxData);
         setPayingLiability(null); 
-    } catch (error) { 
+    } catch (error: any) { 
         console.error("Error recording liability payment or expense transaction:", error); 
-        alert("Failed to record payment. Please check details. Liability principal might have been updated, but expense transaction failed, or vice-versa."); 
+        alert(`Failed to record payment. Error: ${error.message}`); 
     }
   }, [liabilities, currentUser]);
 
 
-  const createCategoryHandlers = (
+  const createCategoryHandlers = useCallback((
     categoryType: CategoryTypeIdentifier, 
     predefinedCategoriesConst: readonly string[]
   ) => {
@@ -410,12 +413,12 @@ const App: React.FC = () => {
       }
     };
     return { handleAdd, handleEdit, handleDelete };
-  };
+  }, [currentUser]);
 
-  const incomeCategoryHandlers = useMemo(() => createCategoryHandlers(TransactionType.INCOME, INCOME_CATEGORIES.map(String)), [currentUser]);
-  const expenseCategoryHandlers = useMemo(() => createCategoryHandlers(TransactionType.EXPENSE, EXPENSE_CATEGORIES.map(String)), [currentUser]);
-  const savingCategoryHandlers = useMemo(() => createCategoryHandlers(TransactionType.SAVING, SAVING_CATEGORIES.map(String)), [currentUser]);
-  const liabilityCategoryHandlers = useMemo(() => createCategoryHandlers('liability', LIABILITY_CATEGORIES.map(String)), [currentUser]);
+  const incomeCategoryHandlers = useMemo(() => createCategoryHandlers(TransactionType.INCOME, INCOME_CATEGORIES.map(String)), [currentUser, createCategoryHandlers]);
+  const expenseCategoryHandlers = useMemo(() => createCategoryHandlers(TransactionType.EXPENSE, EXPENSE_CATEGORIES.map(String)), [currentUser, createCategoryHandlers]);
+  const savingCategoryHandlers = useMemo(() => createCategoryHandlers(TransactionType.SAVING, SAVING_CATEGORIES.map(String)), [currentUser, createCategoryHandlers]);
+  const liabilityCategoryHandlers = useMemo(() => createCategoryHandlers('liability', LIABILITY_CATEGORIES.map(String)), [currentUser, createCategoryHandlers]);
 
 
   const incomeTransactions = useMemo(() => transactions.filter(t => t.type === TransactionType.INCOME), [transactions]);
@@ -427,22 +430,22 @@ const App: React.FC = () => {
   const totalSavings = useMemo(() => savingTransactions.reduce((sum, t) => sum + t.amount, 0), [savingTransactions]);
   const balance = useMemo(() => totalIncome - totalExpenses, [totalIncome, totalExpenses]); 
   
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setShowTransactionModal(false); setCurrentTransactionType(null); setEditingTransaction(null);
     setShowLiabilityForm(false); setEditingLiability(null); setPayingLiability(null);
-  };
+  }, []);
   
-  const handleOpenNewLiabilityForm = () => { setEditingLiability(null); setShowLiabilityForm(true); };
-  const handleOpenEditLiabilityForm = (liability: Liability) => { setEditingLiability(liability); setShowLiabilityForm(true); };
-  const handleOpenRecordPaymentForm = (liability: Liability) => setPayingLiability(liability);
+  const handleOpenNewLiabilityForm = useCallback(() => { setEditingLiability(null); setShowLiabilityForm(true); }, []);
+  const handleOpenEditLiabilityForm = useCallback((liability: Liability) => { setEditingLiability(liability); setShowLiabilityForm(true); }, []);
+  const handleOpenRecordPaymentForm = useCallback((liability: Liability) => setPayingLiability(liability), []);
 
-  const navigateToDashboard = () => { setActiveView('dashboard'); setSelectedLiabilityForEMIs(null); };
-  const navigateToIncomeDetails = () => { setActiveView('incomeDetails'); setSelectedLiabilityForEMIs(null); };
-  const navigateToExpenseDetails = () => { setActiveView('expenseDetails'); setSelectedLiabilityForEMIs(null); };
-  const navigateToSavingsDetails = () => { setActiveView('savingsDetails'); setSelectedLiabilityForEMIs(null); };
-  const navigateToLiabilityDetails = () => { setActiveView('liabilityDetails'); setSelectedLiabilityForEMIs(null); };
+  const navigateToDashboard = useCallback(() => { setActiveView('dashboard'); setSelectedLiabilityForEMIs(null); }, []);
+  const navigateToIncomeDetails = useCallback(() => { setActiveView('incomeDetails'); setSelectedLiabilityForEMIs(null); }, []);
+  const navigateToExpenseDetails = useCallback(() => { setActiveView('expenseDetails'); setSelectedLiabilityForEMIs(null); }, []);
+  const navigateToSavingsDetails = useCallback(() => { setActiveView('savingsDetails'); setSelectedLiabilityForEMIs(null); }, []);
+  const navigateToLiabilityDetails = useCallback(() => { setActiveView('liabilityDetails'); setSelectedLiabilityForEMIs(null); }, []);
   
-  const handleViewEMIs = (liabilityId: string) => {
+  const handleViewEMIs = useCallback((liabilityId: string) => {
     const liability = liabilities.find(l => l.id === liabilityId);
     if (liability) {
       setSelectedLiabilityForEMIs(liability);
@@ -451,7 +454,7 @@ const App: React.FC = () => {
       console.warn(`Liability with ID ${liabilityId} not found for EMI detail view.`);
       alert("Could not find liability details.");
     }
-  };
+  }, [liabilities]);
   
   if (isLoadingAuth) {
     return <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex justify-center items-center text-sky-400 text-xl p-4 text-center">Loading Kaash...</div>;
@@ -540,13 +543,12 @@ const App: React.FC = () => {
         allTransactions={transactions}
         onBack={navigateToDashboard} 
         onEditEMI={handleEditEMI} 
-        onDeleteEMI={(transactionId, relatedLiabilityId, emiAmount) => handleDeleteEMI(transactionId, relatedLiabilityId, emiAmount)}
+        onDeleteEMI={handleDeleteEMI}
       />
     );
   } else if (activeView === 'liabilityEMIDetail' && !selectedLiabilityForEMIs) {
-    // Fallback if selectedLiabilityForEMIs is null but view is active (should ideally not happen)
-    navigateToDashboard(); // or navigateToLiabilityDetails()
-    return null; // or a loading/error state
+    navigateToDashboard(); 
+    return null; 
   }
 
 
@@ -631,7 +633,7 @@ const App: React.FC = () => {
                 </button>
                 {showTransactionModal && currentTransactionType && 
                   <TransactionForm 
-                    key={forceFormCategoryResetKey} 
+                    key={`transaction-form-${currentTransactionType}-${forceFormCategoryResetKey}`}
                     type={currentTransactionType} 
                     onSubmit={handleAddOrEditTransaction} 
                     onCancel={closeModal} 
@@ -656,7 +658,15 @@ const App: React.FC = () => {
                     onUserDeleteLiabilityCategory={liabilityCategoryHandlers.handleDelete}
                   />
                 }
-                {payingLiability && <RecordLiabilityPaymentForm liability={payingLiability} onSubmit={(paymentAmount, paymentDate, newNextDueDate, notes) => handleRecordLiabilityPayment(payingLiability.id, paymentAmount, paymentDate, newNextDueDate, notes)} onCancel={closeModal}/>}
+                {payingLiability && 
+                  <RecordLiabilityPaymentForm 
+                    liability={payingLiability} 
+                    onSubmit={(paymentAmount, paymentDate, newNextDueDate, notes) => 
+                      handleRecordLiabilityPayment(payingLiability.id, paymentAmount, paymentDate, newNextDueDate, notes)
+                    } 
+                    onCancel={closeModal}
+                  />
+                }
               </div>
             </div>
           )}
