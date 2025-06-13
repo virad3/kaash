@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Liability, LiabilityCategory } from '../types';
 import { LiabilityList } from './LiabilityList'; 
@@ -11,10 +10,11 @@ interface LiabilityDetailsPageProps {
   onEditLiability: (liability: Liability) => void;
   onDeleteLiability: (id: string) => void;
   onRecordPayment: (liability: Liability) => void;
+  onViewEMIs?: (liabilityId: string) => void; // New prop for App.tsx to pass
 }
 
 export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({ 
-  liabilities, onBack, onEditLiability, onDeleteLiability, onRecordPayment 
+  liabilities, onBack, onEditLiability, onDeleteLiability, onRecordPayment, onViewEMIs
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
@@ -87,6 +87,7 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
               onDelete={onDeleteLiability}
               onEdit={onEditLiability}
               onRecordPayment={onRecordPayment}
+              onViewEMIs={onViewEMIs} // Pass down the handler
             />
           </>
         )}

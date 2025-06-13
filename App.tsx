@@ -12,6 +12,7 @@ import { IncomeDetailsPage } from './components/IncomeDetailsPage';
 import { ExpenseDetailsPage } from './components/ExpenseDetailsPage'; 
 import { SavingsDetailsPage } from './components/SavingsDetailsPage'; 
 import { LiabilityDetailsPage } from './components/LiabilityDetailsPage'; 
+import { LiabilityEMIDetailPage } from './components/LiabilityEMIDetailPage'; // New Import
 import * as storageService from './services/storageService';
 import * as authService from './services/authService';
 import { KaashLogoIcon, PlusIcon, BellIcon, PiggyBankIcon, UserIcon, LogoutIcon, PaymentIcon } from './components/icons';
@@ -36,6 +37,7 @@ const App: React.FC = () => {
   const [showLiabilityForm, setShowLiabilityForm] = useState<boolean>(false);
   const [editingLiability, setEditingLiability] = useState<Liability | null>(null);
   const [payingLiability, setPayingLiability] = useState<Liability | null>(null);
+  const [selectedLiabilityForEMIs, setSelectedLiabilityForEMIs] = useState<Liability | null>(null); // New state
 
   const [upcomingPayments, setUpcomingPayments] = useState<Liability[]>([]);
   const [activeView, setActiveView] = useState<View>('dashboard');
@@ -49,11 +51,13 @@ const App: React.FC = () => {
       if (user) {
         window.scrollTo(0, 0); 
         setActiveView('dashboard'); 
+        setSelectedLiabilityForEMIs(null); // Reset on user change
       } else {
         setTransactions([]);
         setLiabilities([]);
         setUserDefinedCategories({ income: [], expense: [], saving: [], liability: [] });
         setActiveView('dashboard');
+        setSelectedLiabilityForEMIs(null);
       }
     });
     return () => unsubscribeAuth();
@@ -202,10 +206,30 @@ const App: React.FC = () => {
     }
   }, [currentUser, userDefinedCategories]);
 
+  // Placeholder for Edit EMI from LiabilityEMIDetailPage (Phase 2)
+  const handleEditEMI = (transaction: Transaction) => {
+    // This will eventually open the TransactionForm for editing this specific expense
+    console.log("Placeholder: Edit EMI", transaction);
+    handleOpenEditTransactionForm(transaction); 
+    // Additional logic will be needed to update liability.amountRepaid if amount changes
+  };
+
+  // Placeholder for Delete EMI from LiabilityEMIDetailPage (Phase 3)
+  const handleDeleteEMI = (transactionId: string) => {
+     // This will eventually call handleDeleteTransaction and update liability.amountRepaid
+    console.log("Placeholder: Delete EMI", transactionId);
+    handleDeleteTransaction(transactionId);
+     // Additional logic will be needed to update liability.amountRepaid
+  };
+
+
   const handleDeleteTransaction = useCallback(async (id: string) => {
     if (!currentUser?.uid) return;
     if (window.confirm("Are you sure you want to delete this transaction?")) {
-      try { await storageService.deleteTransaction(currentUser.uid, id); } 
+      try { 
+        // In Phase 3, if transaction has relatedLiabilityId, fetch it, then delete, then update liability
+        await storageService.deleteTransaction(currentUser.uid, id); 
+      } 
       catch (error) { console.error("Error deleting transaction:", error); alert("Failed to delete transaction."); }
     }
   }, [currentUser]);
@@ -252,7 +276,7 @@ const App: React.FC = () => {
 
   const handleDeleteLiability = useCallback(async (id: string) => {
     if (!currentUser?.uid) return;
-    if (window.confirm("Are you sure you want to delete this liability?")) {
+    if (window.confirm("Are you sure you want to delete this liability? This will NOT delete associated EMI payments from expenses.")) {
       try { await storageService.deleteLiability(currentUser.uid, id); }
       catch (error) { console.error("Error deleting liability:", error); alert("Failed to delete liability."); }
     }
@@ -265,52 +289,39 @@ const App: React.FC = () => {
       alert("Liability not found. Cannot record payment.");
       return;
     }
-    // ... (rest of the payment logic is fine)
-    if (typeof liability.interestRate !== 'number') {
-        alert("Interest rate is not set for this liability. Cannot accurately calculate principal and interest. Payment will reduce total owed directly.");
-        const updatedLiabilitySimpleData = { 
-            amountRepaid: Math.min(liability.amountRepaid + paymentAmount, liability.initialAmount), 
-            nextDueDate: newNextDueDate 
-        };
-        try {
-            await storageService.updateLiability(currentUser.uid, liabilityId, updatedLiabilitySimpleData);
-        } catch (error) {
-            console.error("Error updating liability (simple):", error);
-            alert("Failed to update liability details.");
-            return;
+    
+    let principalPaidForThisPayment = paymentAmount; // Default assumption
+
+    if (typeof liability.interestRate === 'number' && liability.interestRate > 0) {
+        const outstandingPrincipalBeforePayment = liability.initialAmount - liability.amountRepaid;
+        if (outstandingPrincipalBeforePayment > 0) {
+            const paymentDetails = calculateLoanPaymentDetails(
+                outstandingPrincipalBeforePayment,
+                liability.interestRate,
+                paymentAmount
+            );
+            principalPaidForThisPayment = paymentDetails.principalPaid;
+        } else {
+             // If already fully paid or overpaid on principal, new payments are effectively 0 principal reduction
+             principalPaidForThisPayment = 0;
         }
     } else {
-        const outstandingPrincipal = liability.initialAmount - liability.amountRepaid;
-        if (outstandingPrincipal <= 0) {
-            alert("This liability seems to be fully paid. No further payment recorded as principal reduction.");
-        }
-
-        const { interestPaid, principalPaid } = calculateLoanPaymentDetails(
-            outstandingPrincipal,
-            liability.interestRate, 
-            paymentAmount
-        );
-        
-        let newAmountRepaid = liability.amountRepaid + principalPaid;
-        newAmountRepaid = Math.min(newAmountRepaid, liability.initialAmount);
-
-        const updatedLiabilityData = { 
-            amountRepaid: newAmountRepaid, 
-            nextDueDate: newNextDueDate 
-        };
-
-        try {
-            if (outstandingPrincipal > 0) { 
-              await storageService.updateLiability(currentUser.uid, liabilityId, updatedLiabilityData);
-            }
-        } catch (error) {
-            console.error("Error updating liability (with interest calc):", error);
-            alert("Failed to update liability details after interest calculation.");
-            return; 
-        }
+      // No interest rate, so assume full payment amount goes to principal reduction if outstanding
+       const outstandingPrincipalBeforePayment = liability.initialAmount - liability.amountRepaid;
+       principalPaidForThisPayment = Math.min(paymentAmount, outstandingPrincipalBeforePayment);
     }
+    principalPaidForThisPayment = Math.max(0, principalPaidForThisPayment); // Ensure principal paid isn't negative
+
+    const newAmountRepaidTotal = Math.min(liability.amountRepaid + principalPaidForThisPayment, liability.initialAmount);
+
+    const updatedLiabilityData = { 
+        amountRepaid: newAmountRepaidTotal, 
+        nextDueDate: newNextDueDate 
+    };
     
     try {
+        await storageService.updateLiability(currentUser.uid, liabilityId, updatedLiabilityData);
+        
         const expenseDescription = expenseNotes || `Payment for ${liability.name || liability.category}`;
         const expenseTxData: Omit<Transaction, 'id' | 'createdAt' | 'userId'> = { 
             type: TransactionType.EXPENSE,
@@ -322,12 +333,12 @@ const App: React.FC = () => {
         await storageService.addTransaction(currentUser.uid, expenseTxData);
         setPayingLiability(null); 
     } catch (error) { 
-        console.error("Error recording expense transaction for liability payment:", error); 
-        alert("Failed to record expense transaction for the payment. Liability details might have been updated."); 
+        console.error("Error recording liability payment or expense transaction:", error); 
+        alert("Failed to record payment. Please check details. Liability principal might have been updated, but expense transaction failed, or vice-versa."); 
     }
   }, [liabilities, currentUser]);
 
-  // Generic Category Management Handlers Factory
+
   const createCategoryHandlers = (
     categoryType: CategoryTypeIdentifier, 
     predefinedCategoriesConst: readonly string[]
@@ -403,11 +414,22 @@ const App: React.FC = () => {
   const handleOpenEditLiabilityForm = (liability: Liability) => { setEditingLiability(liability); setShowLiabilityForm(true); };
   const handleOpenRecordPaymentForm = (liability: Liability) => setPayingLiability(liability);
 
-  const navigateToDashboard = () => setActiveView('dashboard');
-  const navigateToIncomeDetails = () => setActiveView('incomeDetails');
-  const navigateToExpenseDetails = () => setActiveView('expenseDetails');
-  const navigateToSavingsDetails = () => setActiveView('savingsDetails');
-  const navigateToLiabilityDetails = () => setActiveView('liabilityDetails');
+  const navigateToDashboard = () => { setActiveView('dashboard'); setSelectedLiabilityForEMIs(null); };
+  const navigateToIncomeDetails = () => { setActiveView('incomeDetails'); setSelectedLiabilityForEMIs(null); };
+  const navigateToExpenseDetails = () => { setActiveView('expenseDetails'); setSelectedLiabilityForEMIs(null); };
+  const navigateToSavingsDetails = () => { setActiveView('savingsDetails'); setSelectedLiabilityForEMIs(null); };
+  const navigateToLiabilityDetails = () => { setActiveView('liabilityDetails'); setSelectedLiabilityForEMIs(null); };
+  
+  const handleViewEMIs = (liabilityId: string) => {
+    const liability = liabilities.find(l => l.id === liabilityId);
+    if (liability) {
+      setSelectedLiabilityForEMIs(liability);
+      setActiveView('liabilityEMIDetail');
+    } else {
+      console.warn(`Liability with ID ${liabilityId} not found for EMI detail view.`);
+      alert("Could not find liability details.");
+    }
+  };
   
   if (isLoadingAuth) {
     return <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex justify-center items-center text-sky-400 text-xl p-4 text-center">Loading Kaash...</div>;
@@ -417,7 +439,6 @@ const App: React.FC = () => {
     return <AuthPage onLogin={handleLogin} onSignup={handleSignup} onGoogleLogin={handleGoogleLogin} error={authError} clearError={clearAuthError} />;
   }
   
-  // Logic for TransactionForm props
   let formPredefinedCategories: string[] = [];
   let formUserDefinedCategories: string[] = [];
   let formAddHandler = async (name: string) => {};
@@ -485,6 +506,19 @@ const App: React.FC = () => {
         onEditLiability={handleOpenEditLiabilityForm}
         onDeleteLiability={handleDeleteLiability}
         onRecordPayment={handleOpenRecordPaymentForm}
+        onViewEMIs={handleViewEMIs}
+      />
+    );
+  }
+
+  if (activeView === 'liabilityEMIDetail') {
+    return (
+      <LiabilityEMIDetailPage
+        liability={selectedLiabilityForEMIs ?? undefined} // Pass undefined if null
+        allTransactions={transactions}
+        onBack={navigateToDashboard} // Or could be navigateToLiabilityDetails based on context
+        onEditEMI={handleEditEMI} 
+        onDeleteEMI={handleDeleteEMI} 
       />
     );
   }
@@ -585,7 +619,7 @@ const App: React.FC = () => {
                 }
                 {showLiabilityForm && 
                   <LiabilityForm 
-                    key={`liability-form-${forceFormCategoryResetKey}`} // Also use key here if category changes affect it
+                    key={`liability-form-${forceFormCategoryResetKey}`} 
                     onSubmit={handleAddOrEditLiability} 
                     onCancel={closeModal} 
                     existingLiability={editingLiability}
@@ -606,7 +640,15 @@ const App: React.FC = () => {
             <TransactionList title="Expenses" transactions={expenseTransactions} type={TransactionType.EXPENSE} onDelete={handleDeleteTransaction} onEdit={handleOpenEditTransactionForm} />
           </div>
           <div className="mt-4 sm:mt-6"><TransactionList title="Savings" transactions={savingTransactions} type={TransactionType.SAVING} onDelete={handleDeleteTransaction} onEdit={handleOpenEditTransactionForm} /></div>
-          <div className="mt-4 sm:mt-6"><LiabilityList liabilities={liabilities} onDelete={handleDeleteLiability} onEdit={handleOpenEditLiabilityForm} onRecordPayment={handleOpenRecordPaymentForm}/></div>
+          <div className="mt-4 sm:mt-6">
+            <LiabilityList 
+              liabilities={liabilities} 
+              onDelete={handleDeleteLiability} 
+              onEdit={handleOpenEditLiabilityForm} 
+              onRecordPayment={handleOpenRecordPaymentForm}
+              onViewEMIs={handleViewEMIs} // Pass to dashboard list
+            />
+          </div>
         </div>
       </main>
 
