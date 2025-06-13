@@ -429,6 +429,25 @@ const App: React.FC = () => {
   const totalExpenses = useMemo(() => expenseTransactions.reduce((sum, t) => sum + t.amount, 0), [expenseTransactions]);
   const totalSavings = useMemo(() => savingTransactions.reduce((sum, t) => sum + t.amount, 0), [savingTransactions]);
   const balance = useMemo(() => totalIncome - totalExpenses, [totalIncome, totalExpenses]); 
+
+  const recentTransactions = useMemo(() => {
+    const allSortableTransactions = transactions.filter(
+      t => t.type === TransactionType.INCOME || t.type === TransactionType.EXPENSE || t.type === TransactionType.SAVING
+    );
+    // Sort by date (descending), then by createdAt (descending if available)
+    allSortableTransactions.sort((a, b) => {
+      const dateComparison = new Date(b.date).getTime() - new Date(a.date).getTime();
+      if (dateComparison !== 0) return dateComparison;
+      if (a.createdAt && b.createdAt) {
+        // Assuming createdAt is a Firestore Timestamp or similar object with toDate()
+        const createdAtA = typeof a.createdAt.toDate === 'function' ? a.createdAt.toDate() : new Date(a.createdAt);
+        const createdAtB = typeof b.createdAt.toDate === 'function' ? b.createdAt.toDate() : new Date(b.createdAt);
+        return createdAtB.getTime() - createdAtA.getTime();
+      }
+      return 0;
+    });
+    return allSortableTransactions.slice(0, 15); // Show latest 15 transactions
+  }, [transactions]);
   
   const closeModal = useCallback(() => {
     setShowTransactionModal(false); setCurrentTransactionType(null); setEditingTransaction(null);
@@ -557,8 +576,8 @@ const App: React.FC = () => {
                   totalIncome={totalIncome} 
                   totalExpenses={totalExpenses} 
                   balance={balance} 
-                  expenseTransactions={expenseTransactions}
-                  liabilities={liabilities}
+                  expenseTransactions={expenseTransactions} // Still needed for pie chart
+                  liabilities={liabilities} // Still needed for summary card
                   totalSavings={totalSavings} 
                   onNavigateToIncomeDetails={navigateToIncomeDetails}
                   onNavigateToExpenseDetails={navigateToExpenseDetails}
@@ -581,20 +600,14 @@ const App: React.FC = () => {
                   </button>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                  <TransactionList title="Income" transactions={incomeTransactions} type={TransactionType.INCOME} onDelete={handleDeleteTransaction} onEdit={handleOpenEditTransactionForm} />
-                  <TransactionList title="Expenses" transactions={expenseTransactions} type={TransactionType.EXPENSE} onDelete={handleDeleteTransaction} onEdit={handleOpenEditTransactionForm} />
-                </div>
-                <div className="mt-4 sm:mt-6"><TransactionList title="Savings" transactions={savingTransactions} type={TransactionType.SAVING} onDelete={handleDeleteTransaction} onEdit={handleOpenEditTransactionForm} /></div>
-                <div className="mt-4 sm:mt-6">
-                  <LiabilityList 
-                    liabilities={liabilities} 
-                    onDelete={handleDeleteLiability} 
-                    onEdit={handleOpenEditLiabilityForm} 
-                    onRecordPayment={handleOpenRecordPaymentForm}
-                    onViewEMIs={handleViewEMIs} 
-                  />
-                </div>
+                {/* Recent Transactions List */}
+                <TransactionList 
+                    title="Recent Transactions" 
+                    transactions={recentTransactions} 
+                    onDelete={handleDeleteTransaction} 
+                    onEdit={handleOpenEditTransactionForm} 
+                />
+
               </div>
             </main>
 
