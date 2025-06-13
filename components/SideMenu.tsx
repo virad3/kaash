@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { KaashLogoIcon, AddIncomeIcon, AddExpenseIcon, PiggyBankIcon, AddLiabilityIcon } from './icons'; 
+import { KaashLogoIcon, AddIncomeIcon, AddExpenseIcon, PiggyBankIcon, AddLiabilityIcon, EarlyLoanClosureIcon } from './icons'; 
 import { TransactionType } from '../types';
 
 interface SideMenuProps {
@@ -10,6 +9,7 @@ interface SideMenuProps {
   onOpenExpenseForm: () => void;
   onOpenSavingForm: () => void;
   onOpenLiabilityForm: () => void;
+  onNavigateToEarlyLoanClosure: () => void; // New prop
 }
 
 export const SideMenu: React.FC<SideMenuProps> = ({ 
@@ -18,7 +18,8 @@ export const SideMenu: React.FC<SideMenuProps> = ({
   onOpenIncomeForm,
   onOpenExpenseForm,
   onOpenSavingForm,
-  onOpenLiabilityForm
+  onOpenLiabilityForm,
+  onNavigateToEarlyLoanClosure // New prop
 }) => {
   const [isRecordSubmenuOpen, setIsRecordSubmenuOpen] = useState(true);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -78,7 +79,7 @@ export const SideMenu: React.FC<SideMenuProps> = ({
         </div>
 
         {/* Menu Items */}
-        <nav className="flex-grow p-4 space-y-2 overflow-y-auto">
+        <nav className="flex-grow p-4 space-y-1 overflow-y-auto">
           {/* Record Transaction Section */}
           <div>
             <button
@@ -95,7 +96,7 @@ export const SideMenu: React.FC<SideMenuProps> = ({
               </svg>
             </button>
             {isRecordSubmenuOpen && (
-              <div className="pl-4 mt-1 space-y-1 border-l-2 border-slate-700 ml-3">
+              <div className="pl-4 mt-1 space-y-0.5 border-l-2 border-slate-700 ml-3">
                 <button
                   onClick={() => handleActionClick(onOpenIncomeForm)}
                   className="w-full text-left p-2.5 text-sm text-gray-300 hover:bg-slate-600 hover:text-green-400 rounded-md transition-colors flex items-center"
@@ -123,6 +124,18 @@ export const SideMenu: React.FC<SideMenuProps> = ({
               </div>
             )}
           </div>
+
+          {/* Other Menu Items */}
+          <button
+            onClick={() => handleActionClick(onNavigateToEarlyLoanClosure)}
+            className="w-full flex items-center p-3 text-left text-gray-200 hover:bg-slate-700 rounded-md transition-colors focus:outline-none focus:bg-slate-700"
+          >
+            <EarlyLoanClosureIcon className="w-5 h-5 mr-3 text-sky-400" />
+            <span className="font-medium">Early Loan Closure</span>
+          </button>
+
+          {/* Add more menu items here as needed */}
+
         </nav>
         
         {/* Menu Footer */}

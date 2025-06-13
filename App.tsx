@@ -15,7 +15,8 @@ import { LiabilityDetailsPage } from './components/LiabilityDetailsPage';
 import { LiabilityEMIDetailPage } from './components/LiabilityEMIDetailPage'; 
 import { SideMenu } from './components/SideMenu'; 
 import { EditProfileModal } from './components/EditProfileModal'; 
-import { MonthlySummaryChart } from './components/MonthlySummaryChart'; // New Import
+import { MonthlySummaryChart } from './components/MonthlySummaryChart';
+import { EarlyLoanClosurePage } from './components/EarlyLoanClosurePage'; // New Import
 import * as storageService from './services/storageService';
 import * as authService from './services/authService';
 import { KaashLogoIcon, PlusIcon, BellIcon, PiggyBankIcon, UserIcon, LogoutIcon, MenuIcon, EditIcon as ProfileEditIcon } from './components/icons'; 
@@ -548,17 +549,19 @@ const App: React.FC = () => {
   const handleOpenEditLiabilityForm = useCallback((liability: Liability) => { setEditingLiability(liability); setShowLiabilityForm(true); }, []);
   const handleOpenRecordPaymentForm = useCallback((liability: Liability) => setPayingLiability(liability), []);
 
-  const navigateToDashboard = useCallback(() => { setActiveView('dashboard'); setSelectedLiabilityForEMIs(null); }, []);
-  const navigateToIncomeDetails = useCallback(() => { setActiveView('incomeDetails'); setSelectedLiabilityForEMIs(null); }, []);
-  const navigateToExpenseDetails = useCallback(() => { setActiveView('expenseDetails'); setSelectedLiabilityForEMIs(null); }, []);
-  const navigateToSavingsDetails = useCallback(() => { setActiveView('savingsDetails'); setSelectedLiabilityForEMIs(null); }, []);
-  const navigateToLiabilityDetails = useCallback(() => { setActiveView('liabilityDetails'); setSelectedLiabilityForEMIs(null); }, []);
+  const navigateToDashboard = useCallback(() => { setActiveView('dashboard'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); }, []);
+  const navigateToIncomeDetails = useCallback(() => { setActiveView('incomeDetails'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); }, []);
+  const navigateToExpenseDetails = useCallback(() => { setActiveView('expenseDetails'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); }, []);
+  const navigateToSavingsDetails = useCallback(() => { setActiveView('savingsDetails'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); }, []);
+  const navigateToLiabilityDetails = useCallback(() => { setActiveView('liabilityDetails'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); }, []);
+  const navigateToEarlyLoanClosure = useCallback(() => { setActiveView('earlyLoanClosure'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); }, []);
   
   const handleViewEMIs = useCallback((liabilityId: string) => {
     const liability = liabilities.find(l => l.id === liabilityId);
     if (liability) {
       setSelectedLiabilityForEMIs(liability);
       setActiveView('liabilityEMIDetail');
+      setIsMenuOpen(false);
     } else {
       console.warn(`Liability with ID ${liabilityId} not found for EMI detail view.`);
       alert("Could not find liability details.");
@@ -615,13 +618,28 @@ const App: React.FC = () => {
         }
         navigateToDashboard(); 
         return null;
+      case 'earlyLoanClosure':
+        return <EarlyLoanClosurePage onBack={navigateToDashboard} />;
       case 'dashboard':
       default:
         return (
           <div className="w-full p-2 sm:p-4"> 
-            <div className="w-full max-w-7xl mx-auto">
+            <div className="w-full max-w-7xl mx-auto space-y-4 sm:space-y-6">
+               <SummaryDisplay 
+                  totalIncome={totalIncome} 
+                  totalExpenses={totalExpenses} 
+                  balance={balance} 
+                  expenseTransactions={expenseTransactions}
+                  liabilities={liabilities}
+                  totalSavings={totalSavings} 
+                  onNavigateToIncomeDetails={navigateToIncomeDetails}
+                  onNavigateToExpenseDetails={navigateToExpenseDetails}
+                  onNavigateToSavingsDetails={navigateToSavingsDetails}
+                  onNavigateToLiabilityDetails={navigateToLiabilityDetails}
+                />
+
               {upcomingPayments.length > 0 && (
-                <div className="w-full mb-4 p-3 bg-yellow-500/20 border border-yellow-500 rounded-lg text-yellow-300 text-xs sm:text-sm">
+                <div className="w-full p-3 bg-yellow-500/20 border border-yellow-500 rounded-lg text-yellow-300 text-xs sm:text-sm">
                   <div className="flex items-center font-semibold mb-1">
                     <BellIcon className="h-5 w-5 mr-2 text-yellow-400" />
                     Upcoming Payments (Next 7 Days):
@@ -635,32 +653,17 @@ const App: React.FC = () => {
                   </ul>
                 </div>
               )}
-
-              <main className="space-y-4 sm:space-y-6">
-                <SummaryDisplay 
-                  totalIncome={totalIncome} 
-                  totalExpenses={totalExpenses} 
-                  balance={balance} 
-                  expenseTransactions={expenseTransactions}
-                  liabilities={liabilities}
-                  totalSavings={totalSavings} 
-                  onNavigateToIncomeDetails={navigateToIncomeDetails}
-                  onNavigateToExpenseDetails={navigateToExpenseDetails}
-                  onNavigateToSavingsDetails={navigateToSavingsDetails}
-                  onNavigateToLiabilityDetails={navigateToLiabilityDetails}
-                />
                 
-                {monthlySummaryChartData && monthlySummaryChartData.length > 0 && (
-                  <MonthlySummaryChart data={monthlySummaryChartData} />
-                )}
+              {monthlySummaryChartData && monthlySummaryChartData.length > 0 && (
+                <MonthlySummaryChart data={monthlySummaryChartData} />
+              )}
 
-                <TransactionList 
-                  title="Recent Transactions" 
-                  transactions={recentTransactions}
-                  onDelete={handleDeleteTransaction}
-                  onEdit={handleOpenEditTransactionForm}
-                />
-              </main>
+              <TransactionList 
+                title="Recent Transactions" 
+                transactions={recentTransactions}
+                onDelete={handleDeleteTransaction}
+                onEdit={handleOpenEditTransactionForm}
+              />
 
               <footer className="w-full mt-6 sm:mt-8 py-3 sm:py-4 text-center text-gray-500 text-xs sm:text-sm">
                 <p>&copy; {new Date().getFullYear()} Kaash. Track smarter, live better.</p>
@@ -682,6 +685,7 @@ const App: React.FC = () => {
           onOpenExpenseForm={() => handleOpenNewTransactionForm(TransactionType.EXPENSE)}
           onOpenSavingForm={() => handleOpenNewTransactionForm(TransactionType.SAVING)}
           onOpenLiabilityForm={handleOpenNewLiabilityForm}
+          onNavigateToEarlyLoanClosure={navigateToEarlyLoanClosure} // Pass handler
         />
       )}
       

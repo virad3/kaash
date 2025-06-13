@@ -193,3 +193,14 @@ export const LiabilitySummaryIcon: React.FC<IconProps> = ({ className }) => ( //
     <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 7.5h4.5M9.75 12h4.5m-4.5 3h.75" />
   </svg>
 );
+
+export const EarlyLoanClosureIcon: React.FC<IconProps> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
+    {/* Document */}
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    {/* Fast Forward / Completion symbol (simple checkmark or double arrow) */}
+    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L13.5 7.5L16.5 6L13.5 4.5Z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M17.5 4.5L17.5 7.5L20.5 6L17.5 4.5Z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M7 14.5l3 3 5-5" />
+  </svg>
+);

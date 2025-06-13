@@ -87,7 +87,7 @@ export interface User {
   photoURL?: string | null;
 }
 
-export type View = 'dashboard' | 'incomeDetails' | 'expenseDetails' | 'savingsDetails' | 'liabilityDetails' | 'liabilityEMIDetail';
+export type View = 'dashboard' | 'incomeDetails' | 'expenseDetails' | 'savingsDetails' | 'liabilityDetails' | 'liabilityEMIDetail' | 'earlyLoanClosure';
 
 export type CategoryTypeIdentifier = TransactionType | 'liability';
 
