@@ -1,20 +1,20 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { User, Transaction, TransactionType, ChatMessage, Liability } from './types'; 
+import { User, Transaction, TransactionType, Liability } from './types'; 
 import { TransactionForm } from './components/TransactionForm';
 import { TransactionList } from './components/TransactionList';
 import { SummaryDisplay } from './components/SummaryDisplay';
-import { Chatbot } from './components/Chatbot';
+// Chatbot component import removed
 import { LiabilityForm } from './components/LiabilityForm';
 import { LiabilityList } from './components/LiabilityList';
 import { RecordLiabilityPaymentForm } from './components/RecordLiabilityPaymentForm';
 import { AuthPage } from './components/AuthPage';
 import * as storageService from './services/storageService';
 import * as authService from './services/authService';
-import { askKaash } from './services/geminiService';
-import { KaashLogoIcon, PlusIcon, BellIcon, PiggyBankIcon, UserIcon, LogoutIcon, BotIcon, PaymentIcon } from './components/icons';
+// askKaash import from geminiService removed
+import { KaashLogoIcon, PlusIcon, BellIcon, PiggyBankIcon, UserIcon, LogoutIcon, PaymentIcon } from './components/icons'; // BotIcon removed
 import { ExpenseCategory } from './types'; 
-import { calculateLoanPaymentDetails } from './utils'; // Import the new utility
+import { calculateLoanPaymentDetails } from './utils'; 
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -23,8 +23,7 @@ const App: React.FC = () => {
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [liabilities, setLiabilities] = useState<Liability[]>([]);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
+  // chatMessages and isChatLoading state removed
   
   const [showTransactionModal, setShowTransactionModal] = useState<boolean>(false);
   const [currentTransactionType, setCurrentTransactionType] = useState<TransactionType | null>(null);
@@ -35,20 +34,20 @@ const App: React.FC = () => {
   const [payingLiability, setPayingLiability] = useState<Liability | null>(null);
 
   const [upcomingPayments, setUpcomingPayments] = useState<Liability[]>([]);
-  const [showChatbotOverlay, setShowChatbotOverlay] = useState<boolean>(false);
+  // showChatbotOverlay state removed
 
   useEffect(() => {
     const unsubscribeAuth = authService.onAuthUserChanged((user) => {
       setCurrentUser(user);
       setIsLoadingAuth(false);
       if (user) {
-        setChatMessages([{ id: Date.now().toString(), text: `Hello ${user.name || user.email}! I'm Kaash, your financial assistant. How can I help?`, sender: 'bot', timestamp: new Date() }]);
+        // Initial chat message removed
         window.scrollTo(0, 0); 
       } else {
         setTransactions([]);
         setLiabilities([]);
-        setChatMessages([]);
-        setShowChatbotOverlay(false); // Close chatbot if user logs out
+        // chatMessages reset removed
+        // setShowChatbotOverlay(false) removed
       }
     });
     return () => unsubscribeAuth();
@@ -216,7 +215,6 @@ Please check the console for more information.`);
     }
     if (typeof liability.interestRate !== 'number') {
         alert("Interest rate is not set for this liability. Cannot accurately calculate principal and interest. Payment will reduce total owed directly.");
-        // Fallback to simpler reduction if interest rate is missing
         const updatedLiabilitySimpleData = { 
             amountRepaid: Math.min(liability.amountRepaid + paymentAmount, liability.initialAmount), 
             nextDueDate: newNextDueDate 
@@ -232,18 +230,15 @@ Please check the console for more information.`);
         const outstandingPrincipal = liability.initialAmount - liability.amountRepaid;
         if (outstandingPrincipal <= 0) {
             alert("This liability seems to be fully paid. No further payment recorded as principal reduction.");
-            // Optionally, still record an expense if needed, or prevent further action.
-            // For now, we will prevent updating liability's amountRepaid but still record expense.
         }
 
         const { interestPaid, principalPaid } = calculateLoanPaymentDetails(
             outstandingPrincipal,
-            liability.interestRate, // Annual interest rate
+            liability.interestRate, 
             paymentAmount
         );
         
         let newAmountRepaid = liability.amountRepaid + principalPaid;
-        // Ensure amountRepaid does not exceed initialAmount
         newAmountRepaid = Math.min(newAmountRepaid, liability.initialAmount);
 
         const updatedLiabilityData = { 
@@ -252,17 +247,16 @@ Please check the console for more information.`);
         };
 
         try {
-            if (outstandingPrincipal > 0) { // Only update if there's principal to pay
+            if (outstandingPrincipal > 0) { 
               await storageService.updateLiability(currentUser.uid, liabilityId, updatedLiabilityData);
             }
         } catch (error) {
             console.error("Error updating liability (with interest calc):", error);
             alert("Failed to update liability details after interest calculation.");
-            return; // Stop if liability update fails
+            return; 
         }
     }
     
-    // Always record the expense transaction for the full payment amount
     try {
         const expenseDescription = expenseNotes || `Payment for ${liability.name || liability.category}`;
         const expenseTxData: Omit<Transaction, 'id' | 'createdAt' | 'userId'> = { 
@@ -273,27 +267,14 @@ Please check the console for more information.`);
             relatedLiabilityId: liabilityId,
         };
         await storageService.addTransaction(currentUser.uid, expenseTxData);
-        setPayingLiability(null); // Close the payment form
+        setPayingLiability(null); 
     } catch (error) { 
         console.error("Error recording expense transaction for liability payment:", error); 
         alert("Failed to record expense transaction for the payment. Liability details might have been updated."); 
     }
   }, [liabilities, currentUser]);
 
-
-  const handleChatSubmit = useCallback(async (userMessage: string) => {
-    if (!currentUser?.uid) return;
-    const newMessage: ChatMessage = { id: Date.now().toString(), text: userMessage, sender: 'user', timestamp: new Date() };
-    setChatMessages(prev => [...prev, newMessage]);
-    setIsChatLoading(true);
-    try {
-      const botResponseText = await askKaash(userMessage, transactions, liabilities); 
-      setChatMessages(prev => [...prev, { id: (Date.now() + 1).toString(), text: botResponseText, sender: 'bot', timestamp: new Date() }]);
-    } catch (error) {
-      console.error("Error getting response from Kaash:", error);
-      setChatMessages(prev => [...prev, { id: (Date.now() + 1).toString(), text: "Sorry, I encountered an error.", sender: 'bot', timestamp: new Date() }]);
-    } finally { setIsChatLoading(false); }
-  }, [transactions, liabilities, currentUser]); 
+  // handleChatSubmit function removed
 
   const incomeTransactions = useMemo(() => transactions.filter(t => t.type === TransactionType.INCOME), [transactions]);
   const expenseTransactions = useMemo(() => transactions.filter(t => t.type === TransactionType.EXPENSE), [transactions]);
@@ -313,9 +294,6 @@ Please check the console for more information.`);
   const handleOpenEditLiabilityForm = (liability: Liability) => { setEditingLiability(liability); setShowLiabilityForm(true); };
   const handleOpenRecordPaymentForm = (liability: Liability) => setPayingLiability(liability);
   
-  // Removed handleOpenAddEmiForm as the button is being removed.
-
-
   if (isLoadingAuth) {
     return <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex justify-center items-center text-sky-400 text-xl p-4 text-center">Loading Kaash...</div>;
   }
@@ -378,7 +356,7 @@ Please check the console for more information.`);
             totalSavings={totalSavings} 
           />
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6"> {/* Adjusted to lg:grid-cols-4 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
             <button onClick={() => handleOpenNewTransactionForm(TransactionType.INCOME)} className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75 w-full text-sm sm:text-base">
               <PlusIcon className="h-4 w-4 sm:h-5 sm:w-5" /> Add Income
             </button>
@@ -391,7 +369,6 @@ Please check the console for more information.`);
             <button onClick={handleOpenNewLiabilityForm} className="flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-75 w-full text-sm sm:text-base">
               <PlusIcon className="h-4 w-4 sm:h-5 sm:w-5" /> Add Liability
             </button>
-            {/* "Add EMI" button removed from here */}
           </div>
 
           {(showTransactionModal || showLiabilityForm || payingLiability) && ( 
@@ -416,37 +393,7 @@ Please check the console for more information.`);
         </div>
       </main>
 
-      {currentUser && (
-        <>
-          <button
-            onClick={() => setShowChatbotOverlay(true)}
-            className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 bg-sky-500 hover:bg-sky-600 text-white p-3 sm:p-4 rounded-full shadow-lg transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-75 z-40"
-            title="Open Kaash AI Assistant"
-            aria-label="Open Kaash AI Assistant"
-          >
-            <BotIcon className="h-6 w-6 sm:h-7 sm:w-7" />
-          </button>
-
-          {showChatbotOverlay && (
-            <div 
-              className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex items-end justify-end p-0 sm:p-4 z-50"
-              onClick={() => setShowChatbotOverlay(false)}
-            >
-              <div 
-                className="bg-slate-800 rounded-t-xl sm:rounded-xl shadow-2xl w-full max-w-sm sm:max-w-md h-[75vh] sm:h-[calc(100vh-8rem)] max-h-[650px] sm:max-h-[700px] border border-slate-700 flex flex-col"
-                onClick={(e) => e.stopPropagation()} 
-              >
-                <Chatbot 
-                  messages={chatMessages} 
-                  onSubmit={handleChatSubmit} 
-                  isLoading={isChatLoading} 
-                  onClose={() => setShowChatbotOverlay(false)} 
-                />
-              </div>
-            </div>
-          )}
-        </>
-      )}
+      {/* Chatbot FAB and Overlay removed */}
 
       <footer className="w-full max-w-7xl mt-6 sm:mt-8 py-3 sm:py-4 text-center text-gray-500 text-xs sm:text-sm">
         <p>&copy; {new Date().getFullYear()} Kaash. Track smarter, live better.</p>

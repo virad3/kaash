@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface IconProps {
@@ -16,11 +17,7 @@ export const TrashIcon: React.FC<IconProps> = ({ className }) => (
   </svg>
 );
 
-export const SendIcon: React.FC<IconProps> = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className || "w-5 h-5"}>
-    <path d="M3.105 3.105a1.5 1.5 0 012.122-.001L19.305 10.5a1.5 1.5 0 010 2.122L5.227 19.9a1.5 1.5 0 01-2.122-2.121L13.061 12 3.105 5.227a1.5 1.5 0 010-2.122z" />
-  </svg>
-);
+// SendIcon removed
 
 export const UserIcon: React.FC<IconProps> = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className || "w-5 h-5"}>
@@ -28,11 +25,7 @@ export const UserIcon: React.FC<IconProps> = ({ className }) => (
   </svg>
 );
 
-export const BotIcon: React.FC<IconProps> = ({ className }) => (
- <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
-  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.03 1.123 0 1.131.094 1.976 1.057 1.976 2.192V7.5M8.25 7.5h7.5M8.25 7.5V9a.75.75 0 0 1-.75.75H5.625c-.621 0-1.125-.504-1.125-1.125V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.03 1.123 0 1.131.094 1.976 1.057 1.976 2.192V9M8.25 9h7.5M15.75 9V7.5M15.75 9c.096.073.19.152.278.235.088.084.17.172.25.263M15.75 9v2.25c0 .621.504 1.125 1.125 1.125H18.75c.621 0 1.125-.504 1.125-1.125V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123 0c-1.131.094-1.976 1.057-1.976 2.192V9M4.875 9.75H18.375c.621 0 1.125.504 1.125 1.125V18.75c0 .621-.504 1.125-1.125 1.125H4.875c-.621 0-1.125-.504-1.125-1.125V10.875c0-.621.504-1.125 1.125-1.125Z" />
-</svg>
-);
+// BotIcon removed
 
 export const KaashLogoIcon: React.FC<IconProps> = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 75" fill="none" className={className || "w-auto h-10"}>

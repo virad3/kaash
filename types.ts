@@ -67,12 +67,7 @@ export interface Transaction {
   userId?: string; 
 }
 
-export interface ChatMessage {
-  id: string;
-  text: string;
-  sender: 'user' | 'bot';
-  timestamp: Date;
-}
+// ChatMessage interface removed
 
 export interface Liability {
   id: string; 
