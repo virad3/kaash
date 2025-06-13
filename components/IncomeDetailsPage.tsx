@@ -93,10 +93,10 @@ export const IncomeDetailsPage: React.FC<IncomeDetailsPageProps> = ({ incomeTran
             <button 
               onClick={onBack}
               className="flex items-center space-x-2 text-sky-400 hover:text-sky-300 transition-colors p-2 rounded-md hover:bg-slate-700 mb-2"
-              aria-label="Back to dashboard"
+              aria-label="Back"
             >
               <BackIcon className="h-6 w-6" />
-              <span className="text-sm sm:text-base">Back to Dashboard</span>
+              <span className="text-sm sm:text-base">Back</span>
             </button>
             <h1 className="text-2xl sm:text-3xl font-bold text-sky-400 text-center w-full mt-3">Income Details</h1>
           </div>

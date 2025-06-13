@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { Liability, Transaction, TransactionType } from '../types';
 import { TransactionItem } from './TransactionItem';
@@ -32,9 +33,10 @@ export const LiabilityEMIDetailPage: React.FC<LiabilityEMIDetailPageProps> = ({
         <button
           onClick={onBack}
           className="mt-4 flex items-center space-x-2 text-sky-400 hover:text-sky-300 transition-colors p-2 rounded-md hover:bg-slate-700"
+          aria-label="Back"
         >
           <BackIcon className="h-6 w-6" />
-          <span>Go Back</span>
+          <span className="text-sm sm:text-base">Back</span>
         </button>
       </div>
     );

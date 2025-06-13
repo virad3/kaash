@@ -70,3 +70,19 @@ export const onAuthUserChanged = (callback: (user: User | null) => void): (() =>
     }
   });
 };
+
+export const updateUserProfileName = async (newName: string): Promise<void> => {
+  const user = auth.currentUser;
+  if (user) {
+    try {
+      await user.updateProfile({
+        displayName: newName,
+      });
+    } catch (error) {
+      console.error("Error updating user profile name:", error);
+      throw error; // Re-throw to be caught by calling function
+    }
+  } else {
+    throw new Error("No user is currently signed in.");
+  }
+};

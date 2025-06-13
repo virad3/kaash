@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { User, Transaction, TransactionType, Liability, View, UserDefinedCategories, CategoryTypeIdentifier } from './types'; 
 import { TransactionForm } from './components/TransactionForm';
 import { TransactionList } from './components/TransactionList';
@@ -13,9 +13,12 @@ import { ExpenseDetailsPage } from './components/ExpenseDetailsPage';
 import { SavingsDetailsPage } from './components/SavingsDetailsPage'; 
 import { LiabilityDetailsPage } from './components/LiabilityDetailsPage'; 
 import { LiabilityEMIDetailPage } from './components/LiabilityEMIDetailPage'; 
+import { SideMenu } from './components/SideMenu'; 
+import { EditProfileModal } from './components/EditProfileModal'; 
+import { MonthlySummaryChart } from './components/MonthlySummaryChart'; // New Import
 import * as storageService from './services/storageService';
 import * as authService from './services/authService';
-import { KaashLogoIcon, PlusIcon, BellIcon, PiggyBankIcon, UserIcon, LogoutIcon, PaymentIcon } from './components/icons';
+import { KaashLogoIcon, PlusIcon, BellIcon, PiggyBankIcon, UserIcon, LogoutIcon, MenuIcon, EditIcon as ProfileEditIcon } from './components/icons'; 
 import { ExpenseCategory, SavingCategory } from './types'; 
 import { calculateLoanPaymentDetails } from './utils'; 
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, SAVING_CATEGORIES, LIABILITY_CATEGORIES } from './constants';
@@ -42,6 +45,24 @@ const App: React.FC = () => {
   const [upcomingPayments, setUpcomingPayments] = useState<Liability[]>([]);
   const [activeView, setActiveView] = useState<View>('dashboard');
   const [forceFormCategoryResetKey, setForceFormCategoryResetKey] = useState<number>(0);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const profileDropdownRef = useRef<HTMLDivElement>(null);
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+
+  const toggleMenu = useCallback(() => setIsMenuOpen(prev => !prev), []);
+  const toggleProfileDropdown = useCallback(() => setIsProfileDropdownOpen(prev => !prev), []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
+        setIsProfileDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
 
   useEffect(() => {
@@ -52,12 +73,18 @@ const App: React.FC = () => {
         window.scrollTo(0, 0); 
         setActiveView('dashboard'); 
         setSelectedLiabilityForEMIs(null); 
+        setIsMenuOpen(false);
+        setIsProfileDropdownOpen(false);
+        setShowEditProfileModal(false);
       } else {
         setTransactions([]);
         setLiabilities([]);
         setUserDefinedCategories({ income: [], expense: [], saving: [], liability: [] });
         setActiveView('dashboard');
         setSelectedLiabilityForEMIs(null);
+        setIsMenuOpen(false);
+        setIsProfileDropdownOpen(false);
+        setShowEditProfileModal(false);
       }
     });
     return () => unsubscribeAuth();
@@ -122,12 +149,33 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
+    setIsProfileDropdownOpen(false);
     setAuthError(null);
     try {
       await authService.logoutUser();
     } catch (error: any) { setAuthError(error.message || "Failed to log out."); }
   };
   const clearAuthError = useCallback(() => setAuthError(null), []);
+
+  const handleOpenEditProfileModal = () => {
+    setIsProfileDropdownOpen(false);
+    setShowEditProfileModal(true);
+  };
+  const handleCloseEditProfileModal = useCallback(() => setShowEditProfileModal(false), []);
+
+  const handleProfileUpdate = async (newName: string) => {
+    if (!currentUser) return;
+    try {
+      await authService.updateUserProfileName(newName);
+      setCurrentUser(prevUser => prevUser ? { ...prevUser, name: newName } : null);
+      setShowEditProfileModal(false);
+      alert("Profile updated successfully!");
+    } catch (error: any) {
+      console.error("Error updating profile in App:", error);
+      alert(`Failed to update profile: ${error.message || 'Unknown error'}`);
+    }
+  };
+
 
   const handleOpenNewTransactionForm = useCallback((type: TransactionType) => { 
     setCurrentTransactionType(type); 
@@ -140,6 +188,12 @@ const App: React.FC = () => {
     setEditingTransaction(transaction); 
     setShowTransactionModal(true); 
   }, []);
+  
+  const handleOpenNewLiabilityForm = useCallback(() => { 
+    setEditingLiability(null); 
+    setShowLiabilityForm(true); 
+  }, []);
+
 
   const handleAddOrEditTransaction = useCallback(async (data: { 
     id?: string; 
@@ -193,7 +247,7 @@ const App: React.FC = () => {
         await storageService.addTransaction(currentUser.uid, payload as Omit<Transaction, 'id' | 'createdAt' | 'userId'>);
       }
       
-      if (!id || (editingTransaction && !editingTransaction.relatedLiabilityId) ) {
+      if (!id || (editingTransaction && !editingTransaction.relatedLiabilityId) ) { 
         let baseCategoriesForType: readonly string[] = [];
         let currentUserCategoriesForType: string[] = [];
         let categoryTypeIdentifier: CategoryTypeIdentifier = data.type;
@@ -253,13 +307,22 @@ const App: React.FC = () => {
 
   const handleDeleteTransaction = useCallback(async (id: string) => {
     if (!currentUser?.uid) return;
+    // Check if the transaction is an EMI payment before generic delete
+    const txToDelete = transactions.find(t => t.id === id);
+    if (txToDelete?.relatedLiabilityId && txToDelete.type === TransactionType.EXPENSE) {
+        if (window.confirm("This is an EMI payment. Deleting it will adjust the liability's principal. Are you sure? \n(To delete without affecting liability, edit the transaction first to remove its link to the liability.)")) {
+            await handleDeleteEMI(id, txToDelete.relatedLiabilityId, txToDelete.amount);
+        }
+        return;
+    }
+
     if (window.confirm("Are you sure you want to delete this transaction?")) {
       try { 
         await storageService.deleteTransaction(currentUser.uid, id); 
       } 
       catch (error: any) { console.error("Error deleting transaction:", error); alert(`Failed to delete transaction. Error: ${error.message}`); }
     }
-  }, [currentUser]);
+  }, [currentUser, transactions, handleDeleteEMI]);
 
   const handleAddOrEditLiability = useCallback(async (data: Omit<Liability, 'id' | 'createdAt' | 'userId' | 'amountRepaid' | 'name' | 'notes'> & { id?: string; name?: string; category: string; amountRepaid?: number; loanTermInMonths?: number; }) => {
     if (!currentUser?.uid) return;
@@ -329,7 +392,7 @@ const App: React.FC = () => {
             );
             principalPaidForThisPayment = paymentDetails.principalPaid;
         } else {
-             principalPaidForThisPayment = 0;
+             principalPaidForThisPayment = 0; 
         }
     } else {
        const outstandingPrincipalBeforePayment = liability.initialAmount - liability.amountRepaid;
@@ -434,27 +497,54 @@ const App: React.FC = () => {
     const allSortableTransactions = transactions.filter(
       t => t.type === TransactionType.INCOME || t.type === TransactionType.EXPENSE || t.type === TransactionType.SAVING
     );
-    // Sort by date (descending), then by createdAt (descending if available)
     allSortableTransactions.sort((a, b) => {
       const dateComparison = new Date(b.date).getTime() - new Date(a.date).getTime();
       if (dateComparison !== 0) return dateComparison;
       if (a.createdAt && b.createdAt) {
-        // Assuming createdAt is a Firestore Timestamp or similar object with toDate()
+        // Handle both Firebase Timestamp and potential string dates during initial load
         const createdAtA = typeof a.createdAt.toDate === 'function' ? a.createdAt.toDate() : new Date(a.createdAt);
         const createdAtB = typeof b.createdAt.toDate === 'function' ? b.createdAt.toDate() : new Date(b.createdAt);
         return createdAtB.getTime() - createdAtA.getTime();
       }
       return 0;
     });
-    return allSortableTransactions.slice(0, 15); // Show latest 15 transactions
+    return allSortableTransactions.slice(0, 15);
+  }, [transactions]);
+
+  const monthlySummaryChartData = useMemo(() => {
+    const data: { month: string; income: number; expense: number; saving: number }[] = [];
+    const now = new Date();
+
+    for (let i = 2; i >= 0; i--) { // Last 3 months, current month first in loop if i=0, but we want past months
+      const targetDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const year = targetDate.getFullYear();
+      const month = targetDate.getMonth(); // 0-11
+      const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`; // YYYY-MM
+      
+      const monthLabel = targetDate.toLocaleString('default', { month: 'short', year: '2-digit' });
+
+      let monthlyIncome = 0;
+      let monthlyExpense = 0;
+      let monthlySaving = 0;
+
+      transactions.forEach(t => {
+        if (t.date.startsWith(monthKey)) {
+          if (t.type === TransactionType.INCOME) monthlyIncome += t.amount;
+          else if (t.type === TransactionType.EXPENSE) monthlyExpense += t.amount;
+          else if (t.type === TransactionType.SAVING) monthlySaving += t.amount;
+        }
+      });
+      data.push({ month: monthLabel, income: monthlyIncome, expense: monthlyExpense, saving: monthlySaving });
+    }
+    return data;
   }, [transactions]);
   
   const closeModal = useCallback(() => {
     setShowTransactionModal(false); setCurrentTransactionType(null); setEditingTransaction(null);
     setShowLiabilityForm(false); setEditingLiability(null); setPayingLiability(null);
+    setShowEditProfileModal(false);
   }, []);
   
-  const handleOpenNewLiabilityForm = useCallback(() => { setEditingLiability(null); setShowLiabilityForm(true); }, []);
   const handleOpenEditLiabilityForm = useCallback((liability: Liability) => { setEditingLiability(liability); setShowLiabilityForm(true); }, []);
   const handleOpenRecordPaymentForm = useCallback((liability: Liability) => setPayingLiability(liability), []);
 
@@ -502,12 +592,12 @@ const App: React.FC = () => {
   }
 
   const renderActiveView = () => {
-    if (isLoadingAuth) {
+    if (isLoadingAuth && !currentUser) { 
       return <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex justify-center items-center text-sky-400 text-xl p-4 text-center">Loading Kaash...</div>;
     }
   
     if (!currentUser) {
-      return <AuthPage onLogin={handleLogin} onSignup={handleSignup} onGoogleLogin={handleGoogleLogin} error={authError} clearError={clearAuthError} />;
+      return <div className="p-2 sm:p-4"><AuthPage onLogin={handleLogin} onSignup={handleSignup} onGoogleLogin={handleGoogleLogin} error={authError} clearError={clearAuthError} /></div>;
     }
     
     switch (activeView) {
@@ -523,61 +613,36 @@ const App: React.FC = () => {
         if (selectedLiabilityForEMIs) {
           return <LiabilityEMIDetailPage liability={selectedLiabilityForEMIs} allTransactions={transactions} onBack={navigateToDashboard} onEditEMI={handleEditEMI} onDeleteEMI={handleDeleteEMI} />;
         }
-        navigateToDashboard(); // Fallback if selectedLiabilityForEMIs is null
+        navigateToDashboard(); 
         return null;
       case 'dashboard':
       default:
         return (
-          <>
-            <header className="w-full max-w-7xl mb-4 sm:mb-6 flex justify-between items-center py-3 sm:py-4">
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <KaashLogoIcon className="h-10 w-10 sm:h-12 sm:w-12 text-sky-400" />
-                <h1 className="text-3xl sm:text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-sky-400 to-cyan-300">
-                  Kaash
-                </h1>
-              </div>
-              <div className="flex items-center space-x-2 sm:space-x-4">
-                {currentUser.photoURL && <img src={currentUser.photoURL} alt={currentUser.name || "User"} className="h-8 w-8 sm:h-10 sm:w-10 rounded-full border-2 border-sky-500" />}
-                {!currentUser.photoURL && <UserIcon className="h-8 w-8 sm:h-10 sm:w-10 text-gray-400 bg-slate-700 p-1.5 sm:p-2 rounded-full"/>}
-                <div className="text-right">
-                  <p className="text-xs sm:text-sm text-gray-300 truncate max-w-[100px] sm:max-w-[150px]">{currentUser.name || currentUser.email}</p>
-                  <p className="text-xs text-gray-500 hidden sm:block">Logged In</p>
+          <div className="w-full p-2 sm:p-4"> 
+            <div className="w-full max-w-7xl mx-auto">
+              {upcomingPayments.length > 0 && (
+                <div className="w-full mb-4 p-3 bg-yellow-500/20 border border-yellow-500 rounded-lg text-yellow-300 text-xs sm:text-sm">
+                  <div className="flex items-center font-semibold mb-1">
+                    <BellIcon className="h-5 w-5 mr-2 text-yellow-400" />
+                    Upcoming Payments (Next 7 Days):
+                  </div>
+                  <ul className="list-disc list-inside ml-2">
+                    {upcomingPayments.map(p => (
+                      <li key={p.id}>
+                        {p.name || p.category} - ₹{p.emiAmount ? p.emiAmount.toFixed(2) : (p.initialAmount - p.amountRepaid).toFixed(2)} due on {new Date(p.nextDueDate + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <button 
-                  onClick={handleLogout} 
-                  className="flex items-center space-x-2 text-gray-400 hover:text-sky-400 p-2 rounded-md hover:bg-slate-700 transition-colors"
-                  title="Logout"
-                >
-                  <LogoutIcon className="h-5 w-5"/> 
-                  <span className="text-sm hidden sm:inline">Logout</span>
-                </button>
-              </div>
-            </header>
+              )}
 
-            {upcomingPayments.length > 0 && (
-              <div className="w-full max-w-7xl mb-4 p-3 bg-yellow-500/20 border border-yellow-500 rounded-lg text-yellow-300 text-xs sm:text-sm">
-                <div className="flex items-center font-semibold mb-1">
-                  <BellIcon className="h-5 w-5 mr-2 text-yellow-400" />
-                  Upcoming Payments (Next 7 Days):
-                </div>
-                <ul className="list-disc list-inside ml-2">
-                  {upcomingPayments.map(p => (
-                    <li key={p.id}>
-                      {p.name || p.category} - ₹{p.emiAmount ? p.emiAmount.toFixed(2) : (p.initialAmount - p.amountRepaid).toFixed(2)} due on {new Date(p.nextDueDate + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            <main className="w-full max-w-7xl">
-              <div className="space-y-4 sm:space-y-6"> 
+              <main className="space-y-4 sm:space-y-6">
                 <SummaryDisplay 
                   totalIncome={totalIncome} 
                   totalExpenses={totalExpenses} 
                   balance={balance} 
-                  expenseTransactions={expenseTransactions} // Still needed for pie chart
-                  liabilities={liabilities} // Still needed for summary card
+                  expenseTransactions={expenseTransactions}
+                  liabilities={liabilities}
                   totalSavings={totalSavings} 
                   onNavigateToIncomeDetails={navigateToIncomeDetails}
                   onNavigateToExpenseDetails={navigateToExpenseDetails}
@@ -585,45 +650,106 @@ const App: React.FC = () => {
                   onNavigateToLiabilityDetails={navigateToLiabilityDetails}
                 />
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
-                  <button onClick={() => handleOpenNewTransactionForm(TransactionType.INCOME)} className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75 w-full text-sm sm:text-base">
-                    <PlusIcon className="h-4 w-4 sm:h-5 sm:w-5" /> Add Income
-                  </button>
-                  <button onClick={() => handleOpenNewTransactionForm(TransactionType.EXPENSE)} className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-semibold py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-75 w-full text-sm sm:text-base">
-                    <PlusIcon className="h-4 w-4 sm:h-5 sm:w-5" /> Add Expense
-                  </button>
-                   <button onClick={() => handleOpenNewTransactionForm(TransactionType.SAVING)} className="flex items-center justify-center gap-2 bg-teal-500 hover:bg-teal-600 text-white font-semibold py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-opacity-75 w-full text-sm sm:text-base">
-                    <PiggyBankIcon className="h-4 w-4 sm:h-5 sm:w-5" /> Add Saving
-                  </button>
-                  <button onClick={handleOpenNewLiabilityForm} className="flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-75 w-full text-sm sm:text-base">
-                    <PlusIcon className="h-4 w-4 sm:h-5 sm:w-5" /> Add Liability
-                  </button>
-                </div>
-                
-                {/* Recent Transactions List */}
+                {monthlySummaryChartData && monthlySummaryChartData.length > 0 && (
+                  <MonthlySummaryChart data={monthlySummaryChartData} />
+                )}
+
                 <TransactionList 
-                    title="Recent Transactions" 
-                    transactions={recentTransactions} 
-                    onDelete={handleDeleteTransaction} 
-                    onEdit={handleOpenEditTransactionForm} 
+                  title="Recent Transactions" 
+                  transactions={recentTransactions}
+                  onDelete={handleDeleteTransaction}
+                  onEdit={handleOpenEditTransactionForm}
                 />
+              </main>
 
-              </div>
-            </main>
-
-            <footer className="w-full max-w-7xl mt-6 sm:mt-8 py-3 sm:py-4 text-center text-gray-500 text-xs sm:text-sm">
-              <p>&copy; {new Date().getFullYear()} Kaash. Track smarter, live better.</p>
-            </footer>
-          </>
+              <footer className="w-full mt-6 sm:mt-8 py-3 sm:py-4 text-center text-gray-500 text-xs sm:text-sm">
+                <p>&copy; {new Date().getFullYear()} Kaash. Track smarter, live better.</p>
+              </footer>
+            </div>
+          </div>
         );
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 flex flex-col items-center p-2 sm:p-4 selection:bg-sky-400 selection:text-sky-900">
-      {renderActiveView()}
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 flex flex-col items-center selection:bg-sky-400 selection:text-sky-900">
+      
+      {currentUser && (
+        <SideMenu
+          isOpen={isMenuOpen}
+          onClose={toggleMenu}
+          onOpenIncomeForm={() => handleOpenNewTransactionForm(TransactionType.INCOME)}
+          onOpenExpenseForm={() => handleOpenNewTransactionForm(TransactionType.EXPENSE)}
+          onOpenSavingForm={() => handleOpenNewTransactionForm(TransactionType.SAVING)}
+          onOpenLiabilityForm={handleOpenNewLiabilityForm}
+        />
+      )}
+      
+      {currentUser && activeView === 'dashboard' && (
+        <header className="w-full bg-slate-800/80 backdrop-blur-md sticky top-0 z-30 shadow-md border-b border-slate-700">
+          <div className="max-w-7xl mx-auto flex justify-between items-center py-3 sm:py-4 px-2 sm:px-4">
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <button 
+                onClick={toggleMenu} 
+                className="p-2 rounded-md text-gray-400 hover:text-sky-400 hover:bg-slate-700 transition-colors"
+                aria-label="Toggle menu"
+                aria-expanded={isMenuOpen}
+              >
+                <MenuIcon className="h-6 w-6 sm:h-7 sm:w-7" />
+              </button>
+              <KaashLogoIcon className="h-10 w-10 sm:h-12 sm:w-12 text-sky-400" />
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-sky-400 to-cyan-300">
+                Kaash
+              </h1>
+            </div>
+            <div className="relative flex items-center space-x-2 sm:space-x-4" ref={profileDropdownRef}>
+              <button 
+                onClick={toggleProfileDropdown} 
+                className="p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-800"
+                aria-label="User profile options"
+                aria-haspopup="true"
+                aria-expanded={isProfileDropdownOpen}
+              >
+                {currentUser.photoURL ? (
+                  <img src={currentUser.photoURL} alt={currentUser.name || "User"} className="h-8 w-8 sm:h-10 sm:w-10 rounded-full border-2 border-sky-500 object-cover" />
+                ) : (
+                  <UserIcon className="h-8 w-8 sm:h-10 sm:w-10 text-gray-400 bg-slate-700 p-1.5 sm:p-2 rounded-full"/>
+                )}
+              </button>
+              {isProfileDropdownOpen && (
+                <div className="absolute top-full right-0 mt-2 w-48 bg-slate-700 rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-40">
+                  <button
+                    onClick={handleOpenEditProfileModal}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-slate-600 hover:text-sky-300 flex items-center"
+                  >
+                    <ProfileEditIcon className="w-4 h-4 mr-2" /> Edit Profile
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-slate-600 hover:text-red-400 flex items-center"
+                  >
+                    <LogoutIcon className="w-4 h-4 mr-2" /> Sign Out
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+      )}
+      
+      {/* Apply padding-top to content area only if sticky header is visible */}
+      <div className={`w-full flex-grow ${currentUser && activeView === 'dashboard' ? 'pt-16 sm:pt-[76px]' : ''}`}> 
+         {renderActiveView()}
+      </div>
 
-      {/* Modal Container - Rendered at top level to overlay any view */}
+      {showEditProfileModal && currentUser && (
+        <EditProfileModal
+          user={currentUser}
+          onUpdateProfile={handleProfileUpdate}
+          onCancel={handleCloseEditProfileModal}
+        />
+      )}
+
       {(showTransactionModal || showLiabilityForm || payingLiability) && ( 
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-2 sm:p-4 z-50 backdrop-blur-sm">
           <div className="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-md relative border border-slate-700 overflow-y-auto max-h-[90vh]">
@@ -632,21 +758,20 @@ const App: React.FC = () => {
             </button>
             {showTransactionModal && currentTransactionType && 
               <TransactionForm 
-                key={`transaction-form-${currentTransactionType}-${forceFormCategoryResetKey}`}
                 type={currentTransactionType} 
                 onSubmit={handleAddOrEditTransaction} 
                 onCancel={closeModal} 
                 existingTransaction={editingTransaction}
                 predefinedCategories={formPredefinedCategories}
                 currentUserDefinedCategories={formUserDefinedCategories}
-                onUserAddCategory={formAddHandler} 
-                onUserEditCategory={formEditHandler} 
+                onUserAddCategory={formAddHandler}
+                onUserEditCategory={formEditHandler}
                 onUserDeleteCategory={formDeleteHandler}
+                key={forceFormCategoryResetKey}
               />
             }
             {showLiabilityForm && 
               <LiabilityForm 
-                key={`liability-form-${forceFormCategoryResetKey}`} 
                 onSubmit={handleAddOrEditLiability} 
                 onCancel={closeModal} 
                 existingLiability={editingLiability}
@@ -655,14 +780,17 @@ const App: React.FC = () => {
                 onUserAddLiabilityCategory={liabilityCategoryHandlers.handleAdd}
                 onUserEditLiabilityCategory={liabilityCategoryHandlers.handleEdit}
                 onUserDeleteLiabilityCategory={liabilityCategoryHandlers.handleDelete}
+                key={`liability-form-${forceFormCategoryResetKey}`}
               />
             }
             {payingLiability && 
               <RecordLiabilityPaymentForm 
                 liability={payingLiability} 
-                onSubmit={(paymentAmount, paymentDate, newNextDueDate, notes) => 
-                  handleRecordLiabilityPayment(payingLiability.id, paymentAmount, paymentDate, newNextDueDate, notes)
-                } 
+                onSubmit={(paymentAmount, paymentDate, newNextDueDate, notes) => {
+                  if (payingLiability) { // Check ensures payingLiability is not null
+                    handleRecordLiabilityPayment(payingLiability.id, paymentAmount, paymentDate, newNextDueDate, notes);
+                  }
+                }} 
                 onCancel={closeModal}
               />
             }
