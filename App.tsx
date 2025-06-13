@@ -456,14 +456,6 @@ const App: React.FC = () => {
     }
   }, [liabilities]);
   
-  if (isLoadingAuth) {
-    return <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex justify-center items-center text-sky-400 text-xl p-4 text-center">Loading Kaash...</div>;
-  }
-
-  if (!currentUser) {
-    return <AuthPage onLogin={handleLogin} onSignup={handleSignup} onGoogleLogin={handleGoogleLogin} error={authError} clearError={clearAuthError} />;
-  }
-  
   let formPredefinedCategories: string[] = [];
   let formUserDefinedCategories: string[] = [];
   let formAddHandler = async (name: string) => {};
@@ -489,208 +481,181 @@ const App: React.FC = () => {
     formEditHandler = savingCategoryHandlers.handleEdit;
     formDeleteHandler = savingCategoryHandlers.handleDelete;
   }
+
+  const renderActiveView = () => {
+    if (isLoadingAuth) {
+      return <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex justify-center items-center text-sky-400 text-xl p-4 text-center">Loading Kaash...</div>;
+    }
   
-  if (activeView === 'incomeDetails') {
-    return (
-      <IncomeDetailsPage 
-        incomeTransactions={incomeTransactions}
-        onBack={navigateToDashboard} 
-        onEditTransaction={handleOpenEditTransactionForm}
-        onDeleteTransaction={handleDeleteTransaction}
-      />
-    );
-  }
+    if (!currentUser) {
+      return <AuthPage onLogin={handleLogin} onSignup={handleSignup} onGoogleLogin={handleGoogleLogin} error={authError} clearError={clearAuthError} />;
+    }
+    
+    switch (activeView) {
+      case 'incomeDetails':
+        return <IncomeDetailsPage incomeTransactions={incomeTransactions} onBack={navigateToDashboard} onEditTransaction={handleOpenEditTransactionForm} onDeleteTransaction={handleDeleteTransaction} />;
+      case 'expenseDetails':
+        return <ExpenseDetailsPage expenseTransactions={expenseTransactions} onBack={navigateToDashboard} onEditTransaction={handleOpenEditTransactionForm} onDeleteTransaction={handleDeleteTransaction} />;
+      case 'savingsDetails':
+        return <SavingsDetailsPage savingTransactions={savingTransactions} onBack={navigateToDashboard} onEditTransaction={handleOpenEditTransactionForm} onDeleteTransaction={handleDeleteTransaction} />;
+      case 'liabilityDetails':
+        return <LiabilityDetailsPage liabilities={liabilities} onBack={navigateToDashboard} onEditLiability={handleOpenEditLiabilityForm} onDeleteLiability={handleDeleteLiability} onRecordPayment={handleOpenRecordPaymentForm} onViewEMIs={handleViewEMIs} />;
+      case 'liabilityEMIDetail':
+        if (selectedLiabilityForEMIs) {
+          return <LiabilityEMIDetailPage liability={selectedLiabilityForEMIs} allTransactions={transactions} onBack={navigateToDashboard} onEditEMI={handleEditEMI} onDeleteEMI={handleDeleteEMI} />;
+        }
+        navigateToDashboard(); // Fallback if selectedLiabilityForEMIs is null
+        return null;
+      case 'dashboard':
+      default:
+        return (
+          <>
+            <header className="w-full max-w-7xl mb-4 sm:mb-6 flex justify-between items-center py-3 sm:py-4">
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <KaashLogoIcon className="h-10 w-10 sm:h-12 sm:w-12 text-sky-400" />
+                <h1 className="text-3xl sm:text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-sky-400 to-cyan-300">
+                  Kaash
+                </h1>
+              </div>
+              <div className="flex items-center space-x-2 sm:space-x-4">
+                {currentUser.photoURL && <img src={currentUser.photoURL} alt={currentUser.name || "User"} className="h-8 w-8 sm:h-10 sm:w-10 rounded-full border-2 border-sky-500" />}
+                {!currentUser.photoURL && <UserIcon className="h-8 w-8 sm:h-10 sm:w-10 text-gray-400 bg-slate-700 p-1.5 sm:p-2 rounded-full"/>}
+                <div className="text-right">
+                  <p className="text-xs sm:text-sm text-gray-300 truncate max-w-[100px] sm:max-w-[150px]">{currentUser.name || currentUser.email}</p>
+                  <p className="text-xs text-gray-500 hidden sm:block">Logged In</p>
+                </div>
+                <button 
+                  onClick={handleLogout} 
+                  className="flex items-center space-x-2 text-gray-400 hover:text-sky-400 p-2 rounded-md hover:bg-slate-700 transition-colors"
+                  title="Logout"
+                >
+                  <LogoutIcon className="h-5 w-5"/> 
+                  <span className="text-sm hidden sm:inline">Logout</span>
+                </button>
+              </div>
+            </header>
 
-  if (activeView === 'expenseDetails') {
-    return (
-      <ExpenseDetailsPage 
-        expenseTransactions={expenseTransactions} 
-        onBack={navigateToDashboard} 
-        onEditTransaction={handleOpenEditTransactionForm}
-        onDeleteTransaction={handleDeleteTransaction}
-      />
-    );
-  }
+            {upcomingPayments.length > 0 && (
+              <div className="w-full max-w-7xl mb-4 p-3 bg-yellow-500/20 border border-yellow-500 rounded-lg text-yellow-300 text-xs sm:text-sm">
+                <div className="flex items-center font-semibold mb-1">
+                  <BellIcon className="h-5 w-5 mr-2 text-yellow-400" />
+                  Upcoming Payments (Next 7 Days):
+                </div>
+                <ul className="list-disc list-inside ml-2">
+                  {upcomingPayments.map(p => (
+                    <li key={p.id}>
+                      {p.name || p.category} - ₹{p.emiAmount ? p.emiAmount.toFixed(2) : (p.initialAmount - p.amountRepaid).toFixed(2)} due on {new Date(p.nextDueDate + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
-  if (activeView === 'savingsDetails') {
-    return (
-      <SavingsDetailsPage 
-        savingTransactions={savingTransactions} 
-        onBack={navigateToDashboard} 
-        onEditTransaction={handleOpenEditTransactionForm}
-        onDeleteTransaction={handleDeleteTransaction}
-      />
-    );
-  }
-  
-  if (activeView === 'liabilityDetails') {
-    return (
-      <LiabilityDetailsPage 
-        liabilities={liabilities} 
-        onBack={navigateToDashboard} 
-        onEditLiability={handleOpenEditLiabilityForm}
-        onDeleteLiability={handleDeleteLiability}
-        onRecordPayment={handleOpenRecordPaymentForm}
-        onViewEMIs={handleViewEMIs}
-      />
-    );
-  }
+            <main className="w-full max-w-7xl">
+              <div className="space-y-4 sm:space-y-6"> 
+                <SummaryDisplay 
+                  totalIncome={totalIncome} 
+                  totalExpenses={totalExpenses} 
+                  balance={balance} 
+                  expenseTransactions={expenseTransactions}
+                  liabilities={liabilities}
+                  totalSavings={totalSavings} 
+                  onNavigateToIncomeDetails={navigateToIncomeDetails}
+                  onNavigateToExpenseDetails={navigateToExpenseDetails}
+                  onNavigateToSavingsDetails={navigateToSavingsDetails}
+                  onNavigateToLiabilityDetails={navigateToLiabilityDetails}
+                />
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+                  <button onClick={() => handleOpenNewTransactionForm(TransactionType.INCOME)} className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75 w-full text-sm sm:text-base">
+                    <PlusIcon className="h-4 w-4 sm:h-5 sm:w-5" /> Add Income
+                  </button>
+                  <button onClick={() => handleOpenNewTransactionForm(TransactionType.EXPENSE)} className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-semibold py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-75 w-full text-sm sm:text-base">
+                    <PlusIcon className="h-4 w-4 sm:h-5 sm:w-5" /> Add Expense
+                  </button>
+                   <button onClick={() => handleOpenNewTransactionForm(TransactionType.SAVING)} className="flex items-center justify-center gap-2 bg-teal-500 hover:bg-teal-600 text-white font-semibold py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-opacity-75 w-full text-sm sm:text-base">
+                    <PiggyBankIcon className="h-4 w-4 sm:h-5 sm:w-5" /> Add Saving
+                  </button>
+                  <button onClick={handleOpenNewLiabilityForm} className="flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-75 w-full text-sm sm:text-base">
+                    <PlusIcon className="h-4 w-4 sm:h-5 sm:w-5" /> Add Liability
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                  <TransactionList title="Income" transactions={incomeTransactions} type={TransactionType.INCOME} onDelete={handleDeleteTransaction} onEdit={handleOpenEditTransactionForm} />
+                  <TransactionList title="Expenses" transactions={expenseTransactions} type={TransactionType.EXPENSE} onDelete={handleDeleteTransaction} onEdit={handleOpenEditTransactionForm} />
+                </div>
+                <div className="mt-4 sm:mt-6"><TransactionList title="Savings" transactions={savingTransactions} type={TransactionType.SAVING} onDelete={handleDeleteTransaction} onEdit={handleOpenEditTransactionForm} /></div>
+                <div className="mt-4 sm:mt-6">
+                  <LiabilityList 
+                    liabilities={liabilities} 
+                    onDelete={handleDeleteLiability} 
+                    onEdit={handleOpenEditLiabilityForm} 
+                    onRecordPayment={handleOpenRecordPaymentForm}
+                    onViewEMIs={handleViewEMIs} 
+                  />
+                </div>
+              </div>
+            </main>
 
-  if (activeView === 'liabilityEMIDetail' && selectedLiabilityForEMIs) {
-    return (
-      <LiabilityEMIDetailPage
-        liability={selectedLiabilityForEMIs}
-        allTransactions={transactions}
-        onBack={navigateToDashboard} 
-        onEditEMI={handleEditEMI} 
-        onDeleteEMI={handleDeleteEMI}
-      />
-    );
-  } else if (activeView === 'liabilityEMIDetail' && !selectedLiabilityForEMIs) {
-    navigateToDashboard(); 
-    return null; 
-  }
-
+            <footer className="w-full max-w-7xl mt-6 sm:mt-8 py-3 sm:py-4 text-center text-gray-500 text-xs sm:text-sm">
+              <p>&copy; {new Date().getFullYear()} Kaash. Track smarter, live better.</p>
+            </footer>
+          </>
+        );
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 flex flex-col items-center p-2 sm:p-4 selection:bg-sky-400 selection:text-sky-900">
-      <header className="w-full max-w-7xl mb-4 sm:mb-6 flex justify-between items-center py-3 sm:py-4">
-        <div className="flex items-center space-x-2 sm:space-x-3">
-          <KaashLogoIcon className="h-10 w-10 sm:h-12 sm:w-12 text-sky-400" />
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-sky-400 to-cyan-300">
-            Kaash
-          </h1>
-        </div>
-        <div className="flex items-center space-x-2 sm:space-x-4">
-          {currentUser.photoURL && <img src={currentUser.photoURL} alt={currentUser.name || "User"} className="h-8 w-8 sm:h-10 sm:w-10 rounded-full border-2 border-sky-500" />}
-          {!currentUser.photoURL && <UserIcon className="h-8 w-8 sm:h-10 sm:w-10 text-gray-400 bg-slate-700 p-1.5 sm:p-2 rounded-full"/>}
-          <div className="text-right">
-            <p className="text-xs sm:text-sm text-gray-300 truncate max-w-[100px] sm:max-w-[150px]">{currentUser.name || currentUser.email}</p>
-            <p className="text-xs text-gray-500 hidden sm:block">Logged In</p>
-          </div>
-          <button 
-            onClick={handleLogout} 
-            className="flex items-center space-x-2 text-gray-400 hover:text-sky-400 p-2 rounded-md hover:bg-slate-700 transition-colors"
-            title="Logout"
-          >
-            <LogoutIcon className="h-5 w-5"/> 
-            <span className="text-sm hidden sm:inline">Logout</span>
-          </button>
-        </div>
-      </header>
+      {renderActiveView()}
 
-      {upcomingPayments.length > 0 && (
-        <div className="w-full max-w-7xl mb-4 p-3 bg-yellow-500/20 border border-yellow-500 rounded-lg text-yellow-300 text-xs sm:text-sm">
-          <div className="flex items-center font-semibold mb-1">
-            <BellIcon className="h-5 w-5 mr-2 text-yellow-400" />
-            Upcoming Payments (Next 7 Days):
+      {/* Modal Container - Rendered at top level to overlay any view */}
+      {(showTransactionModal || showLiabilityForm || payingLiability) && ( 
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-2 sm:p-4 z-50 backdrop-blur-sm">
+          <div className="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-md relative border border-slate-700 overflow-y-auto max-h-[90vh]">
+            <button onClick={closeModal} className="absolute top-2 sm:top-3 right-2 sm:right-3 text-gray-400 hover:text-gray-200 transition-colors z-10" aria-label="Close form">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 sm:w-7 sm:h-7"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            {showTransactionModal && currentTransactionType && 
+              <TransactionForm 
+                key={`transaction-form-${currentTransactionType}-${forceFormCategoryResetKey}`}
+                type={currentTransactionType} 
+                onSubmit={handleAddOrEditTransaction} 
+                onCancel={closeModal} 
+                existingTransaction={editingTransaction}
+                predefinedCategories={formPredefinedCategories}
+                currentUserDefinedCategories={formUserDefinedCategories}
+                onUserAddCategory={formAddHandler} 
+                onUserEditCategory={formEditHandler} 
+                onUserDeleteCategory={formDeleteHandler}
+              />
+            }
+            {showLiabilityForm && 
+              <LiabilityForm 
+                key={`liability-form-${forceFormCategoryResetKey}`} 
+                onSubmit={handleAddOrEditLiability} 
+                onCancel={closeModal} 
+                existingLiability={editingLiability}
+                predefinedLiabilityCategories={LIABILITY_CATEGORIES.map(String)}
+                currentUserDefinedLiabilityCategories={userDefinedCategories.liability}
+                onUserAddLiabilityCategory={liabilityCategoryHandlers.handleAdd}
+                onUserEditLiabilityCategory={liabilityCategoryHandlers.handleEdit}
+                onUserDeleteLiabilityCategory={liabilityCategoryHandlers.handleDelete}
+              />
+            }
+            {payingLiability && 
+              <RecordLiabilityPaymentForm 
+                liability={payingLiability} 
+                onSubmit={(paymentAmount, paymentDate, newNextDueDate, notes) => 
+                  handleRecordLiabilityPayment(payingLiability.id, paymentAmount, paymentDate, newNextDueDate, notes)
+                } 
+                onCancel={closeModal}
+              />
+            }
           </div>
-          <ul className="list-disc list-inside ml-2">
-            {upcomingPayments.map(p => (
-              <li key={p.id}>
-                {p.name || p.category} - ₹{p.emiAmount ? p.emiAmount.toFixed(2) : (p.initialAmount - p.amountRepaid).toFixed(2)} due on {new Date(p.nextDueDate + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}
-              </li>
-            ))}
-          </ul>
         </div>
       )}
-
-      <main className="w-full max-w-7xl">
-        <div className="space-y-4 sm:space-y-6"> 
-          <SummaryDisplay 
-            totalIncome={totalIncome} 
-            totalExpenses={totalExpenses} 
-            balance={balance} 
-            expenseTransactions={expenseTransactions}
-            liabilities={liabilities}
-            totalSavings={totalSavings} 
-            onNavigateToIncomeDetails={navigateToIncomeDetails}
-            onNavigateToExpenseDetails={navigateToExpenseDetails}
-            onNavigateToSavingsDetails={navigateToSavingsDetails}
-            onNavigateToLiabilityDetails={navigateToLiabilityDetails}
-          />
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
-            <button onClick={() => handleOpenNewTransactionForm(TransactionType.INCOME)} className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75 w-full text-sm sm:text-base">
-              <PlusIcon className="h-4 w-4 sm:h-5 sm:w-5" /> Add Income
-            </button>
-            <button onClick={() => handleOpenNewTransactionForm(TransactionType.EXPENSE)} className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-semibold py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-75 w-full text-sm sm:text-base">
-              <PlusIcon className="h-4 w-4 sm:h-5 sm:w-5" /> Add Expense
-            </button>
-             <button onClick={() => handleOpenNewTransactionForm(TransactionType.SAVING)} className="flex items-center justify-center gap-2 bg-teal-500 hover:bg-teal-600 text-white font-semibold py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-opacity-75 w-full text-sm sm:text-base">
-              <PiggyBankIcon className="h-4 w-4 sm:h-5 sm:w-5" /> Add Saving
-            </button>
-            <button onClick={handleOpenNewLiabilityForm} className="flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-75 w-full text-sm sm:text-base">
-              <PlusIcon className="h-4 w-4 sm:h-5 sm:w-5" /> Add Liability
-            </button>
-          </div>
-
-          {(showTransactionModal || showLiabilityForm || payingLiability) && ( 
-            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-2 sm:p-4 z-50 backdrop-blur-sm">
-              <div className="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-md relative border border-slate-700 overflow-y-auto max-h-[90vh]">
-                <button onClick={closeModal} className="absolute top-2 sm:top-3 right-2 sm:right-3 text-gray-400 hover:text-gray-200 transition-colors z-10" aria-label="Close form">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 sm:w-7 sm:h-7"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-                {showTransactionModal && currentTransactionType && 
-                  <TransactionForm 
-                    key={`transaction-form-${currentTransactionType}-${forceFormCategoryResetKey}`}
-                    type={currentTransactionType} 
-                    onSubmit={handleAddOrEditTransaction} 
-                    onCancel={closeModal} 
-                    existingTransaction={editingTransaction}
-                    predefinedCategories={formPredefinedCategories}
-                    currentUserDefinedCategories={formUserDefinedCategories}
-                    onUserAddCategory={formAddHandler} 
-                    onUserEditCategory={formEditHandler} 
-                    onUserDeleteCategory={formDeleteHandler}
-                  />
-                }
-                {showLiabilityForm && 
-                  <LiabilityForm 
-                    key={`liability-form-${forceFormCategoryResetKey}`} 
-                    onSubmit={handleAddOrEditLiability} 
-                    onCancel={closeModal} 
-                    existingLiability={editingLiability}
-                    predefinedLiabilityCategories={LIABILITY_CATEGORIES.map(String)}
-                    currentUserDefinedLiabilityCategories={userDefinedCategories.liability}
-                    onUserAddLiabilityCategory={liabilityCategoryHandlers.handleAdd}
-                    onUserEditLiabilityCategory={liabilityCategoryHandlers.handleEdit}
-                    onUserDeleteLiabilityCategory={liabilityCategoryHandlers.handleDelete}
-                  />
-                }
-                {payingLiability && 
-                  <RecordLiabilityPaymentForm 
-                    liability={payingLiability} 
-                    onSubmit={(paymentAmount, paymentDate, newNextDueDate, notes) => 
-                      handleRecordLiabilityPayment(payingLiability.id, paymentAmount, paymentDate, newNextDueDate, notes)
-                    } 
-                    onCancel={closeModal}
-                  />
-                }
-              </div>
-            </div>
-          )}
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-            <TransactionList title="Income" transactions={incomeTransactions} type={TransactionType.INCOME} onDelete={handleDeleteTransaction} onEdit={handleOpenEditTransactionForm} />
-            <TransactionList title="Expenses" transactions={expenseTransactions} type={TransactionType.EXPENSE} onDelete={handleDeleteTransaction} onEdit={handleOpenEditTransactionForm} />
-          </div>
-          <div className="mt-4 sm:mt-6"><TransactionList title="Savings" transactions={savingTransactions} type={TransactionType.SAVING} onDelete={handleDeleteTransaction} onEdit={handleOpenEditTransactionForm} /></div>
-          <div className="mt-4 sm:mt-6">
-            <LiabilityList 
-              liabilities={liabilities} 
-              onDelete={handleDeleteLiability} 
-              onEdit={handleOpenEditLiabilityForm} 
-              onRecordPayment={handleOpenRecordPaymentForm}
-              onViewEMIs={handleViewEMIs} 
-            />
-          </div>
-        </div>
-      </main>
-
-      <footer className="w-full max-w-7xl mt-6 sm:mt-8 py-3 sm:py-4 text-center text-gray-500 text-xs sm:text-sm">
-        <p>&copy; {new Date().getFullYear()} Kaash. Track smarter, live better.</p>
-      </footer>
     </div>
   );
 };
