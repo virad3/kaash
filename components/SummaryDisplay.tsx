@@ -1,6 +1,6 @@
 
 import React, { useMemo } from 'react';
-import { Transaction, ExpenseCategory, TransactionType, Liability } from '../types'; // Removed SavingsGoal
+import { Transaction, ExpenseCategory, TransactionType, Liability } from '../types';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface SummaryDisplayProps {
@@ -9,7 +9,11 @@ interface SummaryDisplayProps {
   balance: number;
   expenseTransactions: Transaction[];
   liabilities: Liability[];
-  totalSavings: number; // Added totalSavings from SAVING type transactions
+  totalSavings: number;
+  onNavigateToIncomeDetails: () => void;
+  onNavigateToExpenseDetails: () => void; 
+  onNavigateToSavingsDetails: () => void; 
+  onNavigateToLiabilityDetails: () => void; 
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC0CB', '#A0522D', '#D2691E', '#FFD700', '#4CAF50', '#FF9800'];
@@ -42,7 +46,10 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
 };
 
 
-export const SummaryDisplay: React.FC<SummaryDisplayProps> = ({ totalIncome, totalExpenses, balance, expenseTransactions, liabilities, totalSavings }) => {
+export const SummaryDisplay: React.FC<SummaryDisplayProps> = ({ 
+    totalIncome, totalExpenses, balance, expenseTransactions, liabilities, totalSavings, 
+    onNavigateToIncomeDetails, onNavigateToExpenseDetails, onNavigateToSavingsDetails, onNavigateToLiabilityDetails 
+}) => {
   const expenseDataByCategory = useMemo(() => {
     const categoryMap: { [key: string]: number } = {};
     expenseTransactions.forEach(transaction => {
@@ -58,33 +65,47 @@ export const SummaryDisplay: React.FC<SummaryDisplayProps> = ({ totalIncome, tot
     return liabilities.reduce((sum, l) => sum + (l.initialAmount - l.amountRepaid), 0);
   }, [liabilities]);
 
-  // totalCurrentSavings from savingsGoals is removed, totalSavings prop is used directly.
-
   const balanceColor = balance >= 0 ? 'text-green-400' : 'text-red-400';
 
   return (
     <div className="bg-slate-800 p-3 sm:p-6 rounded-xl shadow-xl border border-slate-700">
       <h2 className="text-2xl sm:text-3xl font-semibold mb-4 sm:mb-6 text-sky-400 text-center">Financial Overview</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
-        <div className="bg-slate-700/50 p-3 sm:p-4 lg:p-6 rounded-lg shadow-md text-center">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
+        <button 
+          onClick={onNavigateToIncomeDetails} 
+          className="bg-slate-700/50 p-3 sm:p-4 lg:p-6 rounded-lg shadow-md text-center hover:bg-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500 w-full"
+          aria-label="View income details"
+        >
           <p className="text-xs sm:text-sm text-gray-400 uppercase tracking-wider">Total Income</p>
           <p className="text-2xl sm:text-3xl font-bold text-green-400">₹{totalIncome.toFixed(2)}</p>
-        </div>
-        <div className="bg-slate-700/50 p-3 sm:p-4 lg:p-6 rounded-lg shadow-md text-center">
+        </button>
+        <button 
+          onClick={onNavigateToExpenseDetails}
+          className="bg-slate-700/50 p-3 sm:p-4 lg:p-6 rounded-lg shadow-md text-center hover:bg-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500 w-full"
+          aria-label="View expense details"
+        >
           <p className="text-xs sm:text-sm text-gray-400 uppercase tracking-wider">Total Expenses</p>
           <p className="text-2xl sm:text-3xl font-bold text-red-400">₹{totalExpenses.toFixed(2)}</p>
-        </div>
-        <div className="bg-slate-700/50 p-3 sm:p-4 lg:p-6 rounded-lg shadow-md text-center">
-          <p className="text-xs sm:text-sm text-gray-400 uppercase tracking-wider">Net Balance</p>
-          <p className={`text-2xl sm:text-3xl font-bold ${balanceColor}`}>₹{balance.toFixed(2)}</p>
-        </div>
-         <div className="bg-slate-700/50 p-3 sm:p-4 lg:p-6 rounded-lg shadow-md text-center">
+        </button>
+         <button 
+            onClick={onNavigateToSavingsDetails}
+            className="bg-slate-700/50 p-3 sm:p-4 lg:p-6 rounded-lg shadow-md text-center hover:bg-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500 w-full"
+            aria-label="View savings details"
+          >
           <p className="text-xs sm:text-sm text-gray-400 uppercase tracking-wider">Total Savings</p>
           <p className="text-2xl sm:text-3xl font-bold text-teal-400">₹{totalSavings.toFixed(2)}</p>
-        </div>
-        <div className="bg-slate-700/50 p-3 sm:p-4 lg:p-6 rounded-lg shadow-md text-center sm:col-span-2 lg:col-span-1 xl:col-span-2">
+        </button>
+        <button 
+            onClick={onNavigateToLiabilityDetails}
+            className="bg-slate-700/50 p-3 sm:p-4 lg:p-6 rounded-lg shadow-md text-center hover:bg-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500 w-full"
+            aria-label="View liability details"
+        >
           <p className="text-xs sm:text-sm text-gray-400 uppercase tracking-wider">Outstanding Liabilities</p>
           <p className="text-2xl sm:text-3xl font-bold text-orange-400">₹{totalOutstandingLiabilities.toFixed(2)}</p>
+        </button>
+        <div className="bg-slate-700/50 p-3 sm:p-4 lg:p-6 rounded-lg shadow-md text-center sm:col-span-2 lg:col-span-4">
+          <p className="text-xs sm:text-sm text-gray-400 uppercase tracking-wider">Net Balance</p>
+          <p className={`text-2xl sm:text-3xl font-bold ${balanceColor}`}>₹{balance.toFixed(2)}</p>
         </div>
       </div>
 

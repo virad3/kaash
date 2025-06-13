@@ -1,20 +1,17 @@
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signInWithPopup, 
-  signOut as firebaseSignOut, 
-  onAuthStateChanged,
-  updateProfile,
-  User as FirebaseUser // Firebase's User type
-} from 'firebase/auth';
-import { auth, googleProvider } from '../firebaseConfig'; // Corrected path
+
+import firebase from 'firebase/compat/app'; // Required for firebase.User type and potentially for firebase.auth() if not already initialized
+// auth and googleProvider will be instances from firebase/compat/auth via firebaseConfig
+import { auth, googleProvider } from '../firebaseConfig'; 
 import { User } from '../types'; // Your app's User type
+
+// Firebase's User type from the compat library
+type FirebaseUser = firebase.User;
 
 export const registerUserWithEmail = async (name: string, email: string, password?: string): Promise<User> => {
   if (!password) throw new Error("Password is required for email registration.");
-  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  const userCredential = await auth.createUserWithEmailAndPassword(email, password);
   if (userCredential.user) {
-    await updateProfile(userCredential.user, { displayName: name });
+    await userCredential.user.updateProfile({ displayName: name });
     // Return your app's User type
     return {
       uid: userCredential.user.uid,
@@ -28,7 +25,7 @@ export const registerUserWithEmail = async (name: string, email: string, passwor
 
 export const loginUserWithEmail = async (email: string, password?: string): Promise<User> => {
   if (!password) throw new Error("Password is required for email login.");
-  const userCredential = await signInWithEmailAndPassword(auth, email, password);
+  const userCredential = await auth.signInWithEmailAndPassword(email, password);
   if (userCredential.user) {
     return {
       uid: userCredential.user.uid,
@@ -41,7 +38,7 @@ export const loginUserWithEmail = async (email: string, password?: string): Prom
 };
 
 export const loginWithGoogle = async (): Promise<User> => {
-  const result = await signInWithPopup(auth, googleProvider);
+  const result = await auth.signInWithPopup(googleProvider);
   if (result.user) {
     return {
       uid: result.user.uid,
@@ -54,12 +51,12 @@ export const loginWithGoogle = async (): Promise<User> => {
 };
 
 export const logoutUser = async (): Promise<void> => {
-  await firebaseSignOut(auth);
+  await auth.signOut();
 };
 
 export const onAuthUserChanged = (callback: (user: User | null) => void): (() => void) => {
   // This function now returns the unsubscribe function from onAuthStateChanged
-  return onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
+  return auth.onAuthStateChanged((firebaseUser: FirebaseUser | null) => {
     if (firebaseUser) {
       const user: User = { // Map FirebaseUser to your app's User type
         uid: firebaseUser.uid,

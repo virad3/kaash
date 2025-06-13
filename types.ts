@@ -1,8 +1,17 @@
-
 export enum TransactionType {
   INCOME = 'INCOME',
   EXPENSE = 'EXPENSE',
   SAVING = 'SAVING', 
+}
+
+export enum IncomeCategory {
+  SALARY = 'Salary',
+  FREELANCE = 'Freelance Income',
+  INVESTMENTS = 'Investments',
+  GIFTS = 'Gifts Received',
+  RENTAL = 'Rental Income',
+  BUSINESS = 'Business Profit',
+  OTHER = 'Other Income',
 }
 
 export enum ExpenseCategory {
@@ -18,17 +27,6 @@ export enum ExpenseCategory {
   DEBT = 'Debt Repayment',
   LIABILITY_PAYMENT = 'Liability Payment',
   OTHER = 'Other',
-}
-
-export enum IncomeCategory {
-  SALARY = 'Salary',
-  BONUS = 'Bonus',
-  FREELANCE = 'Freelance/Contract',
-  INVESTMENTS = 'Investment/Dividends',
-  GIFTS = 'Gifts Received',
-  RENTAL_INCOME = 'Rental Income',
-  GOVERNMENT_BENEFITS = 'Government Benefits',
-  OTHER = 'Other Income',
 }
 
 export enum SavingCategory {
@@ -67,8 +65,6 @@ export interface Transaction {
   userId?: string; 
 }
 
-// ChatMessage interface removed
-
 export interface Liability {
   id: string; 
   name?: string; // Made optional
@@ -89,4 +85,15 @@ export interface User {
   email: string | null;
   name?: string | null;
   photoURL?: string | null;
+}
+
+export type View = 'dashboard' | 'incomeDetails' | 'expenseDetails' | 'savingsDetails' | 'liabilityDetails';
+
+export type CategoryTypeIdentifier = TransactionType | 'liability';
+
+export interface UserDefinedCategories {
+  income: string[];
+  expense: string[];
+  saving: string[];
+  liability: string[];
 }

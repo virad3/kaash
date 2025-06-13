@@ -3,30 +3,53 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Liability, LiabilityCategory } from '../types';
 import { LIABILITY_CATEGORIES } from '../constants';
 import { calculateEMI } from '../utils'; 
-import { PlusIcon } from './icons';
+import { CustomCategorySelect } from './CustomCategorySelect'; // Import the new component
 
 interface LiabilityFormProps {
   onSubmit: (data: Omit<Liability, 'id' | 'amountRepaid' | 'createdAt' | 'name' | 'notes'> & { id?: string; amountRepaid?: number; name?: string; category: string; loanTermInMonths?: number; }) => void;
   onCancel: () => void;
   existingLiability?: Liability | null;
+
+  predefinedLiabilityCategories: string[];
+  currentUserDefinedLiabilityCategories: string[];
+  onUserAddLiabilityCategory: (categoryName: string) => Promise<void>;
+  onUserEditLiabilityCategory: (oldName: string, newName: string) => Promise<void>;
+  onUserDeleteLiabilityCategory: (categoryName: string) => Promise<void>;
 }
 
-export const LiabilityForm: React.FC<LiabilityFormProps> = ({ onSubmit, onCancel, existingLiability }) => {
+export const LiabilityForm: React.FC<LiabilityFormProps> = ({ 
+  onSubmit, 
+  onCancel, 
+  existingLiability,
+  predefinedLiabilityCategories,
+  currentUserDefinedLiabilityCategories,
+  onUserAddLiabilityCategory,
+  onUserEditLiabilityCategory,
+  onUserDeleteLiabilityCategory
+}) => {
   const [name, setName] = useState('');
   const [initialAmount, setInitialAmount] = useState('');
-  const [category, setCategory] = useState<string>(LIABILITY_CATEGORIES[0]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [emiAmount, setEmiAmount] = useState('');
   const [nextDueDate, setNextDueDate] = useState(new Date().toISOString().split('T')[0]);
   const [interestRate, setInterestRate] = useState('');
   const [loanTermInMonths, setLoanTermInMonths] = useState('');
 
-  const [userDefinedLiabilityCategories, setUserDefinedLiabilityCategories] = useState<string[]>([]);
-  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  
+  const [categoryModalName, setCategoryModalName] = useState(''); 
+  const [editingCategoryOldName, setEditingCategoryOldName] = useState('');
 
-  const allAvailableLiabilityCategories = useMemo(() => {
-    return [...LIABILITY_CATEGORIES, ...userDefinedLiabilityCategories];
-  }, [userDefinedLiabilityCategories]);
+  const allAvailableMergedCategories = useMemo(() => {
+    const combined = [
+      ...predefinedLiabilityCategories,
+      ...currentUserDefinedLiabilityCategories.filter(udc => !predefinedLiabilityCategories.includes(udc))
+    ];
+    return combined.filter((value, index, self) => self.indexOf(value) === index).sort((a,b)=>a.localeCompare(b));
+  }, [predefinedLiabilityCategories, currentUserDefinedLiabilityCategories]);
+
 
   const autoCalculateEMI = useCallback(() => {
     const p = parseFloat(initialAmount);
@@ -45,28 +68,50 @@ export const LiabilityForm: React.FC<LiabilityFormProps> = ({ onSubmit, onCancel
     if (existingLiability) {
       setName(existingLiability.name || '');
       setInitialAmount(existingLiability.initialAmount.toString());
-      // If existing category is not predefined, add it to user-defined and select it
-      if (!LIABILITY_CATEGORIES.includes(existingLiability.category as LiabilityCategory)) {
-        if (!userDefinedLiabilityCategories.includes(existingLiability.category)) {
-          setUserDefinedLiabilityCategories(prev => [...prev, existingLiability.category]);
-        }
-      }
-      setCategory(existingLiability.category);
+      setSelectedCategory(existingLiability.category);
       setEmiAmount(existingLiability.emiAmount?.toString() || '');
       setNextDueDate(existingLiability.nextDueDate.split('T')[0]);
       setInterestRate(existingLiability.interestRate?.toString() || '');
       setLoanTermInMonths(existingLiability.loanTermInMonths?.toString() || '');
+
+      if (!allAvailableMergedCategories.includes(existingLiability.category) && allAvailableMergedCategories.length > 0) {
+        setSelectedCategory(allAvailableMergedCategories[0]);
+      } else if (!allAvailableMergedCategories.includes(existingLiability.category) && allAvailableMergedCategories.length === 0){
+         setSelectedCategory('');
+      }
+
     } else {
       setName('');
       setInitialAmount('');
-      setCategory(LIABILITY_CATEGORIES[0]);
+      if (currentUserDefinedLiabilityCategories.length > 0) {
+        setSelectedCategory(currentUserDefinedLiabilityCategories[0]);
+      } else if (predefinedLiabilityCategories.length > 0) {
+        setSelectedCategory(predefinedLiabilityCategories[0]);
+      } else {
+        setSelectedCategory('');
+      }
       setEmiAmount('');
       setNextDueDate(new Date().toISOString().split('T')[0]);
       setInterestRate('');
       setLoanTermInMonths('');
-      setUserDefinedLiabilityCategories([]); // Reset for new forms
     }
-  }, [existingLiability]);
+  }, [existingLiability, predefinedLiabilityCategories, currentUserDefinedLiabilityCategories, allAvailableMergedCategories]);
+
+   // Effect to reset selectedCategory if it becomes invalid (e.g., deleted)
+   useEffect(() => {
+    if (selectedCategory && !allAvailableMergedCategories.includes(selectedCategory)) {
+        if (currentUserDefinedLiabilityCategories.length > 0) {
+            setSelectedCategory(currentUserDefinedLiabilityCategories[0]);
+        } else if (predefinedLiabilityCategories.length > 0) {
+            setSelectedCategory(predefinedLiabilityCategories[0]);
+        } else if (allAvailableMergedCategories.length > 0) {
+            setSelectedCategory(allAvailableMergedCategories[0]);
+        } else {
+            setSelectedCategory('');
+        }
+    }
+  }, [selectedCategory, allAvailableMergedCategories, currentUserDefinedLiabilityCategories, predefinedLiabilityCategories]);
+
 
   useEffect(() => {
     if (!existingLiability) {
@@ -77,7 +122,7 @@ export const LiabilityForm: React.FC<LiabilityFormProps> = ({ onSubmit, onCancel
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!category || !initialAmount || parseFloat(initialAmount) <= 0 || !nextDueDate) {
+    if (!selectedCategory || !initialAmount || parseFloat(initialAmount) <= 0 || !nextDueDate) {
       alert('Please fill in Category, Initial Amount, and Next Due Date. Initial Amount must be greater than zero.');
       return;
     }
@@ -86,7 +131,7 @@ export const LiabilityForm: React.FC<LiabilityFormProps> = ({ onSubmit, onCancel
       id: existingLiability?.id,
       name: name.trim() || undefined,
       initialAmount: parseFloat(initialAmount),
-      category: category,
+      category: selectedCategory,
       amountRepaid: existingLiability?.amountRepaid || 0,
       emiAmount: emiAmount ? parseFloat(emiAmount) : undefined,
       nextDueDate,
@@ -95,20 +140,64 @@ export const LiabilityForm: React.FC<LiabilityFormProps> = ({ onSubmit, onCancel
     });
   };
   
-  const handleAddLiabilityCategory = () => {
-    const trimmedNewCategory = newCategoryName.trim();
-    if (!trimmedNewCategory) {
+  const handleOpenAddNewModal = () => {
+    setCategoryModalName('');
+    setShowAddModal(true);
+  };
+
+  const handleOpenEditModal = (categoryToEdit: string) => {
+    setEditingCategoryOldName(categoryToEdit);
+    setCategoryModalName(categoryToEdit);
+    setShowEditModal(true);
+  };
+
+  const handleOpenDeleteModal = (categoryToDelete: string) => {
+    setEditingCategoryOldName(categoryToDelete);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmAddCategory = async () => {
+    const trimmedName = categoryModalName.trim();
+    if (!trimmedName) {
       alert("Category name cannot be empty.");
       return;
     }
-    if (allAvailableLiabilityCategories.some(cat => cat.toLowerCase() === trimmedNewCategory.toLowerCase())) {
-      alert("This category already exists.");
+    if (allAvailableMergedCategories.some(cat => cat.toLowerCase() === trimmedName.toLowerCase())) {
+      alert("This category already exists or is a predefined category.");
       return;
     }
-    setUserDefinedLiabilityCategories(prev => [...prev, trimmedNewCategory]);
-    setCategory(trimmedNewCategory);
-    setShowAddCategoryModal(false);
-    setNewCategoryName('');
+    try {
+      await onUserAddLiabilityCategory(trimmedName);
+      setSelectedCategory(trimmedName);
+      setShowAddModal(false);
+      setCategoryModalName('');
+    } catch (error) {/* Handled in App */}
+  };
+
+  const handleConfirmEditCategory = async () => {
+    const trimmedNewName = categoryModalName.trim();
+    if (!trimmedNewName || !editingCategoryOldName) return;
+    if (trimmedNewName.toLowerCase() !== editingCategoryOldName.toLowerCase() &&
+        allAvailableMergedCategories.some(cat => cat.toLowerCase() === trimmedNewName.toLowerCase())) {
+      alert("Another category with this name already exists or is a predefined category.");
+      return;
+    }
+    try {
+      await onUserEditLiabilityCategory(editingCategoryOldName, trimmedNewName);
+      if (selectedCategory === editingCategoryOldName) setSelectedCategory(trimmedNewName);
+      setShowEditModal(false);
+      setCategoryModalName('');
+      setEditingCategoryOldName('');
+    } catch (error) {/* Handled in App */}
+  };
+
+  const handleConfirmDeleteCategory = async () => {
+    if (!editingCategoryOldName) return;
+    try {
+      await onUserDeleteLiabilityCategory(editingCategoryOldName);
+      setShowDeleteModal(false);
+      setEditingCategoryOldName('');
+    } catch (error) {/* Handled in App */}
   };
 
   const title = existingLiability ? 'Edit Liability' : 'Add New Liability';
@@ -118,31 +207,16 @@ export const LiabilityForm: React.FC<LiabilityFormProps> = ({ onSubmit, onCancel
       <form onSubmit={handleSubmit} className="space-y-4 p-2 text-gray-100">
         <h2 className="text-2xl font-semibold text-center text-sky-400">{title}</h2>
         
-        <div>
-          <label htmlFor="liabilityCategory" className="block text-sm font-medium text-gray-300 mb-1">Category*</label>
-          <div className="flex items-center space-x-2">
-            <select
-                id="liabilityCategory"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="flex-grow w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-md shadow-sm p-3 focus:ring-sky-500 focus:border-sky-500 transition"
-                required 
-            >
-                {allAvailableLiabilityCategories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-                ))}
-            </select>
-            <button 
-                type="button" 
-                onClick={() => setShowAddCategoryModal(true)}
-                className="p-3 bg-sky-500 hover:bg-sky-600 rounded-md text-white transition-colors"
-                aria-label="Add new liability category"
-                title="Add new liability category"
-            >
-                <PlusIcon className="w-5 h-5"/>
-            </button>
-          </div>
-        </div>
+        <CustomCategorySelect
+          selectedCategory={selectedCategory}
+          onSelectCategory={setSelectedCategory}
+          predefinedCategories={predefinedLiabilityCategories}
+          userDefinedCategories={currentUserDefinedLiabilityCategories}
+          onAddNew={handleOpenAddNewModal}
+          onEdit={handleOpenEditModal}
+          onDelete={handleOpenDeleteModal}
+          categoryTypeLabel="Liability Category*"
+        />
 
         <div>
           <label htmlFor="liabilityName" className="block text-sm font-medium text-gray-300 mb-1">Liability Name (Optional)</label>
@@ -245,33 +319,41 @@ export const LiabilityForm: React.FC<LiabilityFormProps> = ({ onSubmit, onCancel
         </div>
       </form>
 
-      {showAddCategoryModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[60]"> {/* Higher z-index */}
+      {/* Add/Edit/Delete Modals */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[60]">
           <div className="bg-slate-800 p-6 rounded-xl shadow-2xl w-full max-w-sm border border-slate-700">
             <h3 className="text-xl font-semibold text-sky-400 mb-4">Add New Liability Category</h3>
-            <input
-              type="text"
-              value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
-              placeholder="Enter new category name"
-              className="w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-md p-3 focus:ring-sky-500 focus:border-sky-500 transition mb-4"
-              autoFocus
-            />
+            <input type="text" value={categoryModalName} onChange={(e) => setCategoryModalName(e.target.value)} placeholder="Enter new category name" className="w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-md p-3 focus:ring-sky-500 focus:border-sky-500 transition mb-4" autoFocus />
             <div className="flex justify-end space-x-3">
-              <button
-                type="button"
-                onClick={() => { setShowAddCategoryModal(false); setNewCategoryName(''); }}
-                className="px-4 py-2 border border-slate-600 text-gray-300 rounded-lg hover:bg-slate-700 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleAddLiabilityCategory}
-                className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-lg"
-              >
-                Add Category
-              </button>
+              <button onClick={() => setShowAddModal(false)} className="px-4 py-2 border border-slate-600 text-gray-300 rounded-lg hover:bg-slate-700">Cancel</button>
+              <button onClick={handleConfirmAddCategory} className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-lg">Add</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[60]">
+          <div className="bg-slate-800 p-6 rounded-xl shadow-2xl w-full max-w-sm border border-slate-700">
+            <h3 className="text-xl font-semibold text-sky-400 mb-4">Edit Liability Category</h3>
+            <p className="text-sm text-gray-400 mb-1">Old name: {editingCategoryOldName}</p>
+            <input type="text" value={categoryModalName} onChange={(e) => setCategoryModalName(e.target.value)} placeholder="Enter new category name" className="w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-md p-3 focus:ring-sky-500 focus:border-sky-500 transition mb-4" autoFocus />
+            <div className="flex justify-end space-x-3">
+              <button onClick={() => setShowEditModal(false)} className="px-4 py-2 border border-slate-600 text-gray-300 rounded-lg hover:bg-slate-700">Cancel</button>
+              <button onClick={handleConfirmEditCategory} className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-lg">Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[60]">
+          <div className="bg-slate-800 p-6 rounded-xl shadow-2xl w-full max-w-sm border border-slate-700">
+            <h3 className="text-xl font-semibold text-red-400 mb-4">Delete Liability Category</h3>
+            <p className="text-gray-200 mb-4">Delete category: "{editingCategoryOldName}"?</p>
+            <p className="text-xs text-gray-400 mb-4">This will not affect existing liabilities.</p>
+            <div className="flex justify-end space-x-3">
+              <button onClick={() => setShowDeleteModal(false)} className="px-4 py-2 border border-slate-600 text-gray-300 rounded-lg hover:bg-slate-700">Cancel</button>
+              <button onClick={handleConfirmDeleteCategory} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg">Delete</button>
             </div>
           </div>
         </div>

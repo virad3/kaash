@@ -1,4 +1,14 @@
-import { ExpenseCategory, IncomeCategory, SavingCategory, LiabilityCategory } from './types';
+import { IncomeCategory, ExpenseCategory, SavingCategory, LiabilityCategory } from './types';
+
+export const INCOME_CATEGORIES: IncomeCategory[] = [
+  IncomeCategory.SALARY,
+  IncomeCategory.FREELANCE,
+  IncomeCategory.INVESTMENTS,
+  IncomeCategory.GIFTS,
+  IncomeCategory.RENTAL,
+  IncomeCategory.BUSINESS,
+  IncomeCategory.OTHER,
+];
 
 export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
   ExpenseCategory.FOOD,
@@ -13,17 +23,6 @@ export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
   ExpenseCategory.DEBT,
   ExpenseCategory.LIABILITY_PAYMENT,
   ExpenseCategory.OTHER,
-];
-
-export const INCOME_CATEGORIES: IncomeCategory[] = [
-  IncomeCategory.SALARY,
-  IncomeCategory.BONUS,
-  IncomeCategory.FREELANCE,
-  IncomeCategory.INVESTMENTS,
-  IncomeCategory.GIFTS,
-  IncomeCategory.RENTAL_INCOME,
-  IncomeCategory.GOVERNMENT_BENEFITS,
-  IncomeCategory.OTHER,
 ];
 
 export const SAVING_CATEGORIES: SavingCategory[] = [

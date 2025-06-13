@@ -1,20 +1,24 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { User, Transaction, TransactionType, Liability } from './types'; 
+import { User, Transaction, TransactionType, Liability, View, UserDefinedCategories, CategoryTypeIdentifier } from './types'; 
 import { TransactionForm } from './components/TransactionForm';
 import { TransactionList } from './components/TransactionList';
 import { SummaryDisplay } from './components/SummaryDisplay';
-// Chatbot component import removed
 import { LiabilityForm } from './components/LiabilityForm';
 import { LiabilityList } from './components/LiabilityList';
 import { RecordLiabilityPaymentForm } from './components/RecordLiabilityPaymentForm';
 import { AuthPage } from './components/AuthPage';
+import { IncomeDetailsPage } from './components/IncomeDetailsPage';
+import { ExpenseDetailsPage } from './components/ExpenseDetailsPage'; 
+import { SavingsDetailsPage } from './components/SavingsDetailsPage'; 
+import { LiabilityDetailsPage } from './components/LiabilityDetailsPage'; 
 import * as storageService from './services/storageService';
 import * as authService from './services/authService';
-// askKaash import from geminiService removed
-import { KaashLogoIcon, PlusIcon, BellIcon, PiggyBankIcon, UserIcon, LogoutIcon, PaymentIcon } from './components/icons'; // BotIcon removed
-import { ExpenseCategory } from './types'; 
+import { KaashLogoIcon, PlusIcon, BellIcon, PiggyBankIcon, UserIcon, LogoutIcon, PaymentIcon } from './components/icons';
+import { ExpenseCategory, SavingCategory } from './types'; 
 import { calculateLoanPaymentDetails } from './utils'; 
+import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, SAVING_CATEGORIES, LIABILITY_CATEGORIES } from './constants';
+
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -23,7 +27,7 @@ const App: React.FC = () => {
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [liabilities, setLiabilities] = useState<Liability[]>([]);
-  // chatMessages and isChatLoading state removed
+  const [userDefinedCategories, setUserDefinedCategories] = useState<UserDefinedCategories>({ income: [], expense: [], saving: [], liability: [] });
   
   const [showTransactionModal, setShowTransactionModal] = useState<boolean>(false);
   const [currentTransactionType, setCurrentTransactionType] = useState<TransactionType | null>(null);
@@ -34,20 +38,22 @@ const App: React.FC = () => {
   const [payingLiability, setPayingLiability] = useState<Liability | null>(null);
 
   const [upcomingPayments, setUpcomingPayments] = useState<Liability[]>([]);
-  // showChatbotOverlay state removed
+  const [activeView, setActiveView] = useState<View>('dashboard');
+  const [forceFormCategoryResetKey, setForceFormCategoryResetKey] = useState<number>(0);
+
 
   useEffect(() => {
     const unsubscribeAuth = authService.onAuthUserChanged((user) => {
       setCurrentUser(user);
       setIsLoadingAuth(false);
       if (user) {
-        // Initial chat message removed
         window.scrollTo(0, 0); 
+        setActiveView('dashboard'); 
       } else {
         setTransactions([]);
         setLiabilities([]);
-        // chatMessages reset removed
-        // setShowChatbotOverlay(false) removed
+        setUserDefinedCategories({ income: [], expense: [], saving: [], liability: [] });
+        setActiveView('dashboard');
       }
     });
     return () => unsubscribeAuth();
@@ -56,14 +62,17 @@ const App: React.FC = () => {
   useEffect(() => {
     let unsubTransactions = () => {};
     let unsubLiabilities = () => {};
+    let unsubUserCategories = () => {};
 
     if (currentUser?.uid) {
       unsubTransactions = storageService.subscribeToTransactions(currentUser.uid, setTransactions);
       unsubLiabilities = storageService.subscribeToLiabilities(currentUser.uid, setLiabilities);
+      unsubUserCategories = storageService.subscribeToUserDefinedCategories(currentUser.uid, setUserDefinedCategories);
     }
     return () => {
       unsubTransactions();
       unsubLiabilities();
+      unsubUserCategories();
     };
   }, [currentUser]);
 
@@ -134,17 +143,23 @@ const App: React.FC = () => {
     }
     
     const { id, ...transactionDetailsFromForm } = data; 
+    const finalCategory = transactionDetailsFromForm.category.trim();
 
-    const payload: Omit<Transaction, 'id' | 'createdAt' | 'userId' | 'relatedLiabilityId'> | Partial<Omit<Transaction, 'id' | 'createdAt' | 'userId' | 'relatedLiabilityId'>> = {
+    if (!finalCategory) {
+        alert("Category cannot be empty. Please select or add a category.");
+        return;
+    }
+
+    const payload: Omit<Transaction, 'id' | 'createdAt' | 'userId'> & { relatedLiabilityId?: string } = {
       type: transactionDetailsFromForm.type,
       description: transactionDetailsFromForm.description?.trim() || undefined, 
       amount: transactionDetailsFromForm.amount,
       date: transactionDetailsFromForm.date,
-      category: transactionDetailsFromForm.category, 
+      category: finalCategory, 
     };
-
-    const operationDescription = id ? 'update' : 'add';
-    console.log(`Attempting to ${operationDescription} transaction (User: ${currentUser.uid}, ID: ${id || 'new'}) with payload:`, JSON.parse(JSON.stringify(payload)));
+    if (transactionDetailsFromForm.relatedLiabilityId) {
+      payload.relatedLiabilityId = transactionDetailsFromForm.relatedLiabilityId;
+    }
 
     try {
       if (id) { 
@@ -152,20 +167,40 @@ const App: React.FC = () => {
       } else { 
         await storageService.addTransaction(currentUser.uid, payload as Omit<Transaction, 'id' | 'createdAt' | 'userId'>);
       }
-      console.log(`Transaction ${id ? `updated (ID: ${id})` : 'added'} successfully for user ${currentUser.uid}.`);
+      
+      let baseCategoriesForType: readonly string[] = [];
+      let currentUserCategoriesForType: string[] = [];
+      let categoryTypeIdentifier: CategoryTypeIdentifier = data.type;
+
+      switch (data.type) {
+        case TransactionType.INCOME:
+          baseCategoriesForType = INCOME_CATEGORIES.map(String);
+          currentUserCategoriesForType = userDefinedCategories.income;
+          break;
+        case TransactionType.EXPENSE:
+          baseCategoriesForType = EXPENSE_CATEGORIES.map(String);
+          currentUserCategoriesForType = userDefinedCategories.expense;
+          break;
+        case TransactionType.SAVING:
+          baseCategoriesForType = SAVING_CATEGORIES.map(String);
+          currentUserCategoriesForType = userDefinedCategories.saving;
+          break;
+      }
+
+      const isCustomCategory = !baseCategoriesForType.includes(finalCategory);
+      const isNewUserDefinedCategory = isCustomCategory && !currentUserCategoriesForType.includes(finalCategory);
+
+      if (isNewUserDefinedCategory) {
+        await storageService.addUserDefinedCategory(currentUser.uid, categoryTypeIdentifier, finalCategory);
+      }
+      
       closeModal();
     } catch (error: any) { 
+      const operationDescription = id ? 'update' : 'add';
       console.error(`Error ${operationDescription} transaction (User: ${currentUser.uid}, ID: ${id || 'new'}):`, error);
-      const operationType = id ? "updating" : "adding new";
-      const transactionIdInfo = id ? `ID: ${id}` : "new transaction";
-      const dataAttempted = JSON.stringify(payload);
-      alert(`Failed to save transaction.
-Error: ${error.message || 'Unknown error'}.
-Details: Failed ${operationType} transaction (${transactionIdInfo}).
-Data Attempted: ${dataAttempted}.
-Please check the console for more information.`);
+      alert(`Failed to save transaction. Error: ${error.message || 'Unknown error'}.`);
     }
-  }, [currentUser]);
+  }, [currentUser, userDefinedCategories]);
 
   const handleDeleteTransaction = useCallback(async (id: string) => {
     if (!currentUser?.uid) return;
@@ -178,9 +213,16 @@ Please check the console for more information.`);
   const handleAddOrEditLiability = useCallback(async (data: Omit<Liability, 'id' | 'createdAt' | 'userId' | 'amountRepaid' | 'name' | 'notes'> & { id?: string; name?: string; category: string; amountRepaid?: number; loanTermInMonths?: number; }) => {
     if (!currentUser?.uid) return;
     const { id, ...liabilityDetails } = data;
+    const finalCategory = liabilityDetails.category.trim();
+
+     if (!finalCategory) {
+        alert("Category cannot be empty. Please select or add a category.");
+        return;
+    }
+
     const payload = {
         name: liabilityDetails.name?.trim() || undefined, 
-        category: liabilityDetails.category, 
+        category: finalCategory, 
         initialAmount: liabilityDetails.initialAmount,
         emiAmount: liabilityDetails.emiAmount,
         nextDueDate: liabilityDetails.nextDueDate,
@@ -194,9 +236,19 @@ Please check the console for more information.`);
       } else {
         await storageService.addLiability(currentUser.uid, payload as Omit<Liability, 'id' | 'createdAt' | 'userId' | 'notes'>);
       }
+
+      const baseCategoriesForType = LIABILITY_CATEGORIES.map(String);
+      const currentUserCategoriesForType = userDefinedCategories.liability;
+      const isCustomCategory = !baseCategoriesForType.includes(finalCategory);
+      const isNewUserDefinedCategory = isCustomCategory && !currentUserCategoriesForType.includes(finalCategory);
+
+      if (isNewUserDefinedCategory) {
+         await storageService.addUserDefinedCategory(currentUser.uid, 'liability', finalCategory);
+      }
+
       closeModal();
     } catch (error) { console.error("Error saving liability:", error); alert("Failed to save liability."); }
-  }, [currentUser, liabilities]);
+  }, [currentUser, liabilities, userDefinedCategories]);
 
   const handleDeleteLiability = useCallback(async (id: string) => {
     if (!currentUser?.uid) return;
@@ -213,6 +265,7 @@ Please check the console for more information.`);
       alert("Liability not found. Cannot record payment.");
       return;
     }
+    // ... (rest of the payment logic is fine)
     if (typeof liability.interestRate !== 'number') {
         alert("Interest rate is not set for this liability. Cannot accurately calculate principal and interest. Payment will reduce total owed directly.");
         const updatedLiabilitySimpleData = { 
@@ -274,7 +327,63 @@ Please check the console for more information.`);
     }
   }, [liabilities, currentUser]);
 
-  // handleChatSubmit function removed
+  // Generic Category Management Handlers Factory
+  const createCategoryHandlers = (
+    categoryType: CategoryTypeIdentifier, 
+    predefinedCategoriesConst: readonly string[]
+  ) => {
+    const handleAdd = async (categoryName: string) => {
+      if (!currentUser?.uid || !categoryName.trim()) return;
+      if (predefinedCategoriesConst.map(String).includes(categoryName)) {
+        alert(`"${categoryName}" is a predefined category and cannot be added again.`);
+        return;
+      }
+      try {
+        await storageService.addUserDefinedCategory(currentUser.uid, categoryType, categoryName);
+      } catch (error) {
+        console.error(`Error adding ${categoryType} category:`, error);
+        alert(`Failed to add category: ${categoryName}. Error: ${error}`);
+      }
+    };
+
+    const handleEdit = async (oldName: string, newName: string) => {
+      if (!currentUser?.uid || !oldName.trim() || !newName.trim() || oldName === newName) return;
+      if (predefinedCategoriesConst.map(String).includes(oldName)) {
+        alert(`"${oldName}" is a predefined category and cannot be edited.`);
+        return;
+      }
+      try {
+        await storageService.updateUserDefinedCategory(currentUser.uid, categoryType, oldName, newName);
+      } catch (error) {
+        console.error(`Error renaming ${categoryType} category "${oldName}" to "${newName}":`, error);
+        alert(`Failed to rename category. Error: ${error}`);
+      }
+    };
+
+    const handleDelete = async (categoryName: string) => {
+      if (!currentUser?.uid || !categoryName.trim()) return;
+      if (predefinedCategoriesConst.map(String).includes(categoryName)) {
+        alert(`"${categoryName}" is a predefined category and cannot be deleted.`);
+        return;
+      }
+      if (window.confirm(`Are you sure you want to delete the ${categoryType} category "${categoryName}"? This will not change existing items using this category.`)) {
+        try {
+          await storageService.deleteUserDefinedCategory(currentUser.uid, categoryType, categoryName);
+          setForceFormCategoryResetKey(prev => prev + 1);
+        } catch (error) {
+          console.error(`Error deleting ${categoryType} category "${categoryName}":`, error);
+          alert(`Failed to delete category: ${categoryName}. Error: ${error}`);
+        }
+      }
+    };
+    return { handleAdd, handleEdit, handleDelete };
+  };
+
+  const incomeCategoryHandlers = useMemo(() => createCategoryHandlers(TransactionType.INCOME, INCOME_CATEGORIES.map(String)), [currentUser]);
+  const expenseCategoryHandlers = useMemo(() => createCategoryHandlers(TransactionType.EXPENSE, EXPENSE_CATEGORIES.map(String)), [currentUser]);
+  const savingCategoryHandlers = useMemo(() => createCategoryHandlers(TransactionType.SAVING, SAVING_CATEGORIES.map(String)), [currentUser]);
+  const liabilityCategoryHandlers = useMemo(() => createCategoryHandlers('liability', LIABILITY_CATEGORIES.map(String)), [currentUser]);
+
 
   const incomeTransactions = useMemo(() => transactions.filter(t => t.type === TransactionType.INCOME), [transactions]);
   const expenseTransactions = useMemo(() => transactions.filter(t => t.type === TransactionType.EXPENSE), [transactions]);
@@ -293,6 +402,12 @@ Please check the console for more information.`);
   const handleOpenNewLiabilityForm = () => { setEditingLiability(null); setShowLiabilityForm(true); };
   const handleOpenEditLiabilityForm = (liability: Liability) => { setEditingLiability(liability); setShowLiabilityForm(true); };
   const handleOpenRecordPaymentForm = (liability: Liability) => setPayingLiability(liability);
+
+  const navigateToDashboard = () => setActiveView('dashboard');
+  const navigateToIncomeDetails = () => setActiveView('incomeDetails');
+  const navigateToExpenseDetails = () => setActiveView('expenseDetails');
+  const navigateToSavingsDetails = () => setActiveView('savingsDetails');
+  const navigateToLiabilityDetails = () => setActiveView('liabilityDetails');
   
   if (isLoadingAuth) {
     return <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex justify-center items-center text-sky-400 text-xl p-4 text-center">Loading Kaash...</div>;
@@ -301,6 +416,79 @@ Please check the console for more information.`);
   if (!currentUser) {
     return <AuthPage onLogin={handleLogin} onSignup={handleSignup} onGoogleLogin={handleGoogleLogin} error={authError} clearError={clearAuthError} />;
   }
+  
+  // Logic for TransactionForm props
+  let formPredefinedCategories: string[] = [];
+  let formUserDefinedCategories: string[] = [];
+  let formAddHandler = async (name: string) => {};
+  let formEditHandler = async (oldName: string, newName: string) => {};
+  let formDeleteHandler = async (name: string) => {};
+
+  if (currentTransactionType === TransactionType.INCOME) {
+    formPredefinedCategories = INCOME_CATEGORIES.map(String);
+    formUserDefinedCategories = userDefinedCategories.income;
+    formAddHandler = incomeCategoryHandlers.handleAdd;
+    formEditHandler = incomeCategoryHandlers.handleEdit;
+    formDeleteHandler = incomeCategoryHandlers.handleDelete;
+  } else if (currentTransactionType === TransactionType.EXPENSE) {
+    formPredefinedCategories = EXPENSE_CATEGORIES.map(String);
+    formUserDefinedCategories = userDefinedCategories.expense;
+    formAddHandler = expenseCategoryHandlers.handleAdd;
+    formEditHandler = expenseCategoryHandlers.handleEdit;
+    formDeleteHandler = expenseCategoryHandlers.handleDelete;
+  } else if (currentTransactionType === TransactionType.SAVING) {
+    formPredefinedCategories = SAVING_CATEGORIES.map(String);
+    formUserDefinedCategories = userDefinedCategories.saving;
+    formAddHandler = savingCategoryHandlers.handleAdd;
+    formEditHandler = savingCategoryHandlers.handleEdit;
+    formDeleteHandler = savingCategoryHandlers.handleDelete;
+  }
+  
+  if (activeView === 'incomeDetails') {
+    return (
+      <IncomeDetailsPage 
+        incomeTransactions={incomeTransactions}
+        onBack={navigateToDashboard} 
+        onEditTransaction={handleOpenEditTransactionForm}
+        onDeleteTransaction={handleDeleteTransaction}
+      />
+    );
+  }
+
+  if (activeView === 'expenseDetails') {
+    return (
+      <ExpenseDetailsPage 
+        expenseTransactions={expenseTransactions} 
+        onBack={navigateToDashboard} 
+        onEditTransaction={handleOpenEditTransactionForm}
+        onDeleteTransaction={handleDeleteTransaction}
+      />
+    );
+  }
+
+  if (activeView === 'savingsDetails') {
+    return (
+      <SavingsDetailsPage 
+        savingTransactions={savingTransactions} 
+        onBack={navigateToDashboard} 
+        onEditTransaction={handleOpenEditTransactionForm}
+        onDeleteTransaction={handleDeleteTransaction}
+      />
+    );
+  }
+  
+  if (activeView === 'liabilityDetails') {
+    return (
+      <LiabilityDetailsPage 
+        liabilities={liabilities} 
+        onBack={navigateToDashboard} 
+        onEditLiability={handleOpenEditLiabilityForm}
+        onDeleteLiability={handleDeleteLiability}
+        onRecordPayment={handleOpenRecordPaymentForm}
+      />
+    );
+  }
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 flex flex-col items-center p-2 sm:p-4 selection:bg-sky-400 selection:text-sky-900">
@@ -354,6 +542,10 @@ Please check the console for more information.`);
             expenseTransactions={expenseTransactions}
             liabilities={liabilities}
             totalSavings={totalSavings} 
+            onNavigateToIncomeDetails={navigateToIncomeDetails}
+            onNavigateToExpenseDetails={navigateToExpenseDetails}
+            onNavigateToSavingsDetails={navigateToSavingsDetails}
+            onNavigateToLiabilityDetails={navigateToLiabilityDetails}
           />
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
@@ -377,8 +569,33 @@ Please check the console for more information.`);
                 <button onClick={closeModal} className="absolute top-2 sm:top-3 right-2 sm:right-3 text-gray-400 hover:text-gray-200 transition-colors z-10" aria-label="Close form">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 sm:w-7 sm:h-7"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
-                {showTransactionModal && currentTransactionType && <TransactionForm type={currentTransactionType} onSubmit={handleAddOrEditTransaction} onCancel={closeModal} existingTransaction={editingTransaction} />}
-                {showLiabilityForm && <LiabilityForm onSubmit={handleAddOrEditLiability} onCancel={closeModal} existingLiability={editingLiability}/>}
+                {showTransactionModal && currentTransactionType && 
+                  <TransactionForm 
+                    key={forceFormCategoryResetKey} 
+                    type={currentTransactionType} 
+                    onSubmit={handleAddOrEditTransaction} 
+                    onCancel={closeModal} 
+                    existingTransaction={editingTransaction}
+                    predefinedCategories={formPredefinedCategories}
+                    currentUserDefinedCategories={formUserDefinedCategories}
+                    onUserAddCategory={formAddHandler} 
+                    onUserEditCategory={formEditHandler} 
+                    onUserDeleteCategory={formDeleteHandler}
+                  />
+                }
+                {showLiabilityForm && 
+                  <LiabilityForm 
+                    key={`liability-form-${forceFormCategoryResetKey}`} // Also use key here if category changes affect it
+                    onSubmit={handleAddOrEditLiability} 
+                    onCancel={closeModal} 
+                    existingLiability={editingLiability}
+                    predefinedLiabilityCategories={LIABILITY_CATEGORIES.map(String)}
+                    currentUserDefinedLiabilityCategories={userDefinedCategories.liability}
+                    onUserAddLiabilityCategory={liabilityCategoryHandlers.handleAdd}
+                    onUserEditLiabilityCategory={liabilityCategoryHandlers.handleEdit}
+                    onUserDeleteLiabilityCategory={liabilityCategoryHandlers.handleDelete}
+                  />
+                }
                 {payingLiability && <RecordLiabilityPaymentForm liability={payingLiability} onSubmit={(paymentAmount, paymentDate, newNextDueDate, notes) => handleRecordLiabilityPayment(payingLiability.id, paymentAmount, paymentDate, newNextDueDate, notes)} onCancel={closeModal}/>}
               </div>
             </div>
@@ -392,8 +609,6 @@ Please check the console for more information.`);
           <div className="mt-4 sm:mt-6"><LiabilityList liabilities={liabilities} onDelete={handleDeleteLiability} onEdit={handleOpenEditLiabilityForm} onRecordPayment={handleOpenRecordPaymentForm}/></div>
         </div>
       </main>
-
-      {/* Chatbot FAB and Overlay removed */}
 
       <footer className="w-full max-w-7xl mt-6 sm:mt-8 py-3 sm:py-4 text-center text-gray-500 text-xs sm:text-sm">
         <p>&copy; {new Date().getFullYear()} Kaash. Track smarter, live better.</p>
