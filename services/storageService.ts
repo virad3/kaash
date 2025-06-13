@@ -15,7 +15,8 @@ import {
   arrayRemove,
   getDocs,
   writeBatch,
-  where
+  where,
+  runTransaction
 } from 'firebase/firestore';
 import { Transaction, Liability, TransactionType, UserDefinedCategories, CategoryTypeIdentifier } from '../types'; 
 
@@ -46,7 +47,7 @@ export const subscribeToTransactions = (userId: string, callback: (transactions:
         description: data.description as (string | undefined), 
         amount: data.amount as number,
         date: data.date as string, 
-        category: String(data.category || 'Uncategorized'), // Ensure category is a string
+        category: String(data.category || 'Uncategorized'), 
         relatedLiabilityId: data.relatedLiabilityId as (string | undefined),
         createdAt: data.createdAt, 
         userId: data.userId as (string | undefined) 
@@ -60,7 +61,7 @@ export const subscribeToTransactions = (userId: string, callback: (transactions:
           !transactionItem.category.trim() 
         ) {
         console.warn(
-          `Transaction ${transactionItem.id} from Firestore is missing critical fields (amount, date, category), has an invalid type/date format, or they are undefined. Skipping. Received data:`, 
+          `Transaction ${transactionItem.id} from Firestore is missing critical fields, has an invalid type/date format, or they are undefined. Skipping. Received data:`, 
           JSON.stringify(data)
         );
         return; 
@@ -195,7 +196,6 @@ const getCategoryDocName = (categoryType: CategoryTypeIdentifier): string => {
     case TransactionType.SAVING: return 'savingCategories';
     case 'liability': return 'liabilityCategories';
     default: 
-      // Exhaustive check for TransactionType
       const exhaustiveCheck: never = categoryType;
       throw new Error(`Invalid category type: ${exhaustiveCheck}`);
   }
@@ -236,7 +236,6 @@ export const addUserDefinedCategory = async (userId: string, categoryType: Categ
   const categoryDocRef = doc(db, `users/${userId}/categorySettings`, docName);
   try {
     await setDoc(categoryDocRef, { names: arrayUnion(trimmedCategoryName) }, { merge: true });
-    console.log(`Category "${trimmedCategoryName}" added/updated for ${categoryType} for user ${userId}`);
   } catch (error) {
     console.error("Error adding user defined category to Firestore:", error);
     throw error;
@@ -248,7 +247,6 @@ export const updateUserDefinedCategory = async (userId: string, categoryType: Ca
   const trimmedNewName = newCategoryName.trim();
 
   if (!userId || !trimmedOldName || !trimmedNewName || trimmedOldName === trimmedNewName) {
-    console.warn("Update category: Invalid parameters or names are the same.");
     return;
   }
 
@@ -258,52 +256,33 @@ export const updateUserDefinedCategory = async (userId: string, categoryType: Ca
   try {
     await updateDoc(categoryDocRef, { names: arrayRemove(trimmedOldName) });
     await updateDoc(categoryDocRef, { names: arrayUnion(trimmedNewName) });
-    console.log(`Category name updated from "${trimmedOldName}" to "${trimmedNewName}" in settings for user ${userId}, type ${categoryType}.`);
   } catch (error) {
     console.error("Error updating category name in settings:", error);
     throw error;
   }
 
-  // Update existing transactions or liabilities
-  if (categoryType !== 'liability') { // For Transaction Types
-    const transactionsColRef = collection(db, 'users', userId, 'transactions');
-    const q = query(transactionsColRef, where("type", "==", categoryType), where("category", "==", trimmedOldName));
-    
-    try {
-      const querySnapshot = await getDocs(q);
-      if (!querySnapshot.empty) {
-        const batch = writeBatch(db);
-        querySnapshot.forEach(transactionDoc => {
-          batch.update(transactionDoc.ref, { category: trimmedNewName });
-        });
-        await batch.commit();
-        console.log(`Updated ${querySnapshot.size} transactions from category "${trimmedOldName}" to "${trimmedNewName}".`);
-      } else {
-        console.log(`No transactions found with category "${trimmedOldName}" of type "${categoryType}" to update.`);
-      }
-    } catch (error) {
-      console.error(`Error updating transactions for category change:`, error);
-      throw error;
+  const collectionName = categoryType === 'liability' ? 'liabilities' : 'transactions';
+  const itemsColRef = collection(db, 'users', userId, collectionName);
+  
+  let q;
+  if (categoryType !== 'liability') { // Transaction Types
+    q = query(itemsColRef, where("type", "==", categoryType), where("category", "==", trimmedOldName));
+  } else { // Liabilities
+    q = query(itemsColRef, where("category", "==", trimmedOldName));
+  }
+  
+  try {
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+      const batch = writeBatch(db);
+      querySnapshot.forEach(itemDoc => {
+        batch.update(itemDoc.ref, { category: trimmedNewName });
+      });
+      await batch.commit();
     }
-  } else { // For Liabilities
-    const liabilitiesColRef = collection(db, 'users', userId, 'liabilities');
-    const q = query(liabilitiesColRef, where("category", "==", trimmedOldName));
-    try {
-      const querySnapshot = await getDocs(q);
-      if (!querySnapshot.empty) {
-        const batch = writeBatch(db);
-        querySnapshot.forEach(liabilityDoc => {
-          batch.update(liabilityDoc.ref, { category: trimmedNewName });
-        });
-        await batch.commit();
-        console.log(`Updated ${querySnapshot.size} liabilities from category "${trimmedOldName}" to "${trimmedNewName}".`);
-      } else {
-        console.log(`No liabilities found with category "${trimmedOldName}" to update.`);
-      }
-    } catch (error) {
-      console.error(`Error updating liabilities for category change:`, error);
-      throw error;
-    }
+  } catch (error) {
+    console.error(`Error updating items for category change:`, error);
+    throw error;
   }
 };
 
@@ -315,9 +294,82 @@ export const deleteUserDefinedCategory = async (userId: string, categoryType: Ca
   const categoryDocRef = doc(db, `users/${userId}/categorySettings`, docName);
   try {
     await updateDoc(categoryDocRef, { names: arrayRemove(trimmedCategoryName) });
-    console.log(`Category "${trimmedCategoryName}" deleted from ${categoryType} list for user ${userId}.`);
   } catch (error) {
     console.error("Error deleting user defined category from Firestore:", error);
     throw error;
   }
+};
+
+// --- EMI Edit/Delete Specific Functions ---
+
+export const deleteTransactionAndUpdateLiability = async (
+  userId: string,
+  transactionIdToDelete: string,
+  relatedLiabilityId: string,
+  amountToDecrementFromLiabilityRepaid: number
+): Promise<void> => {
+  if (!userId || !transactionIdToDelete || !relatedLiabilityId || amountToDecrementFromLiabilityRepaid < 0) {
+    throw new Error("Invalid parameters for deleting transaction and updating liability.");
+  }
+
+  const transactionDocRef = doc(db, 'users', userId, 'transactions', transactionIdToDelete);
+  const liabilityDocRef = doc(db, 'users', userId, 'liabilities', relatedLiabilityId);
+
+  await runTransaction(db, async (firestoreTransaction) => {
+    const liabilityDoc = await firestoreTransaction.get(liabilityDocRef);
+    if (!liabilityDoc.exists()) {
+      throw new Error(`Liability ${relatedLiabilityId} not found.`);
+    }
+
+    const currentAmountRepaid = liabilityDoc.data().amountRepaid as number;
+    let newAmountRepaid = currentAmountRepaid - amountToDecrementFromLiabilityRepaid;
+    newAmountRepaid = Math.max(0, newAmountRepaid); // Ensure it doesn't go below zero
+
+    firestoreTransaction.update(liabilityDocRef, { amountRepaid: newAmountRepaid });
+    firestoreTransaction.delete(transactionDocRef);
+  });
+};
+
+
+export const updateTransactionAndLiabilityAmountRepaid = async (
+  userId: string,
+  transactionIdToUpdate: string,
+  newTransactionData: Partial<Omit<Transaction, 'id'|'userId'|'createdAt'>>,
+  relatedLiabilityId: string,
+  amountDifferenceForLiabilityRepaid: number // positive if new EMI is larger, negative if smaller
+): Promise<void> => {
+  if (!userId || !transactionIdToUpdate || !relatedLiabilityId) {
+    throw new Error("Invalid parameters for updating transaction and liability amount repaid.");
+  }
+
+  const transactionDocRef = doc(db, 'users', userId, 'transactions', transactionIdToUpdate);
+  const liabilityDocRef = doc(db, 'users', userId, 'liabilities', relatedLiabilityId);
+
+  const sanitizedTransactionData = { ...newTransactionData };
+  if (sanitizedTransactionData.category !== undefined) {
+    sanitizedTransactionData.category = String(sanitizedTransactionData.category || 'Uncategorized').trim();
+    if (!sanitizedTransactionData.category) {
+      sanitizedTransactionData.category = 'Uncategorized';
+    }
+  }
+
+
+  await runTransaction(db, async (firestoreTransaction) => {
+    const liabilityDoc = await firestoreTransaction.get(liabilityDocRef);
+    if (!liabilityDoc.exists()) {
+      throw new Error(`Liability ${relatedLiabilityId} not found.`);
+    }
+
+    const currentAmountRepaid = liabilityDoc.data().amountRepaid as number;
+    const initialAmount = liabilityDoc.data().initialAmount as number; // Get initial amount
+    let newAmountRepaid = currentAmountRepaid + amountDifferenceForLiabilityRepaid;
+    
+    // Ensure amountRepaid does not go below zero or exceed initialAmount
+    newAmountRepaid = Math.max(0, newAmountRepaid);
+    newAmountRepaid = Math.min(newAmountRepaid, initialAmount);
+
+
+    firestoreTransaction.update(liabilityDocRef, { amountRepaid: newAmountRepaid });
+    firestoreTransaction.update(transactionDocRef, sanitizeDataForFirestore(sanitizedTransactionData));
+  });
 };

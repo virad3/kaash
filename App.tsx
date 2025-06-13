@@ -12,7 +12,7 @@ import { IncomeDetailsPage } from './components/IncomeDetailsPage';
 import { ExpenseDetailsPage } from './components/ExpenseDetailsPage'; 
 import { SavingsDetailsPage } from './components/SavingsDetailsPage'; 
 import { LiabilityDetailsPage } from './components/LiabilityDetailsPage'; 
-import { LiabilityEMIDetailPage } from './components/LiabilityEMIDetailPage'; // New Import
+import { LiabilityEMIDetailPage } from './components/LiabilityEMIDetailPage'; 
 import * as storageService from './services/storageService';
 import * as authService from './services/authService';
 import { KaashLogoIcon, PlusIcon, BellIcon, PiggyBankIcon, UserIcon, LogoutIcon, PaymentIcon } from './components/icons';
@@ -37,7 +37,7 @@ const App: React.FC = () => {
   const [showLiabilityForm, setShowLiabilityForm] = useState<boolean>(false);
   const [editingLiability, setEditingLiability] = useState<Liability | null>(null);
   const [payingLiability, setPayingLiability] = useState<Liability | null>(null);
-  const [selectedLiabilityForEMIs, setSelectedLiabilityForEMIs] = useState<Liability | null>(null); // New state
+  const [selectedLiabilityForEMIs, setSelectedLiabilityForEMIs] = useState<Liability | null>(null); 
 
   const [upcomingPayments, setUpcomingPayments] = useState<Liability[]>([]);
   const [activeView, setActiveView] = useState<View>('dashboard');
@@ -51,7 +51,7 @@ const App: React.FC = () => {
       if (user) {
         window.scrollTo(0, 0); 
         setActiveView('dashboard'); 
-        setSelectedLiabilityForEMIs(null); // Reset on user change
+        setSelectedLiabilityForEMIs(null); 
       } else {
         setTransactions([]);
         setLiabilities([]);
@@ -166,36 +166,54 @@ const App: React.FC = () => {
     }
 
     try {
-      if (id) { 
+      if (id && editingTransaction && editingTransaction.relatedLiabilityId) {
+        // This is an edit of an existing EMI transaction
+        const oldAmount = editingTransaction.amount;
+        const newAmount = payload.amount;
+        const amountDifferenceForLiabilityRepaid = newAmount - oldAmount;
+        
+        await storageService.updateTransactionAndLiabilityAmountRepaid(
+          currentUser.uid,
+          id,
+          payload as Partial<Omit<Transaction, 'id' | 'createdAt' | 'userId'>>,
+          editingTransaction.relatedLiabilityId,
+          amountDifferenceForLiabilityRepaid
+        );
+      } else if (id) { 
+        // Generic transaction update (not an EMI or EMI handling is not active)
         await storageService.updateTransaction(currentUser.uid, id, payload as Partial<Omit<Transaction, 'id' | 'createdAt' | 'userId'>>);
       } else { 
+        // New transaction
         await storageService.addTransaction(currentUser.uid, payload as Omit<Transaction, 'id' | 'createdAt' | 'userId'>);
       }
       
-      let baseCategoriesForType: readonly string[] = [];
-      let currentUserCategoriesForType: string[] = [];
-      let categoryTypeIdentifier: CategoryTypeIdentifier = data.type;
+      // Save new custom category if applicable (for non-EMI or initial EMI add)
+      if (!id || (editingTransaction && !editingTransaction.relatedLiabilityId) ) { // Only run for new transactions or non-EMI edits regarding category addition
+        let baseCategoriesForType: readonly string[] = [];
+        let currentUserCategoriesForType: string[] = [];
+        let categoryTypeIdentifier: CategoryTypeIdentifier = data.type;
 
-      switch (data.type) {
-        case TransactionType.INCOME:
-          baseCategoriesForType = INCOME_CATEGORIES.map(String);
-          currentUserCategoriesForType = userDefinedCategories.income;
-          break;
-        case TransactionType.EXPENSE:
-          baseCategoriesForType = EXPENSE_CATEGORIES.map(String);
-          currentUserCategoriesForType = userDefinedCategories.expense;
-          break;
-        case TransactionType.SAVING:
-          baseCategoriesForType = SAVING_CATEGORIES.map(String);
-          currentUserCategoriesForType = userDefinedCategories.saving;
-          break;
-      }
+        switch (data.type) {
+          case TransactionType.INCOME:
+            baseCategoriesForType = INCOME_CATEGORIES.map(String);
+            currentUserCategoriesForType = userDefinedCategories.income;
+            break;
+          case TransactionType.EXPENSE:
+            baseCategoriesForType = EXPENSE_CATEGORIES.map(String);
+            currentUserCategoriesForType = userDefinedCategories.expense;
+            break;
+          case TransactionType.SAVING:
+            baseCategoriesForType = SAVING_CATEGORIES.map(String);
+            currentUserCategoriesForType = userDefinedCategories.saving;
+            break;
+        }
 
-      const isCustomCategory = !baseCategoriesForType.includes(finalCategory);
-      const isNewUserDefinedCategory = isCustomCategory && !currentUserCategoriesForType.includes(finalCategory);
+        const isCustomCategory = !baseCategoriesForType.includes(finalCategory);
+        const isNewUserDefinedCategory = isCustomCategory && !currentUserCategoriesForType.includes(finalCategory);
 
-      if (isNewUserDefinedCategory) {
-        await storageService.addUserDefinedCategory(currentUser.uid, categoryTypeIdentifier, finalCategory);
+        if (isNewUserDefinedCategory) {
+          await storageService.addUserDefinedCategory(currentUser.uid, categoryTypeIdentifier, finalCategory);
+        }
       }
       
       closeModal();
@@ -204,30 +222,36 @@ const App: React.FC = () => {
       console.error(`Error ${operationDescription} transaction (User: ${currentUser.uid}, ID: ${id || 'new'}):`, error);
       alert(`Failed to save transaction. Error: ${error.message || 'Unknown error'}.`);
     }
-  }, [currentUser, userDefinedCategories]);
+  }, [currentUser, userDefinedCategories, editingTransaction]);
 
-  // Placeholder for Edit EMI from LiabilityEMIDetailPage (Phase 2)
+
   const handleEditEMI = (transaction: Transaction) => {
-    // This will eventually open the TransactionForm for editing this specific expense
-    console.log("Placeholder: Edit EMI", transaction);
+    // This correctly sets up editingTransaction for handleAddOrEditTransaction
     handleOpenEditTransactionForm(transaction); 
-    // Additional logic will be needed to update liability.amountRepaid if amount changes
   };
 
-  // Placeholder for Delete EMI from LiabilityEMIDetailPage (Phase 3)
-  const handleDeleteEMI = (transactionId: string) => {
-     // This will eventually call handleDeleteTransaction and update liability.amountRepaid
-    console.log("Placeholder: Delete EMI", transactionId);
-    handleDeleteTransaction(transactionId);
-     // Additional logic will be needed to update liability.amountRepaid
+  const handleDeleteEMI = async (transactionId: string, relatedLiabilityId: string, emiAmount: number) => {
+    if (!currentUser?.uid) return;
+    if (window.confirm("Are you sure you want to delete this EMI payment? This will also adjust the principal repaid on the liability.")) {
+      try {
+        await storageService.deleteTransactionAndUpdateLiability(
+          currentUser.uid,
+          transactionId,
+          relatedLiabilityId,
+          emiAmount // Simplified: assume full EMI amount was principal for adjustment
+        );
+      } catch (error) {
+        console.error("Error deleting EMI and updating liability:", error);
+        alert(`Failed to delete EMI. Error: ${error}`);
+      }
+    }
   };
 
-
+  // General transaction delete, does NOT adjust liability
   const handleDeleteTransaction = useCallback(async (id: string) => {
     if (!currentUser?.uid) return;
     if (window.confirm("Are you sure you want to delete this transaction?")) {
       try { 
-        // In Phase 3, if transaction has relatedLiabilityId, fetch it, then delete, then update liability
         await storageService.deleteTransaction(currentUser.uid, id); 
       } 
       catch (error) { console.error("Error deleting transaction:", error); alert("Failed to delete transaction."); }
@@ -290,7 +314,7 @@ const App: React.FC = () => {
       return;
     }
     
-    let principalPaidForThisPayment = paymentAmount; // Default assumption
+    let principalPaidForThisPayment = paymentAmount; 
 
     if (typeof liability.interestRate === 'number' && liability.interestRate > 0) {
         const outstandingPrincipalBeforePayment = liability.initialAmount - liability.amountRepaid;
@@ -302,15 +326,13 @@ const App: React.FC = () => {
             );
             principalPaidForThisPayment = paymentDetails.principalPaid;
         } else {
-             // If already fully paid or overpaid on principal, new payments are effectively 0 principal reduction
              principalPaidForThisPayment = 0;
         }
     } else {
-      // No interest rate, so assume full payment amount goes to principal reduction if outstanding
        const outstandingPrincipalBeforePayment = liability.initialAmount - liability.amountRepaid;
        principalPaidForThisPayment = Math.min(paymentAmount, outstandingPrincipalBeforePayment);
     }
-    principalPaidForThisPayment = Math.max(0, principalPaidForThisPayment); // Ensure principal paid isn't negative
+    principalPaidForThisPayment = Math.max(0, principalPaidForThisPayment); 
 
     const newAmountRepaidTotal = Math.min(liability.amountRepaid + principalPaidForThisPayment, liability.initialAmount);
 
@@ -351,9 +373,9 @@ const App: React.FC = () => {
       }
       try {
         await storageService.addUserDefinedCategory(currentUser.uid, categoryType, categoryName);
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Error adding ${categoryType} category:`, error);
-        alert(`Failed to add category: ${categoryName}. Error: ${error}`);
+        alert(`Failed to add category: ${categoryName}. Error: ${error.message}`);
       }
     };
 
@@ -365,9 +387,9 @@ const App: React.FC = () => {
       }
       try {
         await storageService.updateUserDefinedCategory(currentUser.uid, categoryType, oldName, newName);
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Error renaming ${categoryType} category "${oldName}" to "${newName}":`, error);
-        alert(`Failed to rename category. Error: ${error}`);
+        alert(`Failed to rename category. Error: ${error.message}`);
       }
     };
 
@@ -381,9 +403,9 @@ const App: React.FC = () => {
         try {
           await storageService.deleteUserDefinedCategory(currentUser.uid, categoryType, categoryName);
           setForceFormCategoryResetKey(prev => prev + 1);
-        } catch (error) {
+        } catch (error: any) {
           console.error(`Error deleting ${categoryType} category "${categoryName}":`, error);
-          alert(`Failed to delete category: ${categoryName}. Error: ${error}`);
+          alert(`Failed to delete category: ${categoryName}. Error: ${error.message}`);
         }
       }
     };
@@ -511,16 +533,20 @@ const App: React.FC = () => {
     );
   }
 
-  if (activeView === 'liabilityEMIDetail') {
+  if (activeView === 'liabilityEMIDetail' && selectedLiabilityForEMIs) {
     return (
       <LiabilityEMIDetailPage
-        liability={selectedLiabilityForEMIs ?? undefined} // Pass undefined if null
+        liability={selectedLiabilityForEMIs}
         allTransactions={transactions}
-        onBack={navigateToDashboard} // Or could be navigateToLiabilityDetails based on context
+        onBack={navigateToDashboard} 
         onEditEMI={handleEditEMI} 
-        onDeleteEMI={handleDeleteEMI} 
+        onDeleteEMI={(transactionId, relatedLiabilityId, emiAmount) => handleDeleteEMI(transactionId, relatedLiabilityId, emiAmount)}
       />
     );
+  } else if (activeView === 'liabilityEMIDetail' && !selectedLiabilityForEMIs) {
+    // Fallback if selectedLiabilityForEMIs is null but view is active (should ideally not happen)
+    navigateToDashboard(); // or navigateToLiabilityDetails()
+    return null; // or a loading/error state
   }
 
 
@@ -646,7 +672,7 @@ const App: React.FC = () => {
               onDelete={handleDeleteLiability} 
               onEdit={handleOpenEditLiabilityForm} 
               onRecordPayment={handleOpenRecordPaymentForm}
-              onViewEMIs={handleViewEMIs} // Pass to dashboard list
+              onViewEMIs={handleViewEMIs} 
             />
           </div>
         </div>

@@ -7,8 +7,8 @@ interface LiabilityEMIDetailPageProps {
   liability: Liability | undefined;
   allTransactions: Transaction[];
   onBack: () => void;
-  onEditEMI: (transaction: Transaction) => void; // Placeholder for future edit EMI
-  onDeleteEMI: (transactionId: string) => void; // Placeholder for future delete EMI
+  onEditEMI: (transaction: Transaction) => void; 
+  onDeleteEMI: (transactionId: string, relatedLiabilityId: string, emiAmount: number) => void; 
 }
 
 export const LiabilityEMIDetailPage: React.FC<LiabilityEMIDetailPageProps> = ({
@@ -89,10 +89,15 @@ export const LiabilityEMIDetailPage: React.FC<LiabilityEMIDetailPageProps> = ({
                 <TransactionItem
                   key={transaction.id}
                   transaction={transaction}
-                  // TODO: Wire up actual edit/delete handlers in Phase 2/3
-                  // For now, they can call placeholder functions or be disabled
                   onEdit={() => onEditEMI(transaction)} 
-                  onDelete={() => onDeleteEMI(transaction.id)}
+                  onDelete={() => {
+                    if (liability) { // Ensure liability is defined
+                      onDeleteEMI(transaction.id, liability.id, transaction.amount);
+                    } else {
+                      console.error("Cannot delete EMI: Liability context is missing.");
+                      alert("Error: Could not determine which liability this EMI belongs to for deletion.");
+                    }
+                  }}
                 />
               ))}
             </ul>
