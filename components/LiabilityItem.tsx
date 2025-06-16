@@ -1,18 +1,19 @@
-
 import React from 'react';
-import { Liability } from '../types';
+import { Liability, Transaction, TransactionType } from '../types'; // Added Transaction, TransactionType
 import { TrashIcon, EditIcon, PaymentIcon } from './icons'; 
-import { calculateRemainingLoanTerm } from '../utils'; // Import the new utility
+// calculateRemainingLoanTerm is no longer used here for display
+// import { calculateRemainingLoanTerm } from '../utils'; 
 
 interface LiabilityItemProps {
   liability: Liability;
+  allTransactions: Transaction[]; // New prop
   onDelete: (id: string) => void;
   onEdit: (liability: Liability) => void;
   onRecordPayment: (liability: Liability) => void;
   onViewEMIs?: (liabilityId: string) => void; 
 }
 
-export const LiabilityItem: React.FC<LiabilityItemProps> = ({ liability, onDelete, onEdit, onRecordPayment, onViewEMIs }) => {
+export const LiabilityItem: React.FC<LiabilityItemProps> = ({ liability, allTransactions, onDelete, onEdit, onRecordPayment, onViewEMIs }) => {
   const { id, name, initialAmount, amountRepaid, category, emiAmount, nextDueDate, interestRate, loanTermInMonths, notes } = liability;
   const remainingAmount = initialAmount - amountRepaid; 
   const formattedNextDueDate = new Date(nextDueDate + 'T00:00:00Z').toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
@@ -29,27 +30,14 @@ export const LiabilityItem: React.FC<LiabilityItemProps> = ({ liability, onDelet
     }
   };
 
-  const outstandingPrincipal = initialAmount - amountRepaid;
-  let remainingTermDisplay: string | null = null;
-  if (outstandingPrincipal > 0 && emiAmount && typeof interestRate === 'number') {
-    const termInMonths = calculateRemainingLoanTerm(outstandingPrincipal, interestRate, emiAmount);
-    if (termInMonths !== null && termInMonths > 0) {
-      const years = Math.floor(termInMonths / 12);
-      const months = termInMonths % 12;
-      let display = '';
-      if (years > 0) {
-        display += `${years} yr${years > 1 ? 's' : ''}`;
-      }
-      if (months > 0) {
-        if (years > 0) display += ' ';
-        display += `${months} mth${months > 1 ? 's' : ''}`;
-      }
-      remainingTermDisplay = display || 'Less than a month';
-    } else if (termInMonths === 0) {
-      remainingTermDisplay = 'Paid off'; // Should be covered by remainingAmount <= 0
-    } else if (termInMonths === null) {
-        remainingTermDisplay = "N/A (check EMI/Rate)";
-    }
+  // New Remaining Term Calculation
+  let remainingTermDisplay: string = "N/A";
+  if (typeof liability.loanTermInMonths === 'number') {
+    const numberOfEMIsPaid = allTransactions.filter(
+      t => t.type === TransactionType.EXPENSE && t.relatedLiabilityId === liability.id
+    ).length;
+    const calculatedRemainingMonths = liability.loanTermInMonths - numberOfEMIsPaid;
+    remainingTermDisplay = `${Math.max(0, calculatedRemainingMonths)} mths`;
   }
 
 
@@ -111,7 +99,7 @@ export const LiabilityItem: React.FC<LiabilityItemProps> = ({ liability, onDelet
                 <span className="text-gray-300">{loanTermInMonths} months</span>
               </div>
             )}
-            {remainingTermDisplay && remainingAmount > 0 && (
+            {remainingAmount > 0 && ( // Only show remaining term if there's an outstanding amount
               <div>
                 <span className="text-gray-400">Remaining Term: </span>
                 <span className="text-gray-300">{remainingTermDisplay}</span>

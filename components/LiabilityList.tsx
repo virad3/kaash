@@ -1,16 +1,17 @@
 import React from 'react';
-import { Liability } from '../types';
+import { Liability, Transaction } from '../types'; // Added Transaction
 import { LiabilityItem } from './LiabilityItem';
 
 interface LiabilityListProps {
   liabilities: Liability[];
+  allTransactions: Transaction[]; // New prop
   onDelete: (id: string) => void;
   onEdit: (liability: Liability) => void;
   onRecordPayment: (liability: Liability) => void;
-  onViewEMIs?: (liabilityId: string) => void; // New prop
+  onViewEMIs?: (liabilityId: string) => void; 
 }
 
-export const LiabilityList: React.FC<LiabilityListProps> = ({ liabilities, onDelete, onEdit, onRecordPayment, onViewEMIs }) => {
+export const LiabilityList: React.FC<LiabilityListProps> = ({ liabilities, allTransactions, onDelete, onEdit, onRecordPayment, onViewEMIs }) => {
   const totalOutstandingLiabilities = liabilities.reduce((sum, l) => sum + (l.initialAmount - l.amountRepaid), 0);
 
   // Sort by next due date, soonest first
@@ -38,10 +39,11 @@ export const LiabilityList: React.FC<LiabilityListProps> = ({ liabilities, onDel
             <LiabilityItem 
               key={liability.id} 
               liability={liability} 
+              allTransactions={allTransactions} // Pass down
               onDelete={onDelete}
               onEdit={onEdit}
               onRecordPayment={onRecordPayment}
-              onViewEMIs={onViewEMIs} // Pass down the handler
+              onViewEMIs={onViewEMIs} 
             />
           ))}
         </ul>

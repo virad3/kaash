@@ -16,7 +16,7 @@ import { LiabilityEMIDetailPage } from './components/LiabilityEMIDetailPage';
 import { SideMenu } from './components/SideMenu'; 
 import { EditProfileModal } from './components/EditProfileModal'; 
 import { MonthlySummaryChart } from './components/MonthlySummaryChart';
-import { EarlyLoanClosurePage } from './components/EarlyLoanClosurePage'; // New Import
+import { EarlyLoanClosurePage } from './components/EarlyLoanClosurePage'; 
 import * as storageService from './services/storageService';
 import * as authService from './services/authService';
 import { KaashLogoIcon, PlusIcon, BellIcon, PiggyBankIcon, UserIcon, LogoutIcon, MenuIcon, EditIcon as ProfileEditIcon } from './components/icons'; 
@@ -611,7 +611,7 @@ const App: React.FC = () => {
       case 'savingsDetails':
         return <SavingsDetailsPage savingTransactions={savingTransactions} onBack={navigateToDashboard} onEditTransaction={handleOpenEditTransactionForm} onDeleteTransaction={handleDeleteTransaction} onOpenNewTransactionForm={handleOpenNewTransactionForm} />;
       case 'liabilityDetails':
-        return <LiabilityDetailsPage liabilities={liabilities} onBack={navigateToDashboard} onEditLiability={handleOpenEditLiabilityForm} onDeleteLiability={handleDeleteLiability} onRecordPayment={handleOpenRecordPaymentForm} onViewEMIs={handleViewEMIs} onOpenNewLiabilityForm={handleOpenNewLiabilityForm} />;
+        return <LiabilityDetailsPage liabilities={liabilities} allTransactions={transactions} onBack={navigateToDashboard} onEditLiability={handleOpenEditLiabilityForm} onDeleteLiability={handleDeleteLiability} onRecordPayment={handleOpenRecordPaymentForm} onViewEMIs={handleViewEMIs} onOpenNewLiabilityForm={handleOpenNewLiabilityForm} />;
       case 'liabilityEMIDetail':
         if (selectedLiabilityForEMIs) {
           return <LiabilityEMIDetailPage liability={selectedLiabilityForEMIs} allTransactions={transactions} onBack={navigateToDashboard} onEditEMI={handleEditEMI} onDeleteEMI={handleDeleteEMI} />;
@@ -664,6 +664,17 @@ const App: React.FC = () => {
                 onDelete={handleDeleteTransaction}
                 onEdit={handleOpenEditTransactionForm}
               />
+              
+              {/* Moved LiabilityList here to pass allTransactions */}
+              <LiabilityList
+                liabilities={liabilities}
+                allTransactions={transactions} // Pass all transactions
+                onDelete={handleDeleteLiability}
+                onEdit={handleOpenEditLiabilityForm}
+                onRecordPayment={handleOpenRecordPaymentForm}
+                onViewEMIs={handleViewEMIs}
+              />
+
 
               <footer className="w-full mt-6 sm:mt-8 py-3 sm:py-4 text-center text-gray-500 text-xs sm:text-sm">
                 <p>&copy; {new Date().getFullYear()} Kaash. Track smarter, live better.</p>
@@ -685,7 +696,7 @@ const App: React.FC = () => {
           onOpenExpenseForm={() => handleOpenNewTransactionForm(TransactionType.EXPENSE)}
           onOpenSavingForm={() => handleOpenNewTransactionForm(TransactionType.SAVING)}
           onOpenLiabilityForm={handleOpenNewLiabilityForm}
-          onNavigateToEarlyLoanClosure={navigateToEarlyLoanClosure} // Pass handler
+          onNavigateToEarlyLoanClosure={navigateToEarlyLoanClosure} 
         />
       )}
       

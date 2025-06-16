@@ -1,12 +1,12 @@
-
 import React, { useState, useMemo } from 'react';
-import { Liability, LiabilityCategory } from '../types';
+import { Liability, LiabilityCategory, Transaction } from '../types'; // Added Transaction
 import { LiabilityList } from './LiabilityList'; 
 import { BackIcon, PlusIcon } from './icons'; 
 import { LIABILITY_CATEGORIES } from '../constants';
 
 interface LiabilityDetailsPageProps {
   liabilities: Liability[];
+  allTransactions: Transaction[]; // New prop
   onBack: () => void;
   onEditLiability: (liability: Liability) => void;
   onDeleteLiability: (id: string) => void;
@@ -17,6 +17,7 @@ interface LiabilityDetailsPageProps {
 
 export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({ 
   liabilities, 
+  allTransactions, // Destructure new prop
   onBack, 
   onEditLiability, 
   onDeleteLiability, 
@@ -58,6 +59,7 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
               <span className="text-sm sm:text-base">Back</span>
             </button>
             <h1 className="text-2xl sm:text-3xl font-bold text-orange-400 text-center w-full mt-3">Liability Details</h1>
+            <p className="text-center text-gray-400 text-sm mt-1">Track and manage your liabilities easily.</p>
           </div>
         </header>
 
@@ -65,14 +67,14 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
           {/* Left Sidebar: Filters and Summary */}
           <div className="md:col-span-4 xl:col-span-3 space-y-6">
             <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 space-y-4">
-              <h3 className="text-lg font-semibold text-sky-300 mb-3">Filters</h3>
+              <h3 className="text-xl font-semibold text-gray-100 mb-4">Filter Options</h3>
               <div>
-                <label htmlFor="categoryFilter" className="block text-sm font-medium text-gray-300 mb-1">Filter by Category:</label>
+                <label htmlFor="categoryFilter" className="block text-sm font-medium text-gray-200 mb-1.5">Filter by Category:</label>
                 <select
                   id="categoryFilter"
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"
+                  className="w-full bg-slate-900 border border-slate-700 text-gray-200 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"
                 >
                   <option value="all">All Categories</option>
                   {uniqueCategories.map(category => (
@@ -83,13 +85,13 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
             </div>
 
             <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 text-center">
-              <p className="text-sm text-gray-400 uppercase tracking-wider">Liabilities Summary</p>
-              <p className="text-3xl font-bold text-orange-400">₹{totalFilteredOutstanding.toFixed(2)}</p>
+              <p className="text-xl font-semibold text-gray-100 mb-2">Liabilities Summary</p>
+              <p className="text-4xl font-bold text-orange-400">₹{totalFilteredOutstanding.toFixed(2)}</p>
             </div>
 
             <button
               onClick={onOpenNewLiabilityForm}
-              className="w-full px-6 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-75 flex items-center justify-center gap-2"
+              className="w-full px-6 py-3 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-75 flex items-center justify-center gap-2"
               aria-label="Add new liability"
             >
               <PlusIcon className="h-5 w-5" /> Add Liability
@@ -98,14 +100,15 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
 
           {/* Right Main Content: Liability List */}
           <div className="md:col-span-8 xl:col-span-9 space-y-6">
-            {liabilities.length === 0 ? (
+            {liabilities.length === 0 && filteredLiabilities.length === 0 ? (
                 <div className="text-center py-10 bg-slate-800 rounded-lg border border-slate-700">
                     <p className="text-xl text-gray-400">No liabilities recorded yet.</p>
-                    <p className="text-gray-500 mt-2 mb-4">Click "Add Liability" to get started.</p>
+                    <p className="text-gray-500 mt-2 mb-4">Click "Add Liability" in the sidebar to get started.</p>
                 </div>
             ) : (
                 <LiabilityList
                   liabilities={filteredLiabilities}
+                  allTransactions={allTransactions} // Pass down
                   onDelete={onDeleteLiability}
                   onEdit={onEditLiability}
                   onRecordPayment={onRecordPayment}
