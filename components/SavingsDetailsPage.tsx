@@ -94,23 +94,27 @@ export const SavingsDetailsPage: React.FC<SavingsDetailsPageProps> = ({
   }, [filteredTransactions]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 p-2 sm:p-4 md:p-6 selection:bg-sky-400 selection:text-sky-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 p-2 sm:p-0 md:p-0 selection:bg-sky-400 selection:text-sky-900"> {/* Adjusted padding */}
       <div className="max-w-4xl mx-auto">
-        <header className="mb-6">
-          <div className="block">
-            <button 
-              onClick={onBack}
-              className="flex items-center space-x-2 text-sky-400 hover:text-sky-300 transition-colors p-2 rounded-md hover:bg-slate-700 mb-2"
-              aria-label="Back"
-            >
-              <BackIcon className="h-6 w-6" />
-              <span className="text-sm sm:text-base">Back</span>
-            </button>
-            <h1 className="text-2xl sm:text-3xl font-bold text-teal-400 text-center w-full mt-3">Savings Details</h1>
-          </div>
+        <header className="sticky top-0 z-30 bg-slate-800/95 backdrop-blur-md border-b border-slate-700 py-2 sm:py-3">
+            <div className="relative flex items-center justify-center h-full px-2 sm:px-0">
+                <div className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2">
+                    <button
+                        onClick={onBack}
+                        className="flex items-center space-x-1 text-sky-400 hover:text-sky-300 p-1.5 sm:p-2 rounded-md hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-800"
+                        aria-label="Back"
+                    >
+                        <BackIcon className="h-5 w-5" />
+                        <span className="text-xs sm:text-sm font-medium hidden sm:inline">Back</span>
+                    </button>
+                </div>
+                <h1 className="text-lg sm:text-xl font-semibold text-teal-400 px-12 sm:px-16 text-center truncate">
+                    Savings Details
+                </h1>
+            </div>
         </header>
 
-        <div className="mt-6 space-y-6 md:grid md:grid-cols-12 md:gap-x-8 md:space-y-0">
+        <div className="mt-6 p-2 sm:p-4 md:p-6 space-y-6 md:grid md:grid-cols-12 md:gap-x-8 md:space-y-0">
           {/* Left Sidebar: Filters and Summary */}
           <div className="md:col-span-4 xl:col-span-3 space-y-6">
             <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 space-y-4">

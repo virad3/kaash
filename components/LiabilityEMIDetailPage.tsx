@@ -42,7 +42,7 @@ export const LiabilityEMIDetailPage: React.FC<LiabilityEMIDetailPageProps> = ({
       <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 p-6 flex flex-col items-center justify-center">
         <p className="text-xl text-red-400">Liability data not found.</p>
         <button
-          onClick={onBack} // This onBack should navigate to a safe place, like liability list or dashboard
+          onClick={onBack} 
           className="mt-4 flex items-center space-x-2 text-sky-400 hover:text-sky-300 transition-colors p-2 rounded-md hover:bg-slate-700"
           aria-label="Back"
         >
@@ -58,73 +58,73 @@ export const LiabilityEMIDetailPage: React.FC<LiabilityEMIDetailPageProps> = ({
     return emiTransactions.reduce((sum, t) => sum + t.amount, 0);
   }, [emiTransactions]);
 
-  // Total interest paid is the sum of all actual EMI payments made MINUS the total principal that has been repaid.
-  // liability.amountRepaid should accurately reflect the sum of all principal components from the EMIs.
   const totalInterestPaid = useMemo(() => {
     const interest = totalEMIsPaidAmount - liability.amountRepaid;
-    return Math.max(0, interest); // Interest paid cannot be negative
+    return Math.max(0, interest); 
   }, [totalEMIsPaidAmount, liability.amountRepaid]);
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 p-2 sm:p-4 md:p-6 selection:bg-sky-400 selection:text-sky-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 p-2 sm:p-0 md:p-0 selection:bg-sky-400 selection:text-sky-900"> {/* Adjusted padding */}
       <div className="max-w-4xl mx-auto">
-        <header className="mb-6">
-          <div className="block">
-            <button
-              onClick={onBack} // Changed to go back to Liability Details
-              className="flex items-center space-x-2 text-sky-400 hover:text-sky-300 transition-colors p-2 rounded-md hover:bg-slate-700 mb-2"
-              aria-label="Back to Liability Details"
-            >
-              <BackIcon className="h-6 w-6" />
-              <span className="text-sm sm:text-base">Back to Liabilities</span>
-            </button>
-            <h1 className="text-2xl sm:text-3xl font-bold text-orange-400 text-center w-full mt-1">
-              EMI History for: {liability.name || liability.category}
-            </h1>
-          </div>
+        <header className="sticky top-0 z-30 bg-slate-800/95 backdrop-blur-md border-b border-slate-700 py-2 sm:py-3">
+            <div className="relative flex items-center justify-center h-full px-2 sm:px-0">
+                <div className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2">
+                    <button
+                        onClick={onBack}
+                        className="flex items-center space-x-1 text-sky-400 hover:text-sky-300 p-1.5 sm:p-2 rounded-md hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-800"
+                        aria-label="Back to Liability Details"
+                    >
+                        <BackIcon className="h-5 w-5" />
+                        <span className="text-xs sm:text-sm font-medium hidden sm:inline">Back</span>
+                    </button>
+                </div>
+                <h1 className="text-lg sm:text-xl font-semibold text-orange-400 px-12 sm:px-16 text-center truncate">
+                    EMI History: {liability.name || liability.category}
+                </h1>
+            </div>
         </header>
 
-        {/* Liability Summary Card */}
-        <div className="mb-6 p-4 bg-slate-800 rounded-lg border border-slate-700 shadow-lg">
-          <h2 className="text-xl font-semibold text-sky-300 mb-3">Liability Summary</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            <p><span className="text-gray-400">Initial Amount:</span> <span className="text-gray-100 font-medium">₹{liability.initialAmount.toFixed(2)}</span></p>
-            <p><span className="text-gray-400">Total Principal Repaid:</span> <span className="text-green-400 font-medium">₹{liability.amountRepaid.toFixed(2)}</span></p>
-            <p><span className="text-gray-400">Outstanding Principal:</span> <span className="text-orange-400 font-medium">₹{outstandingPrincipal.toFixed(2)}</span></p>
-            <p><span className="text-gray-400">Total EMI Payments Made:</span> <span className="text-gray-100 font-medium">₹{totalEMIsPaidAmount.toFixed(2)}</span></p>
-            <p><span className="text-gray-400">Total Interest Paid:</span> <span className="text-yellow-400 font-medium">₹{totalInterestPaid.toFixed(2)}</span></p>
-            <p><span className="text-gray-400">Category:</span> <span className="text-gray-300">{liability.category}</span></p>
-            {liability.emiAmount && <p><span className="text-gray-400">Stated EMI:</span> <span className="text-gray-300">₹{liability.emiAmount.toFixed(2)}</span></p>}
-            <p><span className="text-gray-400">Next Due Date:</span> <span className="text-gray-300">{new Date(liability.nextDueDate + 'T00:00:00Z').toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' })}</span></p>
-            {liability.interestRate !== undefined && <p><span className="text-gray-400">Interest Rate:</span> <span className="text-gray-300">{liability.interestRate.toFixed(2)}%</span></p>}
-          </div>
-           {liability.notes && <p className="text-xs text-gray-400 mt-3 pt-2 border-t border-slate-700">Notes: {liability.notes}</p>}
-        </div>
+        <div className="mt-6 p-2 sm:p-4 md:p-6 space-y-6">
+            {/* Liability Summary Card */}
+            <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 shadow-lg">
+            <h2 className="text-xl font-semibold text-sky-300 mb-3">Liability Summary</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <p><span className="text-gray-400">Initial Amount:</span> <span className="text-gray-100 font-medium">₹{liability.initialAmount.toFixed(2)}</span></p>
+                <p><span className="text-gray-400">Total Principal Repaid:</span> <span className="text-green-400 font-medium">₹{liability.amountRepaid.toFixed(2)}</span></p>
+                <p><span className="text-gray-400">Outstanding Principal:</span> <span className="text-orange-400 font-medium">₹{outstandingPrincipal.toFixed(2)}</span></p>
+                <p><span className="text-gray-400">Total EMI Payments Made:</span> <span className="text-gray-100 font-medium">₹{totalEMIsPaidAmount.toFixed(2)}</span></p>
+                <p><span className="text-gray-400">Total Interest Paid:</span> <span className="text-yellow-400 font-medium">₹{totalInterestPaid.toFixed(2)}</span></p>
+                <p><span className="text-gray-400">Category:</span> <span className="text-gray-300">{liability.category}</span></p>
+                {liability.emiAmount && <p><span className="text-gray-400">Stated EMI:</span> <span className="text-gray-300">₹{liability.emiAmount.toFixed(2)}</span></p>}
+                <p><span className="text-gray-400">Next Due Date:</span> <span className="text-gray-300">{new Date(liability.nextDueDate + 'T00:00:00Z').toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' })}</span></p>
+                {liability.interestRate !== undefined && <p><span className="text-gray-400">Interest Rate:</span> <span className="text-gray-300">{liability.interestRate.toFixed(2)}%</span></p>}
+            </div>
+            {liability.notes && <p className="text-xs text-gray-400 mt-3 pt-2 border-t border-slate-700">Notes: {liability.notes}</p>}
+            </div>
 
-        {/* EMI Transaction List */}
-        <div className="bg-slate-800 p-3 sm:p-4 md:p-6 rounded-xl shadow-xl border border-slate-700">
-          <h3 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4 text-sky-400">Recorded EMI Payments ({emiTransactions.length})</h3>
-          {emiTransactions.length === 0 ? (
-            <p className="text-gray-400 text-center py-6 sm:py-8 text-sm sm:text-base">
-              No EMI payments recorded for this liability yet.
-            </p>
-          ) : (
-            <ul className="space-y-2 sm:space-y-3">
-              {emiTransactions.map(transaction => (
-                <TransactionItem
-                  key={transaction.id}
-                  transaction={transaction}
-                  onEdit={() => onEditEMI(transaction)} 
-                  onDelete={() => {
-                    // Liability should always be defined if we are on this page.
-                    // The main component checks for liability before rendering this page.
-                    onDeleteEMI(transaction.id, liability.id, transaction.amount);
-                  }}
-                />
-              ))}
-            </ul>
-          )}
+            {/* EMI Transaction List */}
+            <div className="bg-slate-800 p-3 sm:p-4 md:p-6 rounded-xl shadow-xl border border-slate-700">
+            <h3 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4 text-sky-400">Recorded EMI Payments ({emiTransactions.length})</h3>
+            {emiTransactions.length === 0 ? (
+                <p className="text-gray-400 text-center py-6 sm:py-8 text-sm sm:text-base">
+                No EMI payments recorded for this liability yet.
+                </p>
+            ) : (
+                <ul className="space-y-2 sm:space-y-3">
+                {emiTransactions.map(transaction => (
+                    <TransactionItem
+                    key={transaction.id}
+                    transaction={transaction}
+                    onEdit={() => onEditEMI(transaction)} 
+                    onDelete={() => {
+                        onDeleteEMI(transaction.id, liability.id, transaction.amount);
+                    }}
+                    />
+                ))}
+                </ul>
+            )}
+            </div>
         </div>
       </div>
     </div>
