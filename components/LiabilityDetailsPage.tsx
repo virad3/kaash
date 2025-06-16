@@ -1,13 +1,13 @@
 
 import React, { useState, useMemo } from 'react';
-import { Liability, LiabilityCategory, Transaction } from '../types'; // Added Transaction
+import { Liability, LiabilityCategory, Transaction, TransactionType } from '../types'; // Added TransactionType
 import { LiabilityList } from './LiabilityList'; 
 import { BackIcon, PlusIcon } from './icons'; 
 import { LIABILITY_CATEGORIES } from '../constants';
 
 interface LiabilityDetailsPageProps {
   liabilities: Liability[];
-  allTransactions: Transaction[]; // New prop
+  allTransactions: Transaction[]; 
   onBack: () => void;
   onEditLiability: (liability: Liability) => void;
   onDeleteLiability: (id: string) => void;
@@ -18,7 +18,7 @@ interface LiabilityDetailsPageProps {
 
 export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({ 
   liabilities, 
-  allTransactions, // Destructure new prop
+  allTransactions, 
   onBack, 
   onEditLiability, 
   onDeleteLiability, 
@@ -42,9 +42,33 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
     });
   }, [liabilities, selectedCategory]);
 
-  const totalFilteredOutstanding = useMemo(() => {
-    return filteredLiabilities.reduce((sum, l) => sum + (l.initialAmount - l.amountRepaid), 0);
-  }, [filteredLiabilities]);
+  const summaryFigures = useMemo(() => {
+    const totalInitialAmount = filteredLiabilities.reduce((sum, l) => sum + l.initialAmount, 0);
+    const totalPrincipalRepaid = filteredLiabilities.reduce((sum, l) => sum + l.amountRepaid, 0);
+    const totalOutstanding = totalInitialAmount - totalPrincipalRepaid;
+
+    const filteredLiabilityIds = new Set(filteredLiabilities.map(l => l.id));
+    const totalEMIsPaid = allTransactions.reduce((sum, t) => {
+      if (
+        t.type === TransactionType.EXPENSE &&
+        t.relatedLiabilityId &&
+        filteredLiabilityIds.has(t.relatedLiabilityId)
+      ) {
+        return sum + t.amount;
+      }
+      return sum;
+    }, 0);
+
+    const totalInterestPaid = Math.max(0, totalEMIsPaid - totalPrincipalRepaid);
+
+    return {
+      totalInitialAmount,
+      totalPrincipalRepaid,
+      totalEMIsPaid,
+      totalInterestPaid,
+      totalOutstanding,
+    };
+  }, [filteredLiabilities, allTransactions]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 p-2 sm:p-4 md:p-6 selection:bg-sky-400 selection:text-sky-900">
@@ -67,7 +91,7 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
         <div className="mt-6 space-y-6 md:grid md:grid-cols-12 md:gap-x-8 md:space-y-0">
           {/* Left Sidebar: Filters and Summary */}
           <div className="md:col-span-4 xl:col-span-3 space-y-6">
-            <div className="p-3 sm:p-4 bg-slate-800 rounded-lg border border-slate-700 space-y-4"> {/* Adjusted padding */}
+            <div className="p-3 sm:p-4 bg-slate-800 rounded-lg border border-slate-700 space-y-4">
               <h3 className="text-xl font-semibold text-gray-100 mb-4">Filter Options</h3>
               <div>
                 <label htmlFor="categoryFilter" className="block text-sm font-medium text-gray-200 mb-1.5">Filter by Category:</label>
@@ -85,9 +109,24 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
               </div>
             </div>
 
-            <div className="p-3 sm:p-4 bg-slate-800 rounded-lg border border-slate-700 text-center"> {/* Adjusted padding */}
-              <p className="text-lg sm:text-xl font-semibold text-gray-100 mb-1 sm:mb-2">Liabilities Summary</p> {/* Adjusted font size & margin */}
-              <p className="text-3xl sm:text-4xl font-bold text-orange-400">₹{totalFilteredOutstanding.toFixed(2)}</p> {/* Adjusted font size */}
+            <div className="p-3 sm:p-4 bg-slate-800 rounded-lg border border-slate-700 text-left space-y-2">
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-100 mb-1 sm:mb-2">Liabilities Summary</h3>
+              <div>
+                <span className="text-xs text-gray-400 block">Total Initial Amount:</span>
+                <p className="text-xl sm:text-2xl font-semibold text-gray-200">₹{summaryFigures.totalInitialAmount.toFixed(2)}</p>
+              </div>
+              <div>
+                <span className="text-xs text-gray-400 block">Total Principal Repaid:</span>
+                <p className="text-xl sm:text-2xl font-semibold text-green-400">₹{summaryFigures.totalPrincipalRepaid.toFixed(2)}</p>
+              </div>
+              <div>
+                <span className="text-xs text-gray-400 block">Total Interest Paid:</span>
+                <p className="text-xl sm:text-2xl font-semibold text-yellow-400">₹{summaryFigures.totalInterestPaid.toFixed(2)}</p>
+              </div>
+              <div className="pt-1 mt-1 border-t border-slate-700">
+                <span className="text-xs text-gray-400 block">Total Outstanding:</span>
+                <p className="text-2xl sm:text-3xl font-bold text-orange-400">₹{summaryFigures.totalOutstanding.toFixed(2)}</p>
+              </div>
             </div>
 
             <button
@@ -109,7 +148,7 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
             ) : (
                 <LiabilityList
                   liabilities={filteredLiabilities}
-                  allTransactions={allTransactions} // Pass down
+                  allTransactions={allTransactions} 
                   onDelete={onDeleteLiability}
                   onEdit={onEditLiability}
                   onRecordPayment={onRecordPayment}
