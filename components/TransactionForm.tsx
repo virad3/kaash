@@ -199,6 +199,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
 
   const isEditing = !!existingTransaction;
+  const todayDateString = new Date().toISOString().split('T')[0];
   
   let title = '';
   let buttonText = '';
@@ -269,6 +270,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             value={date}
             onChange={(e) => setDate(e.target.value)}
             className="w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-md shadow-sm p-3 focus:ring-sky-500 focus:border-sky-500 transition"
+            max={!isEditing ? todayDateString : undefined}
             required
           />
         </div>

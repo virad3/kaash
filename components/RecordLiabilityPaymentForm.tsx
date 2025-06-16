@@ -28,6 +28,7 @@ export const RecordLiabilityPaymentForm: React.FC<RecordLiabilityPaymentFormProp
     setNotes(`Payment for ${liability.name || liability.category}`);
   }, [liability]);
 
+  const todayDateString = new Date().toISOString().split('T')[0];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +66,7 @@ export const RecordLiabilityPaymentForm: React.FC<RecordLiabilityPaymentFormProp
           value={paymentDate}
           onChange={(e) => setPaymentDate(e.target.value)}
           className="w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-md shadow-sm p-3 focus:ring-sky-500 focus:border-sky-500 transition"
+          max={todayDateString}
           required
         />
       </div>

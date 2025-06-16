@@ -201,6 +201,7 @@ export const LiabilityForm: React.FC<LiabilityFormProps> = ({
   };
 
   const title = existingLiability ? 'Edit Liability' : 'Add New Liability';
+  const todayDateString = new Date().toISOString().split('T')[0];
 
   return (
     <>
@@ -298,6 +299,7 @@ export const LiabilityForm: React.FC<LiabilityFormProps> = ({
             value={nextDueDate}
             onChange={(e) => setNextDueDate(e.target.value)}
             className="w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-md shadow-sm p-3 focus:ring-sky-500 focus:border-sky-500 transition"
+            max={!existingLiability ? todayDateString : undefined}
             required
           />
         </div>
