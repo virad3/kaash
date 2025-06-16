@@ -193,6 +193,11 @@ const App: React.FC = () => {
     }
   };
 
+  const closeModal = useCallback(() => {
+    setShowTransactionModal(false); setCurrentTransactionType(null); setEditingTransaction(null);
+    setShowLiabilityForm(false); setEditingLiability(null); setPayingLiability(null);
+    setShowEditProfileModal(false);
+  }, []);
 
   const handleOpenNewTransactionForm = useCallback((type: TransactionType) => { 
     setCurrentTransactionType(type); 
@@ -209,12 +214,6 @@ const App: React.FC = () => {
   const handleOpenNewLiabilityForm = useCallback(() => { 
     setEditingLiability(null); 
     setShowLiabilityForm(true); 
-  }, []);
-
-  const closeModal = useCallback(() => {
-    setShowTransactionModal(false); setCurrentTransactionType(null); setEditingTransaction(null);
-    setShowLiabilityForm(false); setEditingLiability(null); setPayingLiability(null);
-    setShowEditProfileModal(false);
   }, []);
 
 
@@ -253,16 +252,8 @@ const App: React.FC = () => {
 
     try {
       if (id && editingTransaction && editingTransaction.relatedLiabilityId) {
-        // This is an EMI edit. The principal adjustment logic here might need refinement
-        // similar to handleDeleteEMI if the EMI amount changes significantly affecting principal portion.
-        // For now, it adjusts based on the difference in total EMI amount.
         const oldAmount = editingTransaction.amount;
         const newAmount = payload.amount;
-        // This difference is of the total EMI amount, not purely principal.
-        // The service function `updateTransactionAndLiabilityAmountRepaid` adds this difference directly to `amountRepaid`.
-        // This could lead to inaccuracies in `amountRepaid` if the interest portion changes significantly.
-        // A more accurate approach would re-calculate the new principal portion and adjust `amountRepaid` accordingly.
-        // However, for simplicity, current logic is maintained. This is a known area for future improvement.
         const amountDifferenceForLiabilityRepaid = newAmount - oldAmount; 
         
         await storageService.updateTransactionAndLiabilityAmountRepaid(
@@ -332,10 +323,9 @@ const App: React.FC = () => {
 
     if (window.confirm("Are you sure you want to delete this EMI payment? This will also adjust the principal repaid on the liability.")) {
       try {
-        let principalComponentOfDeletedEMI = emiAmount; // Default for 0 interest or if calculation fails
+        let principalComponentOfDeletedEMI = emiAmount; 
 
         if (typeof liability.interestRate === 'number' && liability.interestRate > 0) {
-          // Get all EMIs for this liability, sorted chronologically
           const emiTransactionsForLiability = transactions
             .filter(t => t.relatedLiabilityId === liability.id && t.type === TransactionType.EXPENSE)
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || (a.createdAt && b.createdAt ? (typeof a.createdAt.toDate === 'function' ? a.createdAt.toDate() : new Date(a.createdAt)).getTime() - (typeof b.createdAt.toDate === 'function' ? b.createdAt.toDate() : new Date(b.createdAt)).getTime() : 0) );
@@ -343,12 +333,10 @@ const App: React.FC = () => {
           let outstandingPrincipalBeforeTx = liability.initialAmount;
           for (const tx of emiTransactionsForLiability) {
             if (tx.id === transactionToDelete.id) {
-              // This is the transaction we are about to delete. Calculate its principal component.
               const paymentDetails = calculateLoanPaymentDetails(outstandingPrincipalBeforeTx, liability.interestRate, tx.amount);
               principalComponentOfDeletedEMI = paymentDetails.principalPaid;
               break; 
             }
-            // For transactions before the one being deleted, simulate their payment
             const paymentDetails = calculateLoanPaymentDetails(outstandingPrincipalBeforeTx, liability.interestRate, tx.amount);
             outstandingPrincipalBeforeTx -= paymentDetails.principalPaid;
             outstandingPrincipalBeforeTx = Math.max(0, outstandingPrincipalBeforeTx);
@@ -719,15 +707,7 @@ const App: React.FC = () => {
                 onEdit={handleOpenEditTransactionForm}
               />
               
-              <LiabilityList
-                liabilities={liabilities}
-                allTransactions={transactions} 
-                onDelete={handleDeleteLiability}
-                onEdit={handleOpenEditLiabilityForm}
-                onRecordPayment={handleOpenRecordPaymentForm}
-                onViewEMIs={handleViewEMIs}
-              />
-
+              {/* LiabilityList was removed from here based on user request */}
 
               <footer className="w-full mt-6 sm:mt-8 py-3 sm:py-4 text-center text-gray-500 text-xs sm:text-sm">
                 <p>&copy; {new Date().getFullYear()} Kaash. Track smarter, live better.</p>
