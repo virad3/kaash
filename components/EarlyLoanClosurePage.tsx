@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { BackIcon, CoinsIcon } from './icons'; 
 import { Liability, AmortizationResult as SingleLoanAmortizationResult, MultiLoanAmortizationResult, IndividualLoanAmortizationResult } from '../types';
-import { calculateLoanAmortization, formatMonthsToYearsMonthsString, formatDateForDisplay, calculateMultiLoanAvalancheAmortization } from '@/utils';
+import { calculateLoanAmortization, formatMonthsToYearsMonthsString, formatDateForDisplay, calculateMultiLoanAvalancheAmortization } from '../utils';
 
 interface EarlyLoanClosurePageProps {
   liabilities: Liability[];
