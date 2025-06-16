@@ -681,7 +681,11 @@ const App: React.FC = () => {
   const navigateToExpenseDetails = useCallback(() => { setActiveView('expenseDetails'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); }, []);
   const navigateToSavingsDetails = useCallback(() => { setActiveView('savingsDetails'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); }, []);
   const navigateToLiabilityDetails = useCallback(() => { setActiveView('liabilityDetails'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); }, []);
-  const navigateToEarlyLoanClosure = useCallback(() => { setActiveView('earlyLoanClosure'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); }, []);
+  const navigateToEarlyLoanClosure = useCallback(() => { 
+    setActiveView('earlyLoanClosure'); 
+    setSelectedLiabilityForEMIs(null); 
+    // setIsMenuOpen(false); // Removed: SideMenu's handleActionClick will call toggleMenu
+  }, []);
   
   const handleViewEMIs = useCallback((liabilityId: string) => {
     const liability = liabilities.find(l => l.id === liabilityId);
