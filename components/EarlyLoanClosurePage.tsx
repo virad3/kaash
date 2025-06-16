@@ -1,109 +1,199 @@
-
 import React, { useState, useMemo } from 'react';
-import { BackIcon, PlusIcon,CoinsIcon } from './icons'; // Assuming CoinsIcon is for savings
-import { Liability } from '../types';
-import { calculateLoanAmortization, formatMonthsToYearsMonthsString, formatDateForDisplay, AmortizationResult } from '../utils';
+import { BackIcon, CoinsIcon } from './icons'; 
+import { Liability, AmortizationResult as SingleLoanAmortizationResult, MultiLoanAmortizationResult, IndividualLoanAmortizationResult } from '../types';
+import { calculateLoanAmortization, formatMonthsToYearsMonthsString, formatDateForDisplay, calculateMultiLoanAvalancheAmortization } from '@/utils';
 
 interface EarlyLoanClosurePageProps {
   liabilities: Liability[];
   onBack: () => void;
 }
 
-interface CalculationResults {
-  original: AmortizationResult & { payoffDateString: string; termString: string };
-  new: AmortizationResult & { payoffDateString: string; termString: string };
-  interestSaved: number;
-  timeSavedMonths: number;
-  timeSavedString: string;
-  additionalPayment: number;
-  selectedLiabilityName: string;
+// Results structure for the page state
+interface DisplayResults extends MultiLoanAmortizationResult {
+  // Add formatted strings directly to the display results for easier rendering
+  overallOriginalTermString: string;
+  overallOriginalPayoffDateString: string;
+  overallNewTermString: string;
+  overallNewPayoffDateString: string;
+  timeSavedOverallString: string;
+  individualLoanResultsFormatted: Array<IndividualLoanAmortizationResult & {
+      originalTermString: string;
+      originalPayoffDateString: string;
+      newTermString: string;
+      newPayoffDateString: string;
+      timeSavedString: string;
+  }>;
 }
 
+
 export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liabilities, onBack }) => {
-  const [selectedLiabilityId, setSelectedLiabilityId] = useState<string>('');
+  const [selectedLiabilityIds, setSelectedLiabilityIds] = useState<string[]>([]);
   const [additionalPayment, setAdditionalPayment] = useState<string>('');
-  const [results, setResults] = useState<CalculationResults | null>(null);
+  const [results, setResults] = useState<DisplayResults | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const activeLiabilities = useMemo(() => {
-    return liabilities.filter(l => l.initialAmount - l.amountRepaid > 0 && l.interestRate !== undefined && l.emiAmount !== undefined && l.emiAmount > 0);
+    return liabilities.filter(l => 
+      (l.initialAmount - l.amountRepaid) > 0.005 && // Has outstanding balance
+      l.interestRate !== undefined && l.interestRate >= 0 && // Has valid interest rate
+      l.emiAmount !== undefined && l.emiAmount > 0 // Has valid EMI
+    );
   }, [liabilities]);
+
+  const handleLiabilitySelection = (liabilityId: string) => {
+    setSelectedLiabilityIds(prevSelected =>
+      prevSelected.includes(liabilityId)
+        ? prevSelected.filter(id => id !== liabilityId)
+        : [...prevSelected, liabilityId]
+    );
+    setResults(null);
+    setError(null);
+  };
 
   const handleCalculate = () => {
     setError(null);
     setResults(null);
 
-    const liability = liabilities.find(l => l.id === selectedLiabilityId);
-    if (!liability) {
-      setError("Please select a liability.");
+    if (selectedLiabilityIds.length === 0) {
+      setError("Please select at least one liability.");
       return;
     }
 
-    if (liability.initialAmount - liability.amountRepaid <=0) {
-      setError("This liability is already paid off.");
-      return;
+    const selectedLiabilitiesDetails = liabilities.filter(l => selectedLiabilityIds.includes(l.id));
+
+    if (selectedLiabilitiesDetails.some(l => (l.initialAmount - l.amountRepaid) <= 0.005 || l.interestRate === undefined || l.emiAmount === undefined || l.emiAmount <=0 )) {
+         setError("One or more selected liabilities are already paid off or missing required information (interest rate, EMI). Please check and try again.");
+        return;
     }
     
-    if (liability.interestRate === undefined || liability.interestRate === null) {
-      setError("Selected liability does not have an interest rate defined. Cannot perform calculation.");
-      return;
-    }
-    if (liability.emiAmount === undefined || liability.emiAmount === null || liability.emiAmount <=0) {
-      setError("Selected liability does not have a valid EMI amount defined. Cannot perform calculation.");
-      return;
-    }
-
     const additionalPayNum = parseFloat(additionalPayment);
     if (isNaN(additionalPayNum) || additionalPayNum < 0) {
       setError("Please enter a valid non-negative additional monthly payment.");
       return;
     }
-    
-    const currentPrincipal = liability.initialAmount - liability.amountRepaid;
-    // Use liability.nextDueDate as the starting point for amortization simulation
-    const calculationStartDate = new Date(liability.nextDueDate + 'T00:00:00Z'); // Ensure UTC context for date
 
     try {
-      const originalScenario = calculateLoanAmortization(
-        currentPrincipal,
-        liability.interestRate,
-        liability.emiAmount,
-        0, // No additional payment for original
-        calculationStartDate
+      // --- Original Scenario Calculation ---
+      let overallOriginalTotalInterestPaid = 0;
+      let maxOriginalTermInMonths = 0;
+      let latestOriginalPayoffDate = new Date(0); // Epoch
+      const individualOriginalResults: IndividualLoanAmortizationResult[] = [];
+
+      const earliestNextDueDate = selectedLiabilitiesDetails.reduce((earliest, current) => {
+          const currentDate = new Date(current.nextDueDate + 'T00:00:00Z');
+          return currentDate < earliest ? currentDate : earliest;
+      }, new Date(selectedLiabilitiesDetails[0].nextDueDate + 'T00:00:00Z'));
+
+
+      selectedLiabilitiesDetails.forEach(l => {
+        const currentPrincipal = l.initialAmount - l.amountRepaid;
+        const originalScenarioSingle: SingleLoanAmortizationResult = calculateLoanAmortization(
+          currentPrincipal,
+          l.interestRate!,
+          l.emiAmount!,
+          0,
+          new Date(l.nextDueDate + 'T00:00:00Z') // Use individual next due date for original calc
+        );
+
+        if(originalScenarioSingle.termInMonths === Infinity){
+            throw new Error(`Loan "${l.name || l.category}" cannot be paid off with its current EMI (too low to cover interest). Cannot proceed with multi-loan calculation.`);
+        }
+
+        overallOriginalTotalInterestPaid += originalScenarioSingle.totalInterestPaid;
+        if (originalScenarioSingle.termInMonths > maxOriginalTermInMonths) {
+          maxOriginalTermInMonths = originalScenarioSingle.termInMonths;
+        }
+        if (originalScenarioSingle.payoffDate > latestOriginalPayoffDate) {
+          latestOriginalPayoffDate = originalScenarioSingle.payoffDate;
+        }
+        // Store for individual comparison later
+        individualOriginalResults.push({
+            id: l.id,
+            name: l.name || l.category,
+            originalTermInMonths: originalScenarioSingle.termInMonths,
+            originalTotalInterestPaid: originalScenarioSingle.totalInterestPaid,
+            originalPayoffDate: originalScenarioSingle.payoffDate,
+            newTermInMonths: 0, // Will be filled by multi-loan calc
+            newTotalInterestPaid: 0, // Will be filled
+            newPayoffDate: new Date(0), // Will be filled
+            interestSaved: 0, // Will be calculated
+            timeSavedInMonths: 0 // Will be calculated
+        });
+      });
+
+      // --- New Scenario Calculation (Multi-Loan Avalanche) ---
+       const loansForMultiCalc = selectedLiabilitiesDetails.map(l => ({
+        id: l.id,
+        name: l.name || l.category,
+        currentPrincipal: l.initialAmount - l.amountRepaid,
+        annualInterestRate: l.interestRate!,
+        emiAmount: l.emiAmount!,
+        nextDueDate: l.nextDueDate, // Keep for reference, but simulation starts from earliestNextDueDate
+      }));
+
+      const multiLoanNewResult = calculateMultiLoanAvalancheAmortization(
+        loansForMultiCalc,
+        additionalPayNum,
+        earliestNextDueDate // Start simulation from the earliest due date for combined approach
       );
 
-      const newScenario = calculateLoanAmortization(
-        currentPrincipal,
-        liability.interestRate,
-        liability.emiAmount,
-        additionalPayNum,
-        calculationStartDate
-      );
-      
-      if (originalScenario.termInMonths === Infinity || newScenario.termInMonths === Infinity) {
-        setError("The loan cannot be paid off with the current EMI and/or additional payment (EMI might be too low to cover interest).");
+      if (multiLoanNewResult.overallNewTermInMonths === Infinity) {
+        setError("The selected loans cannot be paid off with the current EMIs and additional payment. The additional payment might be too low to cover overall interest accumulation effectively.");
         return;
       }
 
-      const interestSaved = originalScenario.totalInterestPaid - newScenario.totalInterestPaid;
-      const timeSavedMonths = originalScenario.termInMonths - newScenario.termInMonths;
+      const finalIndividualResults: Array<IndividualLoanAmortizationResult & {
+            originalTermString: string;
+            originalPayoffDateString: string;
+            newTermString: string;
+            newPayoffDateString: string;
+            timeSavedString: string;
+        }> = [];
+
+      multiLoanNewResult.individualLoanResults.forEach(newRes => {
+        const originalRes = individualOriginalResults.find(or => or.id === newRes.id);
+        if (originalRes) {
+          const interestSaved = originalRes.originalTotalInterestPaid - newRes.loanNewTotalInterestPaid;
+          const timeSavedInMonths = originalRes.originalTermInMonths - newRes.loanNewTermInMonths;
+          finalIndividualResults.push({
+            ...originalRes,
+            newTermInMonths: newRes.loanNewTermInMonths,
+            newTotalInterestPaid: newRes.loanNewTotalInterestPaid,
+            newPayoffDate: newRes.loanNewPayoffDate || new Date('9999-12-31'), // Fallback for safety
+            interestSaved: Math.max(0,interestSaved),
+            timeSavedInMonths: Math.max(0,timeSavedInMonths),
+            // Formatted strings for display
+            originalTermString: formatMonthsToYearsMonthsString(originalRes.originalTermInMonths),
+            originalPayoffDateString: formatDateForDisplay(originalRes.originalPayoffDate),
+            newTermString: formatMonthsToYearsMonthsString(newRes.loanNewTermInMonths),
+            newPayoffDateString: formatDateForDisplay(newRes.loanNewPayoffDate || new Date('9999-12-31')),
+            timeSavedString: formatMonthsToYearsMonthsString(Math.max(0,timeSavedInMonths)),
+          });
+        }
+      });
+      
+      const overallInterestSaved = overallOriginalTotalInterestPaid - multiLoanNewResult.overallNewTotalInterestPaid;
+      const overallTimeSavedMonths = maxOriginalTermInMonths - multiLoanNewResult.overallNewTermInMonths;
+
 
       setResults({
-        original: {
-          ...originalScenario,
-          payoffDateString: formatDateForDisplay(originalScenario.payoffDate),
-          termString: formatMonthsToYearsMonthsString(originalScenario.termInMonths),
-        },
-        new: {
-          ...newScenario,
-          payoffDateString: formatDateForDisplay(newScenario.payoffDate),
-          termString: formatMonthsToYearsMonthsString(newScenario.termInMonths),
-        },
-        interestSaved: Math.max(0, interestSaved), // Interest saved cannot be negative
-        timeSavedMonths: Math.max(0, timeSavedMonths),
-        timeSavedString: formatMonthsToYearsMonthsString(Math.max(0, timeSavedMonths)),
-        additionalPayment: additionalPayNum,
-        selectedLiabilityName: liability.name || liability.category,
+        overallOriginalTermInMonths: maxOriginalTermInMonths,
+        overallOriginalTotalInterestPaid: overallOriginalTotalInterestPaid,
+        overallOriginalPayoffDate: latestOriginalPayoffDate,
+        overallNewTermInMonths: multiLoanNewResult.overallNewTermInMonths,
+        overallNewTotalInterestPaid: multiLoanNewResult.overallNewTotalInterestPaid,
+        overallNewPayoffDate: multiLoanNewResult.overallNewPayoffDate,
+        interestSavedOverall: Math.max(0, overallInterestSaved),
+        timeSavedOverallInMonths: Math.max(0, overallTimeSavedMonths),
+        additionalPaymentApplied: additionalPayNum,
+        individualLoanResults: finalIndividualResults, // This is not part of MultiLoanAmortizationResult type but used by DisplayResults
+        // Formatted strings for overall display
+        overallOriginalTermString: formatMonthsToYearsMonthsString(maxOriginalTermInMonths),
+        overallOriginalPayoffDateString: formatDateForDisplay(latestOriginalPayoffDate),
+        overallNewTermString: formatMonthsToYearsMonthsString(multiLoanNewResult.overallNewTermInMonths),
+        overallNewPayoffDateString: formatDateForDisplay(multiLoanNewResult.overallNewPayoffDate),
+        timeSavedOverallString: formatMonthsToYearsMonthsString(Math.max(0, overallTimeSavedMonths)),
+        individualLoanResultsFormatted: finalIndividualResults,
       });
 
     } catch (e: any) {
@@ -114,7 +204,7 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 p-2 sm:p-4 md:p-6 selection:bg-sky-400 selection:text-sky-900">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-5xl mx-auto"> {/* Increased max-width for more space */}
         <header className="mb-6">
           <div className="block">
             <button
@@ -126,7 +216,7 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
               <span className="text-sm sm:text-base">Back</span>
             </button>
             <h1 className="text-2xl sm:text-3xl font-bold text-sky-400 text-center w-full mt-3">
-              Early Loan Closure Calculator
+              Early Loan Closure Calculator (Multi-Loan)
             </h1>
           </div>
         </header>
@@ -134,51 +224,52 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
         <main className="bg-slate-800 p-4 sm:p-6 md:p-8 rounded-xl shadow-xl border border-slate-700 space-y-6">
           {activeLiabilities.length === 0 ? (
              <p className="text-gray-300 text-center py-5">
-              No active liabilities with defined interest rates and EMI amounts available for calculation. Please add or update liabilities.
+              No active liabilities with defined interest rates and EMI amounts available. Add or update liabilities to use this calculator.
             </p>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 items-end">
-                <div>
-                  <label htmlFor="liabilitySelect" className="block text-sm font-medium text-gray-300 mb-1">Select Liability</label>
-                  <select
-                    id="liabilitySelect"
-                    value={selectedLiabilityId}
-                    onChange={(e) => {
-                      setSelectedLiabilityId(e.target.value);
-                      setResults(null); // Clear previous results when liability changes
-                      setError(null);
-                    }}
-                    className="w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-md shadow-sm p-3 focus:ring-sky-500 focus:border-sky-500 transition"
-                  >
-                    <option value="">-- Select a Liability --</option>
-                    {activeLiabilities.map(l => (
-                      <option key={l.id} value={l.id}>
-                        {l.name || l.category} (Outstanding: ₹{(l.initialAmount - l.amountRepaid).toFixed(2)})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="additionalPayment" className="block text-sm font-medium text-gray-300 mb-1">Additional Monthly Payment (₹)</label>
-                  <input
-                    type="number"
-                    id="additionalPayment"
-                    value={additionalPayment}
-                    onChange={(e) => setAdditionalPayment(e.target.value)}
-                    className="w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-md shadow-sm p-3 focus:ring-sky-500 focus:border-sky-500 transition"
-                    placeholder="e.g., 1000"
-                    min="0"
-                    step="100"
-                  />
+              <div>
+                <label className="block text-md font-medium text-gray-200 mb-2">Select Liabilities to Include:</label>
+                <div className="space-y-2 max-h-60 overflow-y-auto bg-slate-700/30 p-3 rounded-md border border-slate-600">
+                  {activeLiabilities.map(l => (
+                    <div key={l.id} className="flex items-center p-2 rounded hover:bg-slate-600/50 transition-colors">
+                      <input
+                        type="checkbox"
+                        id={`liability-${l.id}`}
+                        checked={selectedLiabilityIds.includes(l.id)}
+                        onChange={() => handleLiabilitySelection(l.id)}
+                        className="h-5 w-5 text-sky-500 bg-slate-600 border-slate-500 rounded focus:ring-sky-400 focus:ring-offset-slate-700 mr-3 accent-sky-500"
+                      />
+                      <label htmlFor={`liability-${l.id}`} className="flex-grow text-sm text-gray-200 cursor-pointer">
+                        {l.name || l.category} 
+                        <span className="text-xs text-gray-400 ml-2">(Outstanding: ₹{(l.initialAmount - l.amountRepaid).toFixed(2)}, Rate: {l.interestRate?.toFixed(2)}%, EMI: ₹{l.emiAmount?.toFixed(2)})</span>
+                      </label>
+                    </div>
+                  ))}
                 </div>
               </div>
+              
+              <div>
+                <label htmlFor="additionalPayment" className="block text-sm font-medium text-gray-300 mb-1">Total Additional Monthly Payment (₹)</label>
+                <input
+                  type="number"
+                  id="additionalPayment"
+                  value={additionalPayment}
+                  onChange={(e) => setAdditionalPayment(e.target.value)}
+                  className="w-full md:w-1/2 bg-slate-700 border border-slate-600 text-gray-100 rounded-md shadow-sm p-3 focus:ring-sky-500 focus:border-sky-500 transition"
+                  placeholder="e.g., 5000"
+                  min="0"
+                  step="100"
+                />
+                 <p className="text-xs text-gray-400 mt-1">This amount will be distributed across selected loans (highest interest rate first after EMIs).</p>
+              </div>
+
               <button
                 onClick={handleCalculate}
-                disabled={!selectedLiabilityId}
+                disabled={selectedLiabilityIds.length === 0}
                 className="w-full sm:w-auto px-8 py-3 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-lg shadow-md transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-75 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Calculate Savings
+                Calculate Group Savings
               </button>
             </>
           )}
@@ -192,46 +283,62 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
           {results && (
             <div className="mt-6 pt-6 border-t border-slate-700 space-y-8">
               <h2 className="text-xl sm:text-2xl font-semibold text-center text-sky-300 mb-4">
-                Results for: <span className="text-sky-400">{results.selectedLiabilityName}</span>
+                Combined Results for Selected Liabilities
               </h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Original Scenario */}
                 <div className="bg-slate-700/50 p-4 rounded-lg border border-slate-600">
-                  <h3 className="text-lg font-semibold text-gray-200 mb-3">Original Loan Scenario</h3>
+                  <h3 className="text-lg font-semibold text-gray-200 mb-3">Original Combined Scenario</h3>
                   <div className="space-y-1.5 text-sm">
-                    <p><span className="text-gray-400">Loan Term:</span> {results.original.termString}</p>
-                    <p><span className="text-gray-400">Total Interest Paid:</span> ₹{results.original.totalInterestPaid.toFixed(2)}</p>
-                    <p><span className="text-gray-400">Estimated Payoff Date:</span> {results.original.payoffDateString}</p>
+                    <p><span className="text-gray-400">Time to Clear All:</span> {results.overallOriginalTermString}</p>
+                    <p><span className="text-gray-400">Total Interest Paid:</span> ₹{results.overallOriginalTotalInterestPaid.toFixed(2)}</p>
+                    <p><span className="text-gray-400">Final Payoff Date:</span> {results.overallOriginalPayoffDateString}</p>
                   </div>
                 </div>
 
-                {/* New Scenario */}
                 <div className="bg-slate-700/50 p-4 rounded-lg border border-slate-600">
-                  <h3 className="text-lg font-semibold text-gray-200 mb-3">With Additional ₹{results.additionalPayment.toFixed(2)}/month</h3>
+                  <h3 className="text-lg font-semibold text-gray-200 mb-3">With Additional ₹{results.additionalPaymentApplied.toFixed(2)}/month</h3>
                   <div className="space-y-1.5 text-sm">
-                    <p><span className="text-gray-400">New Loan Term:</span> {results.new.termString}</p>
-                    <p><span className="text-gray-400">New Total Interest Paid:</span> ₹{results.new.totalInterestPaid.toFixed(2)}</p>
-                    <p><span className="text-gray-400">New Estimated Payoff Date:</span> {results.new.payoffDateString}</p>
+                    <p><span className="text-gray-400">New Time to Clear All:</span> {results.overallNewTermString}</p>
+                    <p><span className="text-gray-400">New Total Interest Paid:</span> ₹{results.overallNewTotalInterestPaid.toFixed(2)}</p>
+                    <p><span className="text-gray-400">New Final Payoff Date:</span> {results.overallNewPayoffDateString}</p>
                   </div>
                 </div>
               </div>
               
-              {/* Savings Summary */}
               <div className="bg-green-500/10 p-4 sm:p-6 rounded-lg border border-green-500/30 text-center">
                 <CoinsIcon className="h-10 w-10 text-green-400 mx-auto mb-3" />
-                <h3 className="text-xl sm:text-2xl font-bold text-green-300 mb-1">Total Savings!</h3>
+                <h3 className="text-xl sm:text-2xl font-bold text-green-300 mb-1">Overall Savings!</h3>
                 <p className="text-lg text-green-400 mb-1">
-                  Interest Saved: <span className="font-semibold">₹{results.interestSaved.toFixed(2)}</span>
+                  Total Interest Saved: <span className="font-semibold">₹{results.interestSavedOverall.toFixed(2)}</span>
                 </p>
                 <p className="text-md text-gray-200">
-                  Time Saved: <span className="font-semibold">{results.timeSavedString}</span>
+                  Overall Time Saved: <span className="font-semibold">{results.timeSavedOverallString}</span>
                 </p>
               </div>
+
+              <div className="mt-6 pt-6 border-t border-slate-700">
+                <h3 className="text-lg sm:text-xl font-semibold text-sky-300 mb-4">Individual Loan Breakdown (Accelerated Plan)</h3>
+                <div className="space-y-4">
+                  {results.individualLoanResultsFormatted.map(loanRes => (
+                    <div key={loanRes.id} className="bg-slate-700/40 p-3 rounded-md border border-slate-600 text-sm">
+                      <h4 className="font-semibold text-sky-400 mb-1">{loanRes.name}</h4>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                        <p><span className="text-gray-400">New Term:</span> {loanRes.newTermString}</p>
+                        <p><span className="text-gray-400">Interest Paid:</span> ₹{loanRes.newTotalInterestPaid.toFixed(2)}</p>
+                        <p><span className="text-gray-400">Payoff Date:</span> {loanRes.newPayoffDateString}</p>
+                        <p><span className="text-gray-400">Interest Saved:</span> <span className="text-green-400">₹{loanRes.interestSaved.toFixed(2)}</span></p>
+                        <p><span className="text-gray-400 col-span-2">Time Saved (vs its original):</span> {loanRes.timeSavedString}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
                <button
                   onClick={() => {
                     setResults(null);
-                    setSelectedLiabilityId('');
+                    setSelectedLiabilityIds([]);
                     setAdditionalPayment('');
                     setError(null);
                   }}

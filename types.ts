@@ -97,3 +97,47 @@ export interface UserDefinedCategories {
   saving: string[];
   liability: string[];
 }
+
+// For single loan amortization result in utils.ts
+export interface AmortizationResult {
+  termInMonths: number;
+  totalInterestPaid: number;
+  payoffDate: Date;
+  monthlyPayments: Array<{
+    month: number;
+    interestPaid: number;
+    principalPaid: number;
+    remainingBalance: number;
+    additionalPaymentMade: number;
+  }>;
+}
+
+// For multi-loan early closure calculation results
+export interface IndividualLoanAmortizationResult {
+  id: string;
+  name: string;
+  originalTermInMonths: number;
+  originalTotalInterestPaid: number;
+  originalPayoffDate: Date;
+  newTermInMonths: number;
+  newTotalInterestPaid: number;
+  newPayoffDate: Date;
+  interestSaved: number;
+  timeSavedInMonths: number;
+}
+
+export interface MultiLoanAmortizationResult {
+  overallOriginalTermInMonths: number; // Longest term among selected loans originally
+  overallOriginalTotalInterestPaid: number; // Sum of original interests
+  overallOriginalPayoffDate: Date; // Latest payoff date among selected loans originally
+  
+  overallNewTermInMonths: number; // Term to pay off ALL selected loans with additional payment
+  overallNewTotalInterestPaid: number; // Sum of new interests for all selected loans
+  overallNewPayoffDate: Date; // Date when the LAST of the selected loans is paid off
+
+  interestSavedOverall: number;
+  timeSavedOverallInMonths: number;
+  
+  individualLoanResults: IndividualLoanAmortizationResult[];
+  additionalPaymentApplied: number;
+}
