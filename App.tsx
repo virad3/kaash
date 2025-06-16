@@ -131,12 +131,10 @@ const App: React.FC = () => {
     if (activeView === 'liabilityEMIDetail' && selectedLiabilityForEMIs?.id && currentUser) {
       const currentLiabilityInList = liabilities.find(l => l.id === selectedLiabilityForEMIs.id);
       if (currentLiabilityInList) {
-        // Compare stringified versions to detect changes in the liability object's data
         if (JSON.stringify(currentLiabilityInList) !== JSON.stringify(selectedLiabilityForEMIs)) {
            setSelectedLiabilityForEMIs(currentLiabilityInList);
         }
       } else {
-        // Liability might have been deleted from the main list, so the selected one is invalid
         navigateToDashboard();
       }
     }
@@ -213,6 +211,12 @@ const App: React.FC = () => {
     setShowLiabilityForm(true); 
   }, []);
 
+  const closeModal = useCallback(() => {
+    setShowTransactionModal(false); setCurrentTransactionType(null); setEditingTransaction(null);
+    setShowLiabilityForm(false); setEditingLiability(null); setPayingLiability(null);
+    setShowEditProfileModal(false);
+  }, []);
+
 
   const handleAddOrEditTransaction = useCallback(async (data: { 
     id?: string; 
@@ -249,16 +253,24 @@ const App: React.FC = () => {
 
     try {
       if (id && editingTransaction && editingTransaction.relatedLiabilityId) {
+        // This is an EMI edit. The principal adjustment logic here might need refinement
+        // similar to handleDeleteEMI if the EMI amount changes significantly affecting principal portion.
+        // For now, it adjusts based on the difference in total EMI amount.
         const oldAmount = editingTransaction.amount;
         const newAmount = payload.amount;
-        const amountDifferenceForLiabilityRepaid = newAmount - oldAmount;
+        // This difference is of the total EMI amount, not purely principal.
+        // The service function `updateTransactionAndLiabilityAmountRepaid` adds this difference directly to `amountRepaid`.
+        // This could lead to inaccuracies in `amountRepaid` if the interest portion changes significantly.
+        // A more accurate approach would re-calculate the new principal portion and adjust `amountRepaid` accordingly.
+        // However, for simplicity, current logic is maintained. This is a known area for future improvement.
+        const amountDifferenceForLiabilityRepaid = newAmount - oldAmount; 
         
         await storageService.updateTransactionAndLiabilityAmountRepaid(
           currentUser.uid,
           id,
           payload as Partial<Omit<Transaction, 'id' | 'createdAt' | 'userId'>>,
           editingTransaction.relatedLiabilityId,
-          amountDifferenceForLiabilityRepaid
+          amountDifferenceForLiabilityRepaid 
         );
       } else if (id) { 
         await storageService.updateTransaction(currentUser.uid, id, payload as Partial<Omit<Transaction, 'id' | 'createdAt' | 'userId'>>);
@@ -300,7 +312,7 @@ const App: React.FC = () => {
       console.error(`Error ${operationDescription} transaction (User: ${currentUser.uid}, ID: ${id || 'new'}):`, error);
       alert(`Failed to save transaction. Error: ${error.message || 'Unknown error'}.`);
     }
-  }, [currentUser, userDefinedCategories, editingTransaction]);
+  }, [currentUser, userDefinedCategories, editingTransaction, closeModal]);
 
 
   const handleEditEMI = useCallback((transaction: Transaction) => {
@@ -309,27 +321,58 @@ const App: React.FC = () => {
 
   const handleDeleteEMI = useCallback(async (transactionId: string, relatedLiabilityId: string, emiAmount: number) => {
     if (!currentUser?.uid) return;
+
+    const transactionToDelete = transactions.find(t => t.id === transactionId);
+    const liability = liabilities.find(l => l.id === relatedLiabilityId);
+
+    if (!transactionToDelete || !liability) {
+      alert("Could not find the transaction or liability to delete.");
+      return;
+    }
+
     if (window.confirm("Are you sure you want to delete this EMI payment? This will also adjust the principal repaid on the liability.")) {
       try {
+        let principalComponentOfDeletedEMI = emiAmount; // Default for 0 interest or if calculation fails
+
+        if (typeof liability.interestRate === 'number' && liability.interestRate > 0) {
+          // Get all EMIs for this liability, sorted chronologically
+          const emiTransactionsForLiability = transactions
+            .filter(t => t.relatedLiabilityId === liability.id && t.type === TransactionType.EXPENSE)
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || (a.createdAt && b.createdAt ? (typeof a.createdAt.toDate === 'function' ? a.createdAt.toDate() : new Date(a.createdAt)).getTime() - (typeof b.createdAt.toDate === 'function' ? b.createdAt.toDate() : new Date(b.createdAt)).getTime() : 0) );
+          
+          let outstandingPrincipalBeforeTx = liability.initialAmount;
+          for (const tx of emiTransactionsForLiability) {
+            if (tx.id === transactionToDelete.id) {
+              // This is the transaction we are about to delete. Calculate its principal component.
+              const paymentDetails = calculateLoanPaymentDetails(outstandingPrincipalBeforeTx, liability.interestRate, tx.amount);
+              principalComponentOfDeletedEMI = paymentDetails.principalPaid;
+              break; 
+            }
+            // For transactions before the one being deleted, simulate their payment
+            const paymentDetails = calculateLoanPaymentDetails(outstandingPrincipalBeforeTx, liability.interestRate, tx.amount);
+            outstandingPrincipalBeforeTx -= paymentDetails.principalPaid;
+            outstandingPrincipalBeforeTx = Math.max(0, outstandingPrincipalBeforeTx);
+          }
+        }
+        
         await storageService.deleteTransactionAndUpdateLiability(
           currentUser.uid,
           transactionId,
           relatedLiabilityId,
-          emiAmount 
+          principalComponentOfDeletedEMI 
         );
       } catch (error: any) {
         console.error("Error deleting EMI and updating liability:", error);
         alert(`Failed to delete EMI. Error: ${error.message}`);
       }
     }
-  }, [currentUser]);
+  }, [currentUser, transactions, liabilities]);
 
   const handleDeleteTransaction = useCallback(async (id: string) => {
     if (!currentUser?.uid) return;
-    // Check if the transaction is an EMI payment before generic delete
     const txToDelete = transactions.find(t => t.id === id);
     if (txToDelete?.relatedLiabilityId && txToDelete.type === TransactionType.EXPENSE) {
-        if (window.confirm("This is an EMI payment. Deleting it will adjust the liability's principal. Are you sure? \n(To delete without affecting liability, edit the transaction first to remove its link to the liability.)")) {
+        if (window.confirm("This is an EMI payment. Deleting it will adjust the liability's principal repayment. Are you sure?")) {
             await handleDeleteEMI(id, txToDelete.relatedLiabilityId, txToDelete.amount);
         }
         return;
@@ -381,7 +424,7 @@ const App: React.FC = () => {
 
       closeModal();
     } catch (error: any) { console.error("Error saving liability:", error); alert(`Failed to save liability. Error: ${error.message}`); }
-  }, [currentUser, liabilities, userDefinedCategories]);
+  }, [currentUser, liabilities, userDefinedCategories, closeModal]);
 
   const handleDeleteLiability = useCallback(async (id: string) => {
     if (!currentUser?.uid) return;
@@ -520,7 +563,6 @@ const App: React.FC = () => {
       const dateComparison = new Date(b.date).getTime() - new Date(a.date).getTime();
       if (dateComparison !== 0) return dateComparison;
       if (a.createdAt && b.createdAt) {
-        // Handle both Firebase Timestamp and potential string dates during initial load
         const createdAtA = typeof a.createdAt.toDate === 'function' ? a.createdAt.toDate() : new Date(a.createdAt);
         const createdAtB = typeof b.createdAt.toDate === 'function' ? b.createdAt.toDate() : new Date(b.createdAt);
         return createdAtB.getTime() - createdAtA.getTime();
@@ -534,11 +576,11 @@ const App: React.FC = () => {
     const data: { month: string; income: number; expense: number; saving: number }[] = [];
     const now = new Date();
 
-    for (let i = 2; i >= 0; i--) { // Last 3 months, current month first in loop if i=0, but we want past months
+    for (let i = 2; i >= 0; i--) { 
       const targetDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const year = targetDate.getFullYear();
-      const month = targetDate.getMonth(); // 0-11
-      const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`; // YYYY-MM
+      const month = targetDate.getMonth(); 
+      const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`; 
       
       const monthLabel = targetDate.toLocaleString('default', { month: 'short', year: '2-digit' });
 
@@ -557,12 +599,6 @@ const App: React.FC = () => {
     }
     return data;
   }, [transactions]);
-  
-  const closeModal = useCallback(() => {
-    setShowTransactionModal(false); setCurrentTransactionType(null); setEditingTransaction(null);
-    setShowLiabilityForm(false); setEditingLiability(null); setPayingLiability(null);
-    setShowEditProfileModal(false);
-  }, []);
   
   const handleOpenEditLiabilityForm = useCallback((liability: Liability) => { setEditingLiability(liability); setShowLiabilityForm(true); }, []);
   const handleOpenRecordPaymentForm = useCallback((liability: Liability) => setPayingLiability(liability), []);
@@ -683,10 +719,9 @@ const App: React.FC = () => {
                 onEdit={handleOpenEditTransactionForm}
               />
               
-              {/* Moved LiabilityList here to pass allTransactions */}
               <LiabilityList
                 liabilities={liabilities}
-                allTransactions={transactions} // Pass all transactions
+                allTransactions={transactions} 
                 onDelete={handleDeleteLiability}
                 onEdit={handleOpenEditLiabilityForm}
                 onRecordPayment={handleOpenRecordPaymentForm}
@@ -773,7 +808,6 @@ const App: React.FC = () => {
         </header>
       )}
       
-      {/* Apply padding-top to content area only if sticky header is visible */}
       <div className={`w-full flex-grow ${currentUser && activeView === 'dashboard' ? 'pt-16 sm:pt-[76px]' : ''}`}> 
          {renderActiveView()}
       </div>
@@ -823,7 +857,7 @@ const App: React.FC = () => {
               <RecordLiabilityPaymentForm 
                 liability={payingLiability} 
                 onSubmit={(paymentAmount, paymentDate, newNextDueDate, notes) => {
-                  if (payingLiability) { // Check ensures payingLiability is not null
+                  if (payingLiability) { 
                     handleRecordLiabilityPayment(payingLiability.id, paymentAmount, paymentDate, newNextDueDate, notes);
                   }
                 }} 
