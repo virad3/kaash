@@ -124,6 +124,7 @@ export interface IndividualLoanAmortizationResult {
   newPayoffDate: Date;
   interestSaved: number;
   timeSavedInMonths: number;
+  totalAdditionalPaymentContributed: number; // New field
 }
 
 export interface MultiLoanAmortizationResult {
@@ -139,5 +140,5 @@ export interface MultiLoanAmortizationResult {
   timeSavedOverallInMonths: number;
   
   individualLoanResults: IndividualLoanAmortizationResult[];
-  additionalPaymentApplied: number;
+  additionalPaymentApplied: number; // This is the total additional payment input by the user.
 }

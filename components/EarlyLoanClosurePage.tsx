@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { BackIcon, CoinsIcon } from './icons'; 
 import { Liability, AmortizationResult as SingleLoanAmortizationResult, MultiLoanAmortizationResult, IndividualLoanAmortizationResult } from '../types';
-import { calculateLoanAmortization, formatMonthsToYearsMonthsString, formatDateForDisplay, calculateMultiLoanAvalancheAmortization } from '../utils';
+import { calculateLoanAmortization, formatMonthsToYearsMonthsString, formatDateForDisplay, calculateMultiLoanWeightedPrepaymentAmortization } from '../utils';
 
 interface EarlyLoanClosurePageProps {
   liabilities: Liability[];
@@ -10,7 +10,6 @@ interface EarlyLoanClosurePageProps {
 
 // Results structure for the page state
 interface DisplayResults extends MultiLoanAmortizationResult {
-  // Add formatted strings directly to the display results for easier rendering
   overallOriginalTermString: string;
   overallOriginalPayoffDateString: string;
   overallNewTermString: string;
@@ -22,6 +21,7 @@ interface DisplayResults extends MultiLoanAmortizationResult {
       newTermString: string;
       newPayoffDateString: string;
       timeSavedString: string;
+      // totalAdditionalPaymentContributed is already in IndividualLoanAmortizationResult
   }>;
 }
 
@@ -34,9 +34,9 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
 
   const activeLiabilities = useMemo(() => {
     return liabilities.filter(l => 
-      (l.initialAmount - l.amountRepaid) > 0.005 && // Has outstanding balance
-      l.interestRate !== undefined && l.interestRate >= 0 && // Has valid interest rate
-      l.emiAmount !== undefined && l.emiAmount > 0 // Has valid EMI
+      (l.initialAmount - l.amountRepaid) > 0.005 && 
+      l.interestRate !== undefined && l.interestRate >= 0 && 
+      l.emiAmount !== undefined && l.emiAmount > 0 
     );
   }, [liabilities]);
 
@@ -73,11 +73,11 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
     }
 
     try {
-      // --- Original Scenario Calculation ---
       let overallOriginalTotalInterestPaid = 0;
       let maxOriginalTermInMonths = 0;
-      let latestOriginalPayoffDate = new Date(0); // Epoch
-      const individualOriginalResults: IndividualLoanAmortizationResult[] = [];
+      let latestOriginalPayoffDate = new Date(0); 
+      const individualOriginalResultsBase: Omit<IndividualLoanAmortizationResult, 'newTermInMonths' | 'newTotalInterestPaid' | 'newPayoffDate' | 'interestSaved' | 'timeSavedInMonths' | 'totalAdditionalPaymentContributed'>[] = [];
+
 
       const earliestNextDueDate = selectedLiabilitiesDetails.reduce((earliest, current) => {
           const currentDate = new Date(current.nextDueDate + 'T00:00:00Z');
@@ -92,7 +92,7 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
           l.interestRate!,
           l.emiAmount!,
           0,
-          new Date(l.nextDueDate + 'T00:00:00Z') // Use individual next due date for original calc
+          new Date(l.nextDueDate + 'T00:00:00Z') 
         );
 
         if(originalScenarioSingle.termInMonths === Infinity){
@@ -106,43 +106,37 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
         if (originalScenarioSingle.payoffDate > latestOriginalPayoffDate) {
           latestOriginalPayoffDate = originalScenarioSingle.payoffDate;
         }
-        // Store for individual comparison later
-        individualOriginalResults.push({
+        
+        individualOriginalResultsBase.push({
             id: l.id,
             name: l.name || l.category,
             originalTermInMonths: originalScenarioSingle.termInMonths,
             originalTotalInterestPaid: originalScenarioSingle.totalInterestPaid,
             originalPayoffDate: originalScenarioSingle.payoffDate,
-            newTermInMonths: 0, // Will be filled by multi-loan calc
-            newTotalInterestPaid: 0, // Will be filled
-            newPayoffDate: new Date(0), // Will be filled
-            interestSaved: 0, // Will be calculated
-            timeSavedInMonths: 0 // Will be calculated
         });
       });
 
-      // --- New Scenario Calculation (Multi-Loan Avalanche) ---
        const loansForMultiCalc = selectedLiabilitiesDetails.map(l => ({
         id: l.id,
         name: l.name || l.category,
         currentPrincipal: l.initialAmount - l.amountRepaid,
         annualInterestRate: l.interestRate!,
         emiAmount: l.emiAmount!,
-        nextDueDate: l.nextDueDate, // Keep for reference, but simulation starts from earliestNextDueDate
+        nextDueDate: l.nextDueDate, 
       }));
 
-      const multiLoanNewResult = calculateMultiLoanAvalancheAmortization(
+      const multiLoanNewResult = calculateMultiLoanWeightedPrepaymentAmortization(
         loansForMultiCalc,
         additionalPayNum,
-        earliestNextDueDate // Start simulation from the earliest due date for combined approach
+        earliestNextDueDate 
       );
 
       if (multiLoanNewResult.overallNewTermInMonths === Infinity) {
-        setError("The selected loans cannot be paid off with the current EMIs and additional payment. The additional payment might be too low to cover overall interest accumulation effectively.");
+        setError("The selected loans cannot be paid off with the current EMIs and additional payment. The additional payment might be too low to cover overall interest accumulation effectively, or one of the loans is structured in a way it cannot be paid off.");
         return;
       }
 
-      const finalIndividualResults: Array<IndividualLoanAmortizationResult & {
+      const finalIndividualResultsFormatted: Array<IndividualLoanAmortizationResult & {
             originalTermString: string;
             originalPayoffDateString: string;
             newTermString: string;
@@ -150,23 +144,29 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
             timeSavedString: string;
         }> = [];
 
-      multiLoanNewResult.individualLoanResults.forEach(newRes => {
-        const originalRes = individualOriginalResults.find(or => or.id === newRes.id);
-        if (originalRes) {
-          const interestSaved = originalRes.originalTotalInterestPaid - newRes.loanNewTotalInterestPaid;
-          const timeSavedInMonths = originalRes.originalTermInMonths - newRes.loanNewTermInMonths;
-          finalIndividualResults.push({
-            ...originalRes,
-            newTermInMonths: newRes.loanNewTermInMonths,
-            newTotalInterestPaid: newRes.loanNewTotalInterestPaid,
-            newPayoffDate: newRes.loanNewPayoffDate || new Date('9999-12-31'), // Fallback for safety
+      multiLoanNewResult.individualLoanResults.forEach(newResLoanState => {
+        const originalResBase = individualOriginalResultsBase.find(or => or.id === newResLoanState.id);
+        if (originalResBase) {
+          const interestSaved = originalResBase.originalTotalInterestPaid - newResLoanState.loanNewTotalInterestPaid;
+          const timeSavedInMonths = originalResBase.originalTermInMonths - newResLoanState.loanNewTermInMonths;
+          
+          finalIndividualResultsFormatted.push({
+            id: newResLoanState.id,
+            name: newResLoanState.name,
+            originalTermInMonths: originalResBase.originalTermInMonths,
+            originalTotalInterestPaid: originalResBase.originalTotalInterestPaid,
+            originalPayoffDate: originalResBase.originalPayoffDate,
+            newTermInMonths: newResLoanState.loanNewTermInMonths,
+            newTotalInterestPaid: newResLoanState.loanNewTotalInterestPaid,
+            newPayoffDate: newResLoanState.loanNewPayoffDate || new Date('9999-12-31'),
             interestSaved: Math.max(0,interestSaved),
             timeSavedInMonths: Math.max(0,timeSavedInMonths),
+            totalAdditionalPaymentContributed: newResLoanState.totalAdditionalPaymentContributedThisLoan, // Get from newResLoanState
             // Formatted strings for display
-            originalTermString: formatMonthsToYearsMonthsString(originalRes.originalTermInMonths),
-            originalPayoffDateString: formatDateForDisplay(originalRes.originalPayoffDate),
-            newTermString: formatMonthsToYearsMonthsString(newRes.loanNewTermInMonths),
-            newPayoffDateString: formatDateForDisplay(newRes.loanNewPayoffDate || new Date('9999-12-31')),
+            originalTermString: formatMonthsToYearsMonthsString(originalResBase.originalTermInMonths),
+            originalPayoffDateString: formatDateForDisplay(originalResBase.originalPayoffDate),
+            newTermString: formatMonthsToYearsMonthsString(newResLoanState.loanNewTermInMonths),
+            newPayoffDateString: formatDateForDisplay(newResLoanState.loanNewPayoffDate || new Date('9999-12-31')),
             timeSavedString: formatMonthsToYearsMonthsString(Math.max(0,timeSavedInMonths)),
           });
         }
@@ -186,14 +186,13 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
         interestSavedOverall: Math.max(0, overallInterestSaved),
         timeSavedOverallInMonths: Math.max(0, overallTimeSavedMonths),
         additionalPaymentApplied: additionalPayNum,
-        individualLoanResults: finalIndividualResults, // This is not part of MultiLoanAmortizationResult type but used by DisplayResults
-        // Formatted strings for overall display
+        individualLoanResults: finalIndividualResultsFormatted, 
         overallOriginalTermString: formatMonthsToYearsMonthsString(maxOriginalTermInMonths),
         overallOriginalPayoffDateString: formatDateForDisplay(latestOriginalPayoffDate),
         overallNewTermString: formatMonthsToYearsMonthsString(multiLoanNewResult.overallNewTermInMonths),
         overallNewPayoffDateString: formatDateForDisplay(multiLoanNewResult.overallNewPayoffDate),
         timeSavedOverallString: formatMonthsToYearsMonthsString(Math.max(0, overallTimeSavedMonths)),
-        individualLoanResultsFormatted: finalIndividualResults,
+        individualLoanResultsFormatted: finalIndividualResultsFormatted,
       });
 
     } catch (e: any) {
@@ -204,7 +203,7 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 p-2 sm:p-4 md:p-6 selection:bg-sky-400 selection:text-sky-900">
-      <div className="max-w-5xl mx-auto"> {/* Increased max-width for more space */}
+      <div className="max-w-5xl mx-auto"> 
         <header className="mb-6">
           <div className="block">
             <button
@@ -216,7 +215,7 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
               <span className="text-sm sm:text-base">Back</span>
             </button>
             <h1 className="text-2xl sm:text-3xl font-bold text-sky-400 text-center w-full mt-3">
-              Early Loan Closure Calculator (Multi-Loan)
+              Early Loan Closure Calculator (Multi-Loan Weighted)
             </h1>
           </div>
         </header>
@@ -261,7 +260,7 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
                   min="0"
                   step="100"
                 />
-                 <p className="text-xs text-gray-400 mt-1">This amount will be distributed across selected loans (highest interest rate first after EMIs).</p>
+                 <p className="text-xs text-gray-400 mt-1">This amount (plus freed EMIs) will be distributed based on a weight of (Outstanding Principal * Interest Rate).</p>
               </div>
 
               <button
@@ -323,12 +322,13 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
                   {results.individualLoanResultsFormatted.map(loanRes => (
                     <div key={loanRes.id} className="bg-slate-700/40 p-3 rounded-md border border-slate-600 text-sm">
                       <h4 className="font-semibold text-sky-400 mb-1">{loanRes.name}</h4>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
                         <p><span className="text-gray-400">New Term:</span> {loanRes.newTermString}</p>
-                        <p><span className="text-gray-400">Interest Paid:</span> ₹{loanRes.newTotalInterestPaid.toFixed(2)}</p>
-                        <p><span className="text-gray-400">Payoff Date:</span> {loanRes.newPayoffDateString}</p>
+                        <p><span className="text-gray-400">Interest Paid (New):</span> ₹{loanRes.newTotalInterestPaid.toFixed(2)}</p>
+                        <p><span className="text-gray-400">Payoff Date (New):</span> {loanRes.newPayoffDateString}</p>
                         <p><span className="text-gray-400">Interest Saved:</span> <span className="text-green-400">₹{loanRes.interestSaved.toFixed(2)}</span></p>
-                        <p><span className="text-gray-400 col-span-2">Time Saved (vs its original):</span> {loanRes.timeSavedString}</p>
+                        <p className="sm:col-span-2"><span className="text-gray-400">Time Saved (vs its original):</span> {loanRes.timeSavedString}</p>
+                        <p className="sm:col-span-2"><span className="text-gray-400">Total Addtl. Prepayment Received:</span> <span className="text-cyan-400">₹{loanRes.totalAdditionalPaymentContributed.toFixed(2)}</span></p>
                       </div>
                     </div>
                   ))}
