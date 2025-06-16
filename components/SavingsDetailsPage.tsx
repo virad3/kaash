@@ -1,7 +1,8 @@
+
 import React, { useState, useMemo } from 'react';
 import { Transaction, TransactionType, SavingCategory } from '../types';
 import { TransactionList } from './TransactionList';
-import { BackIcon, PlusIcon } from './icons'; // Added PlusIcon
+import { BackIcon, PlusIcon } from './icons'; 
 import { SAVING_CATEGORIES } from '../constants';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -10,7 +11,7 @@ interface SavingsDetailsPageProps {
   onBack: () => void;
   onEditTransaction: (transaction: Transaction) => void;
   onDeleteTransaction: (id: string) => void;
-  onOpenNewTransactionForm: (type: TransactionType) => void; // New prop
+  onOpenNewTransactionForm: (type: TransactionType) => void;
 }
 
 const PIE_COLORS = ['#30B098', '#4FD3B8', '#6EE8A3', '#2FB47C', '#8884D8', '#FFBB28', '#FF8042', '#0088FE', '#A0522D', '#D2691E'];
@@ -26,7 +27,7 @@ const renderPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, n
     return null;
   }
   
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640; // sm breakpoint, adjust if needed
   const labelText = `${name.substring(0, isMobile ? 4 : 10)}${name.length > (isMobile ? 4 : 10) && !isMobile ? '...' : ''}: ${(percent * 100).toFixed(0)}%`;
 
   return (
@@ -49,7 +50,7 @@ export const SavingsDetailsPage: React.FC<SavingsDetailsPageProps> = ({
   onBack, 
   onEditTransaction, 
   onDeleteTransaction,
-  onOpenNewTransactionForm // Destructure new prop
+  onOpenNewTransactionForm
 }) => {
   const [selectedMonth, setSelectedMonth] = useState<string>('all'); 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -57,10 +58,10 @@ export const SavingsDetailsPage: React.FC<SavingsDetailsPageProps> = ({
   const uniqueMonths = useMemo(() => {
     const months = new Set<string>();
     savingTransactions.forEach(t => {
-      const monthYear = t.date.substring(0, 7); // YYYY-MM
+      const monthYear = t.date.substring(0, 7); 
       months.add(monthYear);
     });
-    return Array.from(months).sort((a,b) => b.localeCompare(a)); // Sort descending
+    return Array.from(months).sort((a,b) => b.localeCompare(a)); 
   }, [savingTransactions]);
 
   const uniqueCategories = useMemo(() => {
@@ -109,27 +110,18 @@ export const SavingsDetailsPage: React.FC<SavingsDetailsPageProps> = ({
           </div>
         </header>
 
-        {savingTransactions.length === 0 ? (
-          <div className="text-center py-10">
-            <p className="text-xl text-gray-400">No savings recorded yet.</p>
-            <p className="text-gray-500 mt-2 mb-4">Add some from the dashboard or directly here to see details.</p>
-            <button
-              onClick={() => onOpenNewTransactionForm(TransactionType.SAVING)}
-              className="mt-4 px-6 py-2.5 bg-teal-500 hover:bg-teal-600 text-white font-semibold rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-opacity-75 flex items-center justify-center gap-2 mx-auto"
-            >
-              <PlusIcon className="h-5 w-5" /> Add First Saving
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 p-4 bg-slate-800 rounded-lg border border-slate-700">
+        <div className="mt-6 space-y-6 md:grid md:grid-cols-12 md:gap-x-8 md:space-y-0">
+          {/* Left Sidebar: Filters and Summary */}
+          <div className="md:col-span-4 xl:col-span-3 space-y-6">
+            <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 space-y-4">
+              <h3 className="text-lg font-semibold text-sky-300 mb-3">Filters</h3>
               <div>
                 <label htmlFor="monthFilter" className="block text-sm font-medium text-gray-300 mb-1">Filter by Month:</label>
                 <select
                   id="monthFilter"
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-md shadow-sm p-2.5 focus:ring-sky-500 focus:border-sky-500 transition"
+                  className="w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"
                 >
                   <option value="all">All Months</option>
                   {uniqueMonths.map(month => (
@@ -145,7 +137,7 @@ export const SavingsDetailsPage: React.FC<SavingsDetailsPageProps> = ({
                   id="categoryFilter"
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-md shadow-sm p-2.5 focus:ring-sky-500 focus:border-sky-500 transition"
+                  className="w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"
                 >
                   <option value="all">All Categories</option>
                   {uniqueCategories.map(category => (
@@ -155,68 +147,90 @@ export const SavingsDetailsPage: React.FC<SavingsDetailsPageProps> = ({
               </div>
             </div>
 
-            <div className="mb-6 p-4 bg-slate-800 rounded-lg border border-slate-700 text-center">
+            <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 text-center">
               <p className="text-sm text-gray-400 uppercase tracking-wider">Savings Summary</p>
               <p className="text-3xl font-bold text-teal-400">₹{totalFilteredSavings.toFixed(2)}</p>
             </div>
 
-            {savingChartData.length > 0 && (
-              <div className="mb-8 p-4 bg-slate-800 rounded-lg border border-slate-700">
-                <h2 className="text-xl font-semibold mb-4 text-center text-sky-300">Savings by Category</h2>
-                <div style={{ width: '100%', height: 300, minHeight: '250px' }}>
-                  <ResponsiveContainer>
-                    <PieChart margin={{ top: 0, right: 0, bottom: 20, left: 0 }}>
-                      <Pie
-                        data={savingChartData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        outerRadius="80%"
-                        fill="#8884d8"
-                        dataKey="value"
-                        nameKey="name"
-                        label={renderPieLabel}
-                      >
-                        {savingChartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value: number) => `₹${value.toFixed(2)}`} />
-                      <Legend 
-                         layout="horizontal" 
-                         verticalAlign="bottom" 
-                         align="center"
-                         wrapperStyle={{fontSize: "10px", paddingTop: "10px", paddingBottom: "0px", lineHeight: "1.2"}}
-                         iconSize={8}
-                         payload={
-                            savingChartData.map(
-                              (entry, index) => ({
-                                value: entry.name.length > 12 ? `${entry.name.substring(0,10)}...` : entry.name, 
-                                type: 'circle',
-                                id: entry.name,
-                                color: PIE_COLORS[index % PIE_COLORS.length]
-                              })
-                            )
-                          }
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            )}
-            {savingChartData.length === 0 && filteredTransactions.length > 0 && (
-              <p className="text-gray-400 text-center mb-6 text-sm">No saving data with categories for the current filter to display chart.</p>
-            )}
+            <button
+              onClick={() => onOpenNewTransactionForm(TransactionType.SAVING)}
+              className="w-full px-6 py-2.5 bg-teal-500 hover:bg-teal-600 text-white font-semibold rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-opacity-75 flex items-center justify-center gap-2"
+              aria-label="Add new saving"
+            >
+              <PlusIcon className="h-5 w-5" /> Add Saving
+            </button>
+          </div>
 
-            <TransactionList
-              title="Filtered Saving Transactions"
-              transactions={filteredTransactions}
-              type={TransactionType.SAVING}
-              onDelete={onDeleteTransaction}
-              onEdit={onEditTransaction}
-            />
-          </>
-        )}
+          {/* Right Main Content: Chart and List */}
+          <div className="md:col-span-8 xl:col-span-9 space-y-6">
+            {savingTransactions.length === 0 ? (
+                <div className="text-center py-10 bg-slate-800 rounded-lg border border-slate-700">
+                    <p className="text-xl text-gray-400">No savings recorded yet.</p>
+                    <p className="text-gray-500 mt-2 mb-4">Click "Add Saving" to get started.</p>
+                </div>
+            ) : (
+                <>
+                    {savingChartData.length > 0 && (
+                      <div className="p-4 bg-slate-800 rounded-lg border border-slate-700">
+                        <h2 className="text-xl font-semibold mb-4 text-center text-sky-300">Savings by Category</h2>
+                        <div style={{ width: '100%', height: 300, minHeight: '250px' }}>
+                          <ResponsiveContainer>
+                            <PieChart margin={{ top: 0, right: 0, bottom: 20, left: 0 }}>
+                              <Pie
+                                data={savingChartData}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                outerRadius="80%"
+                                fill="#8884d8"
+                                dataKey="value"
+                                nameKey="name"
+                                label={renderPieLabel}
+                              >
+                                {savingChartData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <Tooltip formatter={(value: number) => `₹${value.toFixed(2)}`} />
+                              <Legend 
+                                layout="horizontal" 
+                                verticalAlign="bottom" 
+                                align="center"
+                                wrapperStyle={{fontSize: "10px", paddingTop: "10px", paddingBottom: "0px", lineHeight: "1.2"}}
+                                iconSize={8}
+                                payload={
+                                    savingChartData.map(
+                                      (entry, index) => ({
+                                        value: entry.name.length > 12 ? `${entry.name.substring(0,10)}...` : entry.name, 
+                                        type: 'circle',
+                                        id: entry.name,
+                                        color: PIE_COLORS[index % PIE_COLORS.length]
+                                      })
+                                    )
+                                  }
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    )}
+                    {savingChartData.length === 0 && filteredTransactions.length > 0 && (
+                        <div className="p-4 bg-slate-800 rounded-lg border border-slate-700">
+                           <p className="text-gray-400 text-center text-sm">No saving data with categories for the current filter to display chart.</p>
+                        </div>
+                    )}
+
+                    <TransactionList
+                      title="Filtered Saving Transactions"
+                      transactions={filteredTransactions}
+                      type={TransactionType.SAVING}
+                      onDelete={onDeleteTransaction}
+                      onEdit={onEditTransaction}
+                    />
+                </>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

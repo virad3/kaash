@@ -1,7 +1,8 @@
+
 import React, { useState, useMemo } from 'react';
 import { Liability, LiabilityCategory } from '../types';
 import { LiabilityList } from './LiabilityList'; 
-import { BackIcon, PlusIcon } from './icons'; // Added PlusIcon
+import { BackIcon, PlusIcon } from './icons'; 
 import { LIABILITY_CATEGORIES } from '../constants';
 
 interface LiabilityDetailsPageProps {
@@ -11,7 +12,7 @@ interface LiabilityDetailsPageProps {
   onDeleteLiability: (id: string) => void;
   onRecordPayment: (liability: Liability) => void;
   onViewEMIs?: (liabilityId: string) => void; 
-  onOpenNewLiabilityForm: () => void; // New prop
+  onOpenNewLiabilityForm: () => void;
 }
 
 export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({ 
@@ -21,7 +22,7 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
   onDeleteLiability, 
   onRecordPayment, 
   onViewEMIs,
-  onOpenNewLiabilityForm // Destructure new prop
+  onOpenNewLiabilityForm
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
@@ -60,27 +61,18 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
           </div>
         </header>
 
-        {liabilities.length === 0 ? (
-          <div className="text-center py-10">
-            <p className="text-xl text-gray-400">No liabilities recorded yet.</p>
-            <p className="text-gray-500 mt-2 mb-4">Add some from the dashboard or directly here to see details.</p>
-            <button
-              onClick={onOpenNewLiabilityForm}
-              className="mt-4 px-6 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-75 flex items-center justify-center gap-2 mx-auto"
-            >
-              <PlusIcon className="h-5 w-5" /> Add First Liability
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 gap-4 mb-6 p-4 bg-slate-800 rounded-lg border border-slate-700">
+        <div className="mt-6 space-y-6 md:grid md:grid-cols-12 md:gap-x-8 md:space-y-0">
+          {/* Left Sidebar: Filters and Summary */}
+          <div className="md:col-span-4 xl:col-span-3 space-y-6">
+            <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 space-y-4">
+              <h3 className="text-lg font-semibold text-sky-300 mb-3">Filters</h3>
               <div>
                 <label htmlFor="categoryFilter" className="block text-sm font-medium text-gray-300 mb-1">Filter by Category:</label>
                 <select
                   id="categoryFilter"
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-md shadow-sm p-2.5 focus:ring-sky-500 focus:border-sky-500 transition"
+                  className="w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"
                 >
                   <option value="all">All Categories</option>
                   {uniqueCategories.map(category => (
@@ -90,20 +82,38 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
               </div>
             </div>
 
-            <div className="mb-6 p-4 bg-slate-800 rounded-lg border border-slate-700 text-center">
+            <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 text-center">
               <p className="text-sm text-gray-400 uppercase tracking-wider">Liabilities Summary</p>
               <p className="text-3xl font-bold text-orange-400">₹{totalFilteredOutstanding.toFixed(2)}</p>
             </div>
 
-            <LiabilityList
-              liabilities={filteredLiabilities}
-              onDelete={onDeleteLiability}
-              onEdit={onEditLiability}
-              onRecordPayment={onRecordPayment}
-              onViewEMIs={onViewEMIs} // Pass down the handler
-            />
-          </>
-        )}
+            <button
+              onClick={onOpenNewLiabilityForm}
+              className="w-full px-6 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-75 flex items-center justify-center gap-2"
+              aria-label="Add new liability"
+            >
+              <PlusIcon className="h-5 w-5" /> Add Liability
+            </button>
+          </div>
+
+          {/* Right Main Content: Liability List */}
+          <div className="md:col-span-8 xl:col-span-9 space-y-6">
+            {liabilities.length === 0 ? (
+                <div className="text-center py-10 bg-slate-800 rounded-lg border border-slate-700">
+                    <p className="text-xl text-gray-400">No liabilities recorded yet.</p>
+                    <p className="text-gray-500 mt-2 mb-4">Click "Add Liability" to get started.</p>
+                </div>
+            ) : (
+                <LiabilityList
+                  liabilities={filteredLiabilities}
+                  onDelete={onDeleteLiability}
+                  onEdit={onEditLiability}
+                  onRecordPayment={onRecordPayment}
+                  onViewEMIs={onViewEMIs}
+                />
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
