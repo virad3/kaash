@@ -43,6 +43,17 @@ export const LiabilityEMIDetailPage: React.FC<LiabilityEMIDetailPageProps> = ({
   }
 
   const outstandingPrincipal = liability.initialAmount - liability.amountRepaid;
+  const totalEMIsPaidAmount = useMemo(() => {
+    return emiTransactions.reduce((sum, t) => sum + t.amount, 0);
+  }, [emiTransactions]);
+
+  const totalInterestPaid = useMemo(() => {
+    // Total Interest Paid = Total EMI Payments Made - Total Principal Repaid
+    // liability.amountRepaid should ideally reflect the sum of principal portions of EMIs.
+    const interest = totalEMIsPaidAmount - liability.amountRepaid;
+    return Math.max(0, interest); // Interest paid cannot be negative
+  }, [totalEMIsPaidAmount, liability.amountRepaid]);
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 p-2 sm:p-4 md:p-6 selection:bg-sky-400 selection:text-sky-900">
@@ -66,10 +77,12 @@ export const LiabilityEMIDetailPage: React.FC<LiabilityEMIDetailPageProps> = ({
         {/* Liability Summary Card */}
         <div className="mb-6 p-4 bg-slate-800 rounded-lg border border-slate-700 shadow-lg">
           <h2 className="text-xl font-semibold text-sky-300 mb-3">Liability Summary</h2>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
             <p><span className="text-gray-400">Initial Amount:</span> <span className="text-gray-100 font-medium">₹{liability.initialAmount.toFixed(2)}</span></p>
             <p><span className="text-gray-400">Total Principal Repaid:</span> <span className="text-green-400 font-medium">₹{liability.amountRepaid.toFixed(2)}</span></p>
             <p><span className="text-gray-400">Outstanding Principal:</span> <span className="text-orange-400 font-medium">₹{outstandingPrincipal.toFixed(2)}</span></p>
+            <p><span className="text-gray-400">Total EMI Payments Made:</span> <span className="text-gray-100 font-medium">₹{totalEMIsPaidAmount.toFixed(2)}</span></p>
+            <p><span className="text-gray-400">Total Interest Paid:</span> <span className="text-yellow-400 font-medium">₹{totalInterestPaid.toFixed(2)}</span></p>
             <p><span className="text-gray-400">Category:</span> <span className="text-gray-300">{liability.category}</span></p>
             {liability.emiAmount && <p><span className="text-gray-400">Stated EMI:</span> <span className="text-gray-300">₹{liability.emiAmount.toFixed(2)}</span></p>}
             <p><span className="text-gray-400">Next Due Date:</span> <span className="text-gray-300">{new Date(liability.nextDueDate + 'T00:00:00Z').toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' })}</span></p>
@@ -80,7 +93,7 @@ export const LiabilityEMIDetailPage: React.FC<LiabilityEMIDetailPageProps> = ({
 
         {/* EMI Transaction List */}
         <div className="bg-slate-800 p-3 sm:p-4 md:p-6 rounded-xl shadow-xl border border-slate-700">
-          <h3 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4 text-sky-400">Recorded EMI Payments</h3>
+          <h3 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4 text-sky-400">Recorded EMI Payments ({emiTransactions.length})</h3>
           {emiTransactions.length === 0 ? (
             <p className="text-gray-400 text-center py-6 sm:py-8 text-sm sm:text-base">
               No EMI payments recorded for this liability yet.
@@ -93,7 +106,7 @@ export const LiabilityEMIDetailPage: React.FC<LiabilityEMIDetailPageProps> = ({
                   transaction={transaction}
                   onEdit={() => onEditEMI(transaction)} 
                   onDelete={() => {
-                    if (liability) { // Ensure liability is defined
+                    if (liability) { 
                       onDeleteEMI(transaction.id, liability.id, transaction.amount);
                     } else {
                       console.error("Cannot delete EMI: Liability context is missing.");
