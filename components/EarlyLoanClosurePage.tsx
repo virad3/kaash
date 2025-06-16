@@ -21,7 +21,7 @@ interface DisplayResults extends MultiLoanAmortizationResult {
       newTermString: string;
       newPayoffDateString: string;
       timeSavedString: string;
-      // totalAdditionalPaymentContributed is already in IndividualLoanAmortizationResult
+      // avgShareOfUserMonthlyAddtlPayment is already in IndividualLoanAmortizationResult from types.ts
   }>;
 }
 
@@ -76,7 +76,7 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
       let overallOriginalTotalInterestPaid = 0;
       let maxOriginalTermInMonths = 0;
       let latestOriginalPayoffDate = new Date(0); 
-      const individualOriginalResultsBase: Omit<IndividualLoanAmortizationResult, 'newTermInMonths' | 'newTotalInterestPaid' | 'newPayoffDate' | 'interestSaved' | 'timeSavedInMonths' | 'totalAdditionalPaymentContributed'>[] = [];
+      const individualOriginalResultsBase: Omit<IndividualLoanAmortizationResult, 'newTermInMonths' | 'newTotalInterestPaid' | 'newPayoffDate' | 'interestSaved' | 'timeSavedInMonths' | 'avgShareOfUserMonthlyAddtlPayment'>[] = [];
 
 
       const earliestNextDueDate = selectedLiabilitiesDetails.reduce((earliest, current) => {
@@ -161,7 +161,7 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
             newPayoffDate: newResLoanState.loanNewPayoffDate || new Date('9999-12-31'),
             interestSaved: Math.max(0,interestSaved),
             timeSavedInMonths: Math.max(0,timeSavedInMonths),
-            totalAdditionalPaymentContributed: newResLoanState.totalAdditionalPaymentContributedThisLoan, // Get from newResLoanState
+            avgShareOfUserMonthlyAddtlPayment: newResLoanState.avgShareOfUserMonthlyAddtlPayment, // From newResLoanState
             // Formatted strings for display
             originalTermString: formatMonthsToYearsMonthsString(originalResBase.originalTermInMonths),
             originalPayoffDateString: formatDateForDisplay(originalResBase.originalPayoffDate),
@@ -328,7 +328,7 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
                         <p><span className="text-gray-400">Payoff Date (New):</span> {loanRes.newPayoffDateString}</p>
                         <p><span className="text-gray-400">Interest Saved:</span> <span className="text-green-400">₹{loanRes.interestSaved.toFixed(2)}</span></p>
                         <p className="sm:col-span-2"><span className="text-gray-400">Time Saved (vs its original):</span> {loanRes.timeSavedString}</p>
-                        <p className="sm:col-span-2"><span className="text-gray-400">Total Addtl. Prepayment Received:</span> <span className="text-cyan-400">₹{loanRes.totalAdditionalPaymentContributed.toFixed(2)}</span></p>
+                        <p className="sm:col-span-2"><span className="text-gray-400">Avg. Share of Your Monthly Addtl. Payment:</span> <span className="text-cyan-400">₹{loanRes.avgShareOfUserMonthlyAddtlPayment.toFixed(2)}</span></p>
                       </div>
                     </div>
                   ))}
