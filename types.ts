@@ -142,3 +142,14 @@ export interface MultiLoanAmortizationResult {
   individualLoanResults: IndividualLoanAmortizationResult[];
   additionalPaymentApplied: number; // This is the total additional payment input by the user.
 }
+
+export interface AppNotification {
+  id: string;
+  type: 'emi_due' | 'saving_reminder';
+  title: string;
+  message: string;
+  date?: string; // Due date for EMIs
+  amount?: number; // EMI amount
+  category?: string; // Saving category
+  isRead: boolean; // For future enhancements
+}

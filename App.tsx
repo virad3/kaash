@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { User, Transaction, TransactionType, Liability, View, UserDefinedCategories, CategoryTypeIdentifier } from './types'; 
+import { User, Transaction, TransactionType, Liability, View, UserDefinedCategories, CategoryTypeIdentifier, AppNotification } from './types'; 
 import { TransactionForm } from './components/TransactionForm';
 import { TransactionList } from './components/TransactionList';
 import { SummaryDisplay } from './components/SummaryDisplay';
@@ -44,7 +44,7 @@ const App: React.FC = () => {
   const [payingLiability, setPayingLiability] = useState<Liability | null>(null);
   const [selectedLiabilityForEMIs, setSelectedLiabilityForEMIs] = useState<Liability | null>(null); 
 
-  const [upcomingPayments, setUpcomingPayments] = useState<Liability[]>([]);
+  const [upcomingPaymentsDashboard, setUpcomingPaymentsDashboard] = useState<Liability[]>([]); // Renamed for clarity, used for dashboard specific display
   const [activeView, setActiveView] = useState<View>('dashboard');
   const [forceFormCategoryResetKey, setForceFormCategoryResetKey] = useState<number>(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -53,13 +53,22 @@ const App: React.FC = () => {
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
 
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [isNotificationDropdownOpen, setIsNotificationDropdownOpen] = useState(false);
+  const notificationDropdownRef = useRef<HTMLDivElement>(null);
+
+
   const toggleMenu = useCallback(() => setIsMenuOpen(prev => !prev), []);
   const toggleProfileDropdown = useCallback(() => setIsProfileDropdownOpen(prev => !prev), []);
+  const toggleNotificationDropdown = useCallback(() => setIsNotificationDropdownOpen(prev => !prev), []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
         setIsProfileDropdownOpen(false);
+      }
+      if (notificationDropdownRef.current && !notificationDropdownRef.current.contains(event.target as Node)) {
+        setIsNotificationDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -70,6 +79,7 @@ const App: React.FC = () => {
     setShowTransactionModal(false); setCurrentTransactionType(null); setEditingTransaction(null);
     setShowLiabilityForm(false); setEditingLiability(null); setPayingLiability(null);
     setShowEditProfileModal(false);
+    setIsNotificationDropdownOpen(false); // Close notification dropdown as well
   }, []);
 
 
@@ -83,6 +93,7 @@ const App: React.FC = () => {
         setSelectedLiabilityForEMIs(null); 
         setIsMenuOpen(false);
         setIsProfileDropdownOpen(false);
+        setIsNotificationDropdownOpen(false);
         setShowEditProfileModal(false);
       } else {
         setTransactions([]);
@@ -92,7 +103,9 @@ const App: React.FC = () => {
         setSelectedLiabilityForEMIs(null);
         setIsMenuOpen(false);
         setIsProfileDropdownOpen(false);
+        setIsNotificationDropdownOpen(false);
         setShowEditProfileModal(false);
+        setNotifications([]);
       }
     });
     return () => unsubscribeAuth();
@@ -115,9 +128,10 @@ const App: React.FC = () => {
     };
   }, [currentUser]);
 
+  // Effect for Dashboard Upcoming Payments (original logic for dashboard display)
   useEffect(() => {
     if (!currentUser) {
-      setUpcomingPayments([]);
+      setUpcomingPaymentsDashboard([]);
       return;
     }
     const today = new Date();
@@ -126,13 +140,95 @@ const App: React.FC = () => {
     sevenDaysFromNow.setDate(today.getDate() + 7);
 
     const upcoming = liabilities.filter(l => {
+      if ((l.initialAmount - l.amountRepaid) <= 0.005) return false; // Skip paid off
       const dueDate = new Date(l.nextDueDate + 'T00:00:00Z'); 
       return dueDate >= today && dueDate <= sevenDaysFromNow;
     }).sort((a,b) => new Date(a.nextDueDate).getTime() - new Date(b.nextDueDate).getTime());
-    setUpcomingPayments(upcoming);
+    setUpcomingPaymentsDashboard(upcoming);
   }, [liabilities, currentUser]);
 
-  const navigateToDashboard = useCallback(() => { setActiveView('dashboard'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); }, []);
+
+  // Effect for Global Notifications (Bell Icon)
+  useEffect(() => {
+    if (!currentUser) {
+      setNotifications([]);
+      return;
+    }
+
+    const newNotificationsList: AppNotification[] = [];
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    // 1. Upcoming EMIs (next 7 days)
+    const sevenDaysFromNow = new Date(today);
+    sevenDaysFromNow.setDate(today.getDate() + 7);
+
+    liabilities.forEach(l => {
+      if ((l.initialAmount - l.amountRepaid) <= 0.005) return; // Skip paid off liabilities
+
+      const dueDate = new Date(l.nextDueDate + 'T00:00:00Z'); // Assuming nextDueDate is YYYY-MM-DD
+      if (dueDate >= today && dueDate <= sevenDaysFromNow) {
+        newNotificationsList.push({
+          id: `emi-${l.id}-${l.nextDueDate}`, // Add date to ID for uniqueness if due date changes
+          type: 'emi_due',
+          title: `EMI Due: ${l.name || l.category}`,
+          message: `₹${l.emiAmount?.toFixed(2) || (l.initialAmount - l.amountRepaid).toFixed(2)} due on ${dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}.`,
+          date: l.nextDueDate,
+          amount: l.emiAmount,
+          isRead: false,
+        });
+      }
+    });
+
+    // 2. Recurring Savings Reminders (Simplified: check in first 7 days of month)
+    if (today.getDate() <= 7) {
+      const currentMonth = today.getMonth(); // 0-indexed
+      const currentYear = today.getFullYear();
+      
+      const prevMonthDate = new Date(currentYear, currentMonth -1, 1); // Corrected: currentMonth - 1 for previous
+      const prevMonthYear = prevMonthDate.getFullYear();
+      const prevMonth = prevMonthDate.getMonth();
+
+      const savingsLastMonth = transactions.filter(t => {
+        const txDate = new Date(t.date); // Assuming t.date is YYYY-MM-DD
+        return t.type === TransactionType.SAVING && txDate.getFullYear() === prevMonthYear && txDate.getMonth() === prevMonth;
+      });
+
+      const savingsThisMonth = transactions.filter(t => {
+        const txDate = new Date(t.date);
+        return t.type === TransactionType.SAVING && txDate.getFullYear() === currentYear && txDate.getMonth() === currentMonth;
+      });
+
+      const categoriesSavedLastMonth = new Set(savingsLastMonth.map(s => s.category));
+      const categoriesSavedThisMonth = new Set(savingsThisMonth.map(s => s.category));
+
+      categoriesSavedLastMonth.forEach(category => {
+        if (!categoriesSavedThisMonth.has(category)) {
+          newNotificationsList.push({
+            id: `saving-${category}-${currentYear}-${currentMonth + 1}`, // Use currentMonth + 1 for display consistency
+            type: 'saving_reminder',
+            title: `Saving Reminder: ${category}`,
+            message: `Consider making your saving for '${category}'. You saved for this category last month.`,
+            category: category,
+            isRead: false,
+          });
+        }
+      });
+    }
+
+    newNotificationsList.sort((a, b) => {
+      if (a.type === 'emi_due' && b.type !== 'emi_due') return -1;
+      if (a.type !== 'emi_due' && b.type === 'emi_due') return 1;
+      if (a.date && b.date) return new Date(a.date).getTime() - new Date(b.date).getTime();
+      if (a.type === 'saving_reminder' && b.type === 'saving_reminder') return (a.category || "").localeCompare(b.category || ""); // Sort saving reminders by category
+      return 0;
+    });
+
+    setNotifications(newNotificationsList);
+  }, [currentUser, liabilities, transactions]);
+
+
+  const navigateToDashboard = useCallback(() => { setActiveView('dashboard'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); setIsNotificationDropdownOpen(false); }, []);
 
   useEffect(() => {
     if (activeView === 'liabilityEMIDetail' && selectedLiabilityForEMIs?.id && currentUser) {
@@ -142,7 +238,6 @@ const App: React.FC = () => {
            setSelectedLiabilityForEMIs(currentLiabilityInList);
         }
       } else {
-        // If the liability is no longer in the main list (e.g., deleted), navigate away
         navigateToDashboard();
       }
     }
@@ -175,6 +270,7 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
     setIsProfileDropdownOpen(false);
+    setIsNotificationDropdownOpen(false);
     setAuthError(null);
     try {
       await authService.logoutUser();
@@ -184,6 +280,7 @@ const App: React.FC = () => {
 
   const handleOpenEditProfileModal = () => {
     setIsProfileDropdownOpen(false);
+    setIsNotificationDropdownOpen(false);
     setShowEditProfileModal(true);
   };
   const handleCloseEditProfileModal = useCallback(() => setShowEditProfileModal(false), []);
@@ -205,17 +302,20 @@ const App: React.FC = () => {
     setCurrentTransactionType(type); 
     setEditingTransaction(null); 
     setShowTransactionModal(true); 
+    setIsNotificationDropdownOpen(false);
   }, []);
 
   const handleOpenEditTransactionForm = useCallback((transaction: Transaction) => { 
     setCurrentTransactionType(transaction.type); 
     setEditingTransaction(transaction); 
     setShowTransactionModal(true); 
+    setIsNotificationDropdownOpen(false);
   }, []);
   
   const handleOpenNewLiabilityForm = useCallback(() => { 
     setEditingLiability(null); 
     setShowLiabilityForm(true); 
+    setIsNotificationDropdownOpen(false);
   }, []);
 
 
@@ -254,8 +354,6 @@ const App: React.FC = () => {
 
     try {
       if (id && editingTransaction && editingTransaction.relatedLiabilityId && editingTransaction.type === TransactionType.EXPENSE) {
-        // This is an EMI being edited.
-        // We need to calculate the *change* in principal repayment due to this edit.
         const oldEmiAmount = editingTransaction.amount;
         const newEmiAmount = payload.amount;
         const liability = liabilities.find(l => l.id === editingTransaction.relatedLiabilityId);
@@ -264,34 +362,28 @@ const App: React.FC = () => {
             throw new Error("Related liability not found for EMI edit.");
         }
         
-        // Calculate principal component of OLD EMI
-        // To do this accurately, we need the outstanding principal *before* this old EMI was paid.
-        // This requires iterating through EMIs for this liability up to the one being edited.
         const emiTransactionsForLiability = transactions
           .filter(t => t.relatedLiabilityId === liability.id && t.type === TransactionType.EXPENSE)
           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || (a.createdAt && b.createdAt ? (typeof a.createdAt.toDate === 'function' ? a.createdAt.toDate() : new Date(a.createdAt)).getTime() - (typeof b.createdAt.toDate === 'function' ? b.createdAt.toDate() : new Date(b.createdAt)).getTime() : 0) );
 
         let outstandingPrincipalBeforeOldEmi = liability.initialAmount;
-        let oldEmiPrincipalComponent = oldEmiAmount; // Default if no interest rate
+        let oldEmiPrincipalComponent = oldEmiAmount; 
 
         if (typeof liability.interestRate === 'number' && liability.interestRate > 0) {
             for (const tx of emiTransactionsForLiability) {
-                if (tx.id === editingTransaction.id) { // Found the EMI being edited
+                if (tx.id === editingTransaction.id) { 
                     const paymentDetails = calculateLoanPaymentDetails(outstandingPrincipalBeforeOldEmi, liability.interestRate, oldEmiAmount);
                     oldEmiPrincipalComponent = paymentDetails.principalPaid;
                     break;
                 }
-                // For EMIs before the one being edited, simulate their principal payment
                 const paymentDetails = calculateLoanPaymentDetails(outstandingPrincipalBeforeOldEmi, liability.interestRate, tx.amount);
                 outstandingPrincipalBeforeOldEmi -= paymentDetails.principalPaid;
                 outstandingPrincipalBeforeOldEmi = Math.max(0, outstandingPrincipalBeforeOldEmi);
             }
-        } else { // No interest rate, so all of old EMI was principal
+        } else { 
             oldEmiPrincipalComponent = oldEmiAmount;
         }
 
-
-        // Calculate principal component of NEW EMI (using the same outstandingPrincipalBeforeOldEmi)
         let newEmiPrincipalComponent = newEmiAmount;
         if (typeof liability.interestRate === 'number' && liability.interestRate > 0) {
             const paymentDetailsNew = calculateLoanPaymentDetails(outstandingPrincipalBeforeOldEmi, liability.interestRate, newEmiAmount);
@@ -310,24 +402,11 @@ const App: React.FC = () => {
           amountDifferenceForLiabilityRepaid 
         );
       } else if (id) { 
-        // Standard transaction update (not an EMI or EMI where only non-amount fields changed)
         await storageService.updateTransaction(currentUser.uid, id, payload as Partial<Omit<Transaction, 'id' | 'createdAt' | 'userId'>>);
       } else { 
-        // New transaction (could be a regular one, or a new EMI if form allows selecting relatedLiabilityId)
-        // If it's a new expense transaction marked as an EMI, its principal component would need to be added.
-        // However, the current `addTransaction` doesn't directly handle liability amountRepaid update.
-        // This is typically handled by `handleRecordLiabilityPayment`.
-        // For simplicity, we assume new EMIs are added via "Record Payment" or this form if it's setup to.
-        // If `relatedLiabilityId` is present and type is EXPENSE, it's an EMI.
-        // The `handleRecordLiabilityPayment` is the primary path for creating EMIs and updating liability.
-        // This `handleAddOrEditTransaction` for a *new* EMI without going through Record Payment would be an edge case.
-        // For now, let's assume if it's a new transaction created here and has relatedLiabilityId, it's not adjusting principal directly yet.
-        // This path is more for general income/expense/saving or editing non-financial details of an EMI.
         await storageService.addTransaction(currentUser.uid, payload as Omit<Transaction, 'id' | 'createdAt' | 'userId'>);
       }
       
-      // Category management: Only for non-EMI or new transactions.
-      // EMI categories are fixed (Liability Payment) and don't contribute to user-defined lists here.
       if (!payload.relatedLiabilityId || (payload.relatedLiabilityId && !id) ) { 
         let baseCategoriesForType: readonly string[] = [];
         let currentUserCategoriesForType: string[] = [];
@@ -339,12 +418,11 @@ const App: React.FC = () => {
             currentUserCategoriesForType = userDefinedCategories.income;
             break;
           case TransactionType.EXPENSE:
-             // Only add to user-defined expense categories if it's NOT an EMI payment
             if (payload.category !== ExpenseCategory.LIABILITY_PAYMENT) {
                 baseCategoriesForType = EXPENSE_CATEGORIES.map(String);
                 currentUserCategoriesForType = userDefinedCategories.expense;
-            } else { // It is an EMI payment, skip custom category logic for it
-                categoryTypeIdentifier = null as any; // Prevent processing
+            } else { 
+                categoryTypeIdentifier = null as any; 
             }
             break;
           case TransactionType.SAVING:
@@ -353,7 +431,7 @@ const App: React.FC = () => {
             break;
         }
 
-        if (categoryTypeIdentifier) { // Check if we should process category
+        if (categoryTypeIdentifier) { 
             const isCustomCategory = !baseCategoriesForType.includes(finalCategory);
             const isNewUserDefinedCategory = isCustomCategory && !currentUserCategoriesForType.includes(finalCategory);
 
@@ -373,8 +451,6 @@ const App: React.FC = () => {
 
 
   const handleEditEMI = useCallback((transaction: Transaction) => {
-    // This transaction is an EMI, so it's an EXPENSE type.
-    // The form should open with EXPENSE type and prefill EMI details.
     handleOpenEditTransactionForm(transaction); 
   }, [handleOpenEditTransactionForm]);
 
@@ -391,29 +467,25 @@ const App: React.FC = () => {
 
     if (window.confirm("Are you sure you want to delete this EMI payment? This will also adjust the principal repaid on the liability.")) {
       try {
-        let principalComponentOfDeletedEMI = emiAmount; // Default if no interest rate
+        let principalComponentOfDeletedEMI = emiAmount; 
 
-        // Recalculate the principal component of the *specific EMI being deleted*
-        // This requires knowing the outstanding principal *just before* that EMI was paid.
         if (typeof liability.interestRate === 'number' && liability.interestRate > 0) {
-          // Get all EMIs for this liability, sorted chronologically
           const emiTransactionsForLiability = transactions
             .filter(t => t.relatedLiabilityId === liability.id && t.type === TransactionType.EXPENSE)
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || (a.createdAt && b.createdAt ? (typeof a.createdAt.toDate === 'function' ? a.createdAt.toDate() : new Date(a.createdAt)).getTime() - (typeof b.createdAt.toDate === 'function' ? b.createdAt.toDate() : new Date(b.createdAt)).getTime() : 0) );
           
           let outstandingPrincipalBeforeTx = liability.initialAmount;
           for (const tx of emiTransactionsForLiability) {
-            if (tx.id === transactionToDelete.id) { // This is the EMI we are about to delete
+            if (tx.id === transactionToDelete.id) { 
               const paymentDetails = calculateLoanPaymentDetails(outstandingPrincipalBeforeTx, liability.interestRate, tx.amount);
               principalComponentOfDeletedEMI = paymentDetails.principalPaid;
-              break; // Found the principal component
+              break; 
             }
-            // For EMIs paid *before* the one being deleted, simulate their principal payment
             const paymentDetails = calculateLoanPaymentDetails(outstandingPrincipalBeforeTx, liability.interestRate, tx.amount);
             outstandingPrincipalBeforeTx -= paymentDetails.principalPaid;
-            outstandingPrincipalBeforeTx = Math.max(0, outstandingPrincipalBeforeTx); // Ensure it doesn't go below zero
+            outstandingPrincipalBeforeTx = Math.max(0, outstandingPrincipalBeforeTx); 
           }
-        } else { // No interest rate, so the full emiAmount was principal
+        } else { 
             principalComponentOfDeletedEMI = emiAmount;
         }
         
@@ -421,7 +493,7 @@ const App: React.FC = () => {
           currentUser.uid,
           transactionId,
           relatedLiabilityId,
-          principalComponentOfDeletedEMI // Pass the accurately calculated principal portion
+          principalComponentOfDeletedEMI 
         );
       } catch (error: any) {
         console.error("Error deleting EMI and updating liability:", error);
@@ -433,14 +505,11 @@ const App: React.FC = () => {
   const handleDeleteTransaction = useCallback(async (id: string) => {
     if (!currentUser?.uid) return;
     const txToDelete = transactions.find(t => t.id === id);
-    // If it's an EMI payment, use the dedicated EMI deletion flow
     if (txToDelete?.relatedLiabilityId && txToDelete.type === TransactionType.EXPENSE) {
-        // Confirmation is inside handleDeleteEMI
         await handleDeleteEMI(id, txToDelete.relatedLiabilityId, txToDelete.amount);
         return;
     }
 
-    // For non-EMI transactions
     if (window.confirm("Are you sure you want to delete this transaction?")) {
       try { 
         await storageService.deleteTransaction(currentUser.uid, id); 
@@ -459,17 +528,15 @@ const App: React.FC = () => {
         return;
     }
 
-    // For new liabilities, amountRepaid is 0. For existing, it's preserved unless explicitly changed (which this form doesn't do for amountRepaid).
-    // Name is also handled.
     const payload = {
-        name: liabilityDetails.name?.trim() || undefined, // Use existing name or make it undefined if empty
-        category: finalCategory, // Already handled by form
-        initialAmount: liabilityDetails.initialAmount, // Cannot be edited after creation from this form
+        name: liabilityDetails.name?.trim() || undefined, 
+        category: finalCategory, 
+        initialAmount: liabilityDetails.initialAmount, 
         emiAmount: liabilityDetails.emiAmount,
         nextDueDate: liabilityDetails.nextDueDate,
         interestRate: liabilityDetails.interestRate,
         loanTermInMonths: liabilityDetails.loanTermInMonths,
-        amountRepaid: liabilityDetails.amountRepaid ?? (id ? (liabilities.find(l=>l.id === id)?.amountRepaid ?? 0) : 0), // Preserve or default to 0 for new
+        amountRepaid: liabilityDetails.amountRepaid ?? (id ? (liabilities.find(l=>l.id === id)?.amountRepaid ?? 0) : 0), 
     };
     try {
       if (id) {
@@ -478,7 +545,6 @@ const App: React.FC = () => {
         await storageService.addLiability(currentUser.uid, payload as Omit<Liability, 'id' | 'createdAt' | 'userId' | 'notes'>);
       }
 
-      // Handle custom category addition for liabilities
       const baseCategoriesForType = LIABILITY_CATEGORIES.map(String);
       const currentUserCategoriesForType = userDefinedCategories.liability;
       const isCustomCategory = !baseCategoriesForType.includes(finalCategory);
@@ -508,12 +574,11 @@ const App: React.FC = () => {
       return;
     }
     
-    // Calculate the principal component of this payment
-    let principalPaidForThisPayment = paymentAmount; // Default if no interest or already fully principal
+    let principalPaidForThisPayment = paymentAmount; 
 
     if (typeof liability.interestRate === 'number' && liability.interestRate > 0) {
         const outstandingPrincipalBeforePayment = liability.initialAmount - liability.amountRepaid;
-        if (outstandingPrincipalBeforePayment > 0) { // Only calculate if there's principal left
+        if (outstandingPrincipalBeforePayment > 0) { 
             const paymentDetails = calculateLoanPaymentDetails(
                 outstandingPrincipalBeforePayment,
                 liability.interestRate,
@@ -521,13 +586,12 @@ const App: React.FC = () => {
             );
             principalPaidForThisPayment = paymentDetails.principalPaid;
         } else {
-             principalPaidForThisPayment = 0; // No principal to pay if already cleared or overpaid
+             principalPaidForThisPayment = 0; 
         }
-    } else { // No interest rate, so entire payment (up to outstanding) is principal
+    } else { 
        const outstandingPrincipalBeforePayment = liability.initialAmount - liability.amountRepaid;
        principalPaidForThisPayment = Math.min(paymentAmount, outstandingPrincipalBeforePayment);
     }
-    // Ensure principal paid is not negative and not more than the initial amount of the loan
     principalPaidForThisPayment = Math.max(0, principalPaidForThisPayment); 
 
     const newAmountRepaidTotal = Math.min(liability.amountRepaid + principalPaidForThisPayment, liability.initialAmount);
@@ -540,17 +604,16 @@ const App: React.FC = () => {
     try {
         await storageService.updateLiability(currentUser.uid, liabilityId, updatedLiabilityData);
         
-        // Add the EMI payment as an expense transaction
         const expenseDescription = expenseNotes || `Payment for ${liability.name || liability.category}`;
         const expenseTxData: Omit<Transaction, 'id' | 'createdAt' | 'userId'> = { 
             type: TransactionType.EXPENSE,
             description: expenseDescription,
             amount: paymentAmount, date: paymentDate,
-            category: ExpenseCategory.LIABILITY_PAYMENT, // Fixed category for EMIs
+            category: ExpenseCategory.LIABILITY_PAYMENT, 
             relatedLiabilityId: liabilityId,
         };
         await storageService.addTransaction(currentUser.uid, expenseTxData);
-        setPayingLiability(null); // Close the payment form modal
+        setPayingLiability(null); 
     } catch (error: any) { 
         console.error("Error recording liability payment or expense transaction:", error); 
         alert(`Failed to record payment. Error: ${error.message}`); 
@@ -625,22 +688,18 @@ const App: React.FC = () => {
   const balance = useMemo(() => totalIncome - totalExpenses, [totalIncome, totalExpenses]); 
 
   const recentTransactions = useMemo(() => {
-    // Includes income, expense, and saving. EMIs (expenses) are included.
     const allSortableTransactions = transactions.filter(
       t => t.type === TransactionType.INCOME || t.type === TransactionType.EXPENSE || t.type === TransactionType.SAVING
     );
-    // Sort by date (desc), then by creation time (desc) for tie-breaking
     allSortableTransactions.sort((a, b) => {
       const dateComparison = new Date(b.date).getTime() - new Date(a.date).getTime();
       if (dateComparison !== 0) return dateComparison;
-      // Fallback to createdAt if dates are the same
       if (a.createdAt && b.createdAt) {
-        // Firestore Timestamps need to be converted to JS Dates for comparison
         const createdAtA = typeof a.createdAt.toDate === 'function' ? a.createdAt.toDate() : new Date(a.createdAt);
         const createdAtB = typeof b.createdAt.toDate === 'function' ? b.createdAt.toDate() : new Date(b.createdAt);
         return createdAtB.getTime() - createdAtA.getTime();
       }
-      return 0; // Should not happen if createdAt is always set
+      return 0; 
     });
     return allSortableTransactions.slice(0, 15);
   }, [transactions]);
@@ -649,11 +708,11 @@ const App: React.FC = () => {
     const data: { month: string; income: number; expense: number; saving: number }[] = [];
     const now = new Date();
 
-    for (let i = 2; i >= 0; i--) { // Last 3 months including current
+    for (let i = 2; i >= 0; i--) { 
       const targetDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const year = targetDate.getFullYear();
-      const month = targetDate.getMonth(); // 0-indexed
-      const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`; // YYYY-MM
+      const month = targetDate.getMonth(); 
+      const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`; 
       
       const monthLabel = targetDate.toLocaleString('default', { month: 'short', year: '2-digit' });
 
@@ -662,7 +721,7 @@ const App: React.FC = () => {
       let monthlySaving = 0;
 
       transactions.forEach(t => {
-        if (t.date.startsWith(monthKey)) { // Compare YYYY-MM part of dates
+        if (t.date.startsWith(monthKey)) { 
           if (t.type === TransactionType.INCOME) monthlyIncome += t.amount;
           else if (t.type === TransactionType.EXPENSE) monthlyExpense += t.amount;
           else if (t.type === TransactionType.SAVING) monthlySaving += t.amount;
@@ -673,18 +732,18 @@ const App: React.FC = () => {
     return data;
   }, [transactions]);
   
-  const handleOpenEditLiabilityForm = useCallback((liability: Liability) => { setEditingLiability(liability); setShowLiabilityForm(true); }, []);
-  const handleOpenRecordPaymentForm = useCallback((liability: Liability) => setPayingLiability(liability), []);
+  const handleOpenEditLiabilityForm = useCallback((liability: Liability) => { setEditingLiability(liability); setShowLiabilityForm(true); setIsNotificationDropdownOpen(false);}, []);
+  const handleOpenRecordPaymentForm = useCallback((liability: Liability) => {setPayingLiability(liability); setIsNotificationDropdownOpen(false);}, []);
 
   
-  const navigateToIncomeDetails = useCallback(() => { setActiveView('incomeDetails'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); }, []);
-  const navigateToExpenseDetails = useCallback(() => { setActiveView('expenseDetails'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); }, []);
-  const navigateToSavingsDetails = useCallback(() => { setActiveView('savingsDetails'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); }, []);
-  const navigateToLiabilityDetails = useCallback(() => { setActiveView('liabilityDetails'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); }, []);
+  const navigateToIncomeDetails = useCallback(() => { setActiveView('incomeDetails'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); setIsNotificationDropdownOpen(false);}, []);
+  const navigateToExpenseDetails = useCallback(() => { setActiveView('expenseDetails'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); setIsNotificationDropdownOpen(false);}, []);
+  const navigateToSavingsDetails = useCallback(() => { setActiveView('savingsDetails'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); setIsNotificationDropdownOpen(false);}, []);
+  const navigateToLiabilityDetails = useCallback(() => { setActiveView('liabilityDetails'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); setIsNotificationDropdownOpen(false);}, []);
   const navigateToEarlyLoanClosure = useCallback(() => { 
     setActiveView('earlyLoanClosure'); 
     setSelectedLiabilityForEMIs(null); 
-    // setIsMenuOpen(false); // Removed: SideMenu's handleActionClick will call toggleMenu
+    setIsNotificationDropdownOpen(false);
   }, []);
   
   const handleViewEMIs = useCallback((liabilityId: string) => {
@@ -693,13 +752,13 @@ const App: React.FC = () => {
       setSelectedLiabilityForEMIs(liability);
       setActiveView('liabilityEMIDetail');
       setIsMenuOpen(false);
+      setIsNotificationDropdownOpen(false);
     } else {
       console.warn(`Liability with ID ${liabilityId} not found for EMI detail view.`);
       alert("Could not find liability details.");
     }
   }, [liabilities]);
   
-  // Logic for TransactionForm category props
   let formPredefinedCategories: string[] = [];
   let formUserDefinedCategories: string[] = [];
   let formAddHandler = async (name: string) => {};
@@ -727,15 +786,14 @@ const App: React.FC = () => {
   }
 
   const renderActiveView = () => {
-    if (isLoadingAuth && !currentUser) { // Show loading only if auth is loading AND user is not yet set
+    if (isLoadingAuth && !currentUser) { 
       return <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex justify-center items-center text-sky-400 text-xl p-4 text-center">Loading Kaash...</div>;
     }
   
-    if (!currentUser) { // If auth is done loading and still no user, show AuthPage
+    if (!currentUser) { 
       return <div className="p-2 sm:p-4"><AuthPage onLogin={handleLogin} onSignup={handleSignup} onGoogleLogin={handleGoogleLogin} error={authError} clearError={clearAuthError} /></div>;
     }
     
-    // User is logged in, render views based on activeView
     switch (activeView) {
       case 'incomeDetails':
         return <IncomeDetailsPage incomeTransactions={incomeTransactions} onBack={navigateToDashboard} onEditTransaction={handleOpenEditTransactionForm} onDeleteTransaction={handleDeleteTransaction} onOpenNewTransactionForm={handleOpenNewTransactionForm} />;
@@ -749,7 +807,7 @@ const App: React.FC = () => {
         if (selectedLiabilityForEMIs) {
           return <LiabilityEMIDetailPage liability={selectedLiabilityForEMIs} allTransactions={transactions} onBack={navigateToLiabilityDetails} onEditEMI={handleEditEMI} onDeleteEMI={handleDeleteEMI} />;
         }
-        navigateToDashboard(); // Fallback if no selected liability
+        navigateToDashboard(); 
         return null;
       case 'earlyLoanClosure':
         return <EarlyLoanClosurePage liabilities={liabilities} onBack={navigateToDashboard} />;
@@ -758,12 +816,11 @@ const App: React.FC = () => {
         return (
           <div className="w-full p-2 sm:p-4"> 
             <div className="w-full max-w-7xl mx-auto space-y-4 sm:space-y-6">
-              {/* Main Financial Overview */}
                <SummaryDisplay 
                   totalIncome={totalIncome} 
                   totalExpenses={totalExpenses} 
                   balance={balance} 
-                  expenseTransactions={expenseTransactions} // Pass only expense transactions
+                  expenseTransactions={expenseTransactions} 
                   liabilities={liabilities}
                   totalSavings={totalSavings} 
                   onNavigateToIncomeDetails={navigateToIncomeDetails}
@@ -772,15 +829,14 @@ const App: React.FC = () => {
                   onNavigateToLiabilityDetails={navigateToLiabilityDetails}
                 />
 
-              {/* Upcoming Payments Notifications */}
-              {upcomingPayments.length > 0 && (
+              {upcomingPaymentsDashboard.length > 0 && (
                 <div className="w-full p-3 bg-yellow-500/20 border border-yellow-500 rounded-lg text-yellow-300 text-xs sm:text-sm">
                   <div className="flex items-center font-semibold mb-1">
                     <BellIcon className="h-5 w-5 mr-2 text-yellow-400" />
                     Upcoming Payments (Next 7 Days):
                   </div>
                   <ul className="list-disc list-inside ml-2">
-                    {upcomingPayments.map(p => (
+                    {upcomingPaymentsDashboard.map(p => (
                       <li key={p.id}>
                         {p.name || p.category} - ₹{p.emiAmount ? p.emiAmount.toFixed(2) : (p.initialAmount - p.amountRepaid).toFixed(2)} due on {new Date(p.nextDueDate + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}
                       </li>
@@ -789,12 +845,10 @@ const App: React.FC = () => {
                 </div>
               )}
                 
-              {/* Monthly Summary Chart */}
               {monthlySummaryChartData && monthlySummaryChartData.length > 0 && (
                 <MonthlySummaryChart data={monthlySummaryChartData} />
               )}
 
-              {/* Recent Transactions List */}
               <TransactionList 
                 title="Recent Transactions" 
                 transactions={recentTransactions}
@@ -802,9 +856,6 @@ const App: React.FC = () => {
                 onEdit={handleOpenEditTransactionForm}
               />
               
-              {/* LiabilityList was removed from here based on user request */}
-
-              {/* Footer */}
               <footer className="w-full mt-6 sm:mt-8 py-3 sm:py-4 text-center text-gray-500 text-xs sm:text-sm">
                 <p>&copy; {new Date().getFullYear()} Kaash. Track smarter, live better.</p>
               </footer>
@@ -829,8 +880,7 @@ const App: React.FC = () => {
         />
       )}
       
-      {/* Header (only shown for dashboard on larger screens or when menu is toggleable) */}
-      {currentUser && activeView === 'dashboard' && (
+      {currentUser && (
         <header className="w-full bg-slate-800/80 backdrop-blur-md sticky top-0 z-30 shadow-md border-b border-slate-700">
           <div className="max-w-7xl mx-auto flex justify-between items-center py-3 sm:py-4 px-2 sm:px-4">
             <div className="flex items-center space-x-2 sm:space-x-3">
@@ -847,50 +897,98 @@ const App: React.FC = () => {
                 Kaash
               </h1>
             </div>
-            <div className="relative flex items-center space-x-2 sm:space-x-4" ref={profileDropdownRef}>
-               <p className="text-sm text-gray-300 mr-2 hidden sm:inline-block truncate max-w-[100px] md:max-w-[150px]">
-                {currentUser.name || currentUser.email}
-              </p>
-              <button 
-                onClick={toggleProfileDropdown} 
-                className="p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-800"
-                aria-label="User profile options"
-                aria-haspopup="true"
-                aria-expanded={isProfileDropdownOpen}
-              >
-                {currentUser.photoURL ? (
-                  <img src={currentUser.photoURL} alt={currentUser.name || "User"} className="h-8 w-8 sm:h-10 sm:w-10 rounded-full border-2 border-sky-500 object-cover" />
-                ) : (
-                  <UserIcon className="h-8 w-8 sm:h-10 sm:w-10 text-gray-400 bg-slate-700 p-1.5 sm:p-2 rounded-full"/>
+            <div className="flex items-center space-x-1 sm:space-x-2">
+              {/* Notification Bell */}
+              <div className="relative" ref={notificationDropdownRef}>
+                <button
+                  onClick={toggleNotificationDropdown}
+                  className="p-1.5 sm:p-2 rounded-full text-gray-400 hover:text-sky-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-800 transition-colors"
+                  aria-label="Notifications"
+                  aria-haspopup="true"
+                  aria-expanded={isNotificationDropdownOpen}
+                >
+                  <BellIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+                  {notifications.length > 0 && (
+                    <span className="absolute top-0.5 right-0.5 sm:top-1 sm:right-1 block h-2.5 w-2.5 rounded-full ring-2 ring-slate-800 bg-red-500" />
+                  )}
+                </button>
+                {isNotificationDropdownOpen && (
+                  <div className="absolute top-full right-0 mt-2 w-72 sm:w-80 bg-slate-700 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-40 overflow-hidden">
+                    <div className="p-3 border-b border-slate-600">
+                      <h3 className="text-sm font-semibold text-gray-100">Notifications ({notifications.length})</h3>
+                    </div>
+                    {notifications.length === 0 ? (
+                      <p className="text-sm text-gray-400 p-4 text-center">No new notifications.</p>
+                    ) : (
+                      <ul className="max-h-80 overflow-y-auto chat-messages">
+                        {notifications.map(notif => (
+                          <li key={notif.id} className="border-b border-slate-600 last:border-b-0">
+                            <div className="p-3 hover:bg-slate-600/50 transition-colors cursor-default">
+                              <p className={`font-semibold text-xs mb-0.5 ${notif.type === 'emi_due' ? 'text-orange-300' : 'text-teal-300'}`}>
+                                {notif.title}
+                              </p>
+                              <p className="text-xs text-gray-300">{notif.message}</p>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                     <div className="p-2 bg-slate-700/50 text-center border-t border-slate-600">
+                        <button 
+                            onClick={() => setIsNotificationDropdownOpen(false) }
+                            className="text-xs text-sky-400 hover:text-sky-300"
+                        >
+                            Dismiss
+                        </button>
+                    </div>
+                  </div>
                 )}
-              </button>
-              {isProfileDropdownOpen && (
-                <div className="absolute top-full right-0 mt-2 w-48 bg-slate-700 rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-40">
-                  <button
-                    onClick={handleOpenEditProfileModal}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-slate-600 hover:text-sky-300 flex items-center"
-                  >
-                    <ProfileEditIcon className="w-4 h-4 mr-2" /> Edit Profile
-                  </button>
-                  <button
-                    onClick={handleLogout}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-slate-600 hover:text-red-400 flex items-center"
-                  >
-                    <LogoutIcon className="w-4 h-4 mr-2" /> Sign Out
-                  </button>
-                </div>
-              )}
+              </div>
+
+              {/* Profile Dropdown */}
+              <div className="relative" ref={profileDropdownRef}>
+                 <p className="text-sm text-gray-300 mr-1 sm:mr-2 hidden md:inline-block truncate max-w-[100px] lg:max-w-[150px]">
+                  {currentUser.name || currentUser.email}
+                </p>
+                <button 
+                  onClick={toggleProfileDropdown} 
+                  className="p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-800"
+                  aria-label="User profile options"
+                  aria-haspopup="true"
+                  aria-expanded={isProfileDropdownOpen}
+                >
+                  {currentUser.photoURL ? (
+                    <img src={currentUser.photoURL} alt={currentUser.name || "User"} className="h-8 w-8 sm:h-10 sm:w-10 rounded-full border-2 border-sky-500 object-cover" />
+                  ) : (
+                    <UserIcon className="h-8 w-8 sm:h-10 sm:w-10 text-gray-400 bg-slate-700 p-1.5 sm:p-2 rounded-full"/>
+                  )}
+                </button>
+                {isProfileDropdownOpen && (
+                  <div className="absolute top-full right-0 mt-2 w-48 bg-slate-700 rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-40">
+                    <button
+                      onClick={handleOpenEditProfileModal}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-slate-600 hover:text-sky-300 flex items-center"
+                    >
+                      <ProfileEditIcon className="w-4 h-4 mr-2" /> Edit Profile
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-slate-600 hover:text-red-400 flex items-center"
+                    >
+                      <LogoutIcon className="w-4 h-4 mr-2" /> Sign Out
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>
       )}
       
-      {/* Main Content Area - Adjust top padding if header is present */}
-      <div className={`w-full flex-grow ${currentUser && activeView === 'dashboard' ? 'pt-16 sm:pt-[76px]' : ''}`}> 
+      <div className={`w-full flex-grow ${currentUser ? 'pt-16 sm:pt-[76px]' : ''}`}> 
          {renderActiveView()}
       </div>
 
-      {/* Edit Profile Modal */}
       {showEditProfileModal && currentUser && (
         <EditProfileModal
           user={currentUser}
@@ -899,7 +997,6 @@ const App: React.FC = () => {
         />
       )}
 
-      {/* Transaction, Liability, and Payment Modals */}
       {(showTransactionModal || showLiabilityForm || payingLiability) && ( 
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-2 sm:p-4 z-50 backdrop-blur-sm">
           <div className="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-md relative border border-slate-700 overflow-y-auto max-h-[90vh]">
@@ -917,7 +1014,7 @@ const App: React.FC = () => {
                 onUserAddCategory={formAddHandler}
                 onUserEditCategory={formEditHandler}
                 onUserDeleteCategory={formDeleteHandler}
-                key={forceFormCategoryResetKey} // Force re-render if categories are changed externally
+                key={forceFormCategoryResetKey} 
               />
             }
             {showLiabilityForm && 
@@ -930,14 +1027,13 @@ const App: React.FC = () => {
                 onUserAddLiabilityCategory={liabilityCategoryHandlers.handleAdd}
                 onUserEditLiabilityCategory={liabilityCategoryHandlers.handleEdit}
                 onUserDeleteLiabilityCategory={liabilityCategoryHandlers.handleDelete}
-                key={`liability-form-${forceFormCategoryResetKey}`} // Force re-render
+                key={`liability-form-${forceFormCategoryResetKey}`} 
               />
             }
             {payingLiability && 
               <RecordLiabilityPaymentForm 
                 liability={payingLiability} 
                 onSubmit={(paymentAmount, paymentDate, newNextDueDate, notes) => {
-                  // payingLiability should still be valid here as it's used to render this form
                   if (payingLiability) { 
                     handleRecordLiabilityPayment(payingLiability.id, paymentAmount, paymentDate, newNextDueDate, notes);
                   }
