@@ -1,13 +1,15 @@
+
 import React from 'react';
 import { Liability } from '../types';
 import { TrashIcon, EditIcon, PaymentIcon } from './icons'; 
+import { calculateRemainingLoanTerm } from '../utils'; // Import the new utility
 
 interface LiabilityItemProps {
   liability: Liability;
   onDelete: (id: string) => void;
   onEdit: (liability: Liability) => void;
   onRecordPayment: (liability: Liability) => void;
-  onViewEMIs?: (liabilityId: string) => void; // New prop
+  onViewEMIs?: (liabilityId: string) => void; 
 }
 
 export const LiabilityItem: React.FC<LiabilityItemProps> = ({ liability, onDelete, onEdit, onRecordPayment, onViewEMIs }) => {
@@ -26,6 +28,30 @@ export const LiabilityItem: React.FC<LiabilityItemProps> = ({ liability, onDelet
       onViewEMIs(id);
     }
   };
+
+  const outstandingPrincipal = initialAmount - amountRepaid;
+  let remainingTermDisplay: string | null = null;
+  if (outstandingPrincipal > 0 && emiAmount && typeof interestRate === 'number') {
+    const termInMonths = calculateRemainingLoanTerm(outstandingPrincipal, interestRate, emiAmount);
+    if (termInMonths !== null && termInMonths > 0) {
+      const years = Math.floor(termInMonths / 12);
+      const months = termInMonths % 12;
+      let display = '';
+      if (years > 0) {
+        display += `${years} yr${years > 1 ? 's' : ''}`;
+      }
+      if (months > 0) {
+        if (years > 0) display += ' ';
+        display += `${months} mth${months > 1 ? 's' : ''}`;
+      }
+      remainingTermDisplay = display || 'Less than a month';
+    } else if (termInMonths === 0) {
+      remainingTermDisplay = 'Paid off'; // Should be covered by remainingAmount <= 0
+    } else if (termInMonths === null) {
+        remainingTermDisplay = "N/A (check EMI/Rate)";
+    }
+  }
+
 
   return (
     <li className="p-3 sm:p-4 bg-slate-700/50 rounded-lg shadow hover:bg-slate-700 transition-colors duration-150 group">
@@ -81,8 +107,14 @@ export const LiabilityItem: React.FC<LiabilityItemProps> = ({ liability, onDelet
             </div>
             {loanTermInMonths !== undefined && (
               <div>
-                <span className="text-gray-400">Term: </span>
+                <span className="text-gray-400">Original Term: </span>
                 <span className="text-gray-300">{loanTermInMonths} months</span>
+              </div>
+            )}
+            {remainingTermDisplay && remainingAmount > 0 && (
+              <div>
+                <span className="text-gray-400">Remaining Term: </span>
+                <span className="text-gray-300">{remainingTermDisplay}</span>
               </div>
             )}
           </div>

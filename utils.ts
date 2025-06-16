@@ -56,3 +56,50 @@ export const calculateLoanPaymentDetails = (
     principalPaid: Math.max(0, principalPaid),   // Principal paid cannot be negative for this calculation's purpose
   };
 };
+
+/**
+ * Calculates the remaining loan term in months.
+ * @param outstandingPrincipal The current outstanding principal balance.
+ * @param annualInterestRate The annual interest rate (e.g., 5 for 5%).
+ * @param emiAmount The Equated Monthly Installment amount.
+ * @returns The number of remaining months, or null if calculation is not possible (e.g., EMI too low).
+ */
+export const calculateRemainingLoanTerm = (
+  outstandingPrincipal: number,
+  annualInterestRate: number, // e.g., 5 for 5%
+  emiAmount: number
+): number | null => {
+  if (outstandingPrincipal <= 0) {
+    return 0; // Loan is already paid off
+  }
+  if (emiAmount <= 0) {
+    return null; // Cannot pay off the loan with non-positive EMI
+  }
+
+  // If no interest rate, simple division
+  if (annualInterestRate === 0) {
+    return Math.ceil(outstandingPrincipal / emiAmount);
+  }
+
+  const monthlyInterestRate = annualInterestRate / 12 / 100;
+
+  // Check if EMI is sufficient to cover interest
+  if (emiAmount <= outstandingPrincipal * monthlyInterestRate) {
+    return null; // EMI is less than or equal to the interest, loan will never be paid off
+  }
+
+  // N = -log(1 - (P * r) / EMI) / log(1 + r)
+  // where P = outstandingPrincipal, r = monthlyInterestRate, EMI = emiAmount
+  const numerator = Math.log(1 - (outstandingPrincipal * monthlyInterestRate) / emiAmount);
+  const denominator = Math.log(1 + monthlyInterestRate);
+
+  if (denominator === 0) return null; // Avoid division by zero if monthlyInterestRate is -1 (not practical)
+
+  const remainingMonths = -numerator / denominator;
+
+  if (isNaN(remainingMonths) || !isFinite(remainingMonths) || remainingMonths < 0) {
+    return null; // Invalid result from formula
+  }
+
+  return Math.ceil(remainingMonths); // Round up to ensure full payoff
+};
