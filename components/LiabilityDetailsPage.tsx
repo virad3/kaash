@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Liability, LiabilityCategory, Transaction } from '../types'; // Added Transaction
 import { LiabilityList } from './LiabilityList'; 
@@ -66,7 +67,7 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
         <div className="mt-6 space-y-6 md:grid md:grid-cols-12 md:gap-x-8 md:space-y-0">
           {/* Left Sidebar: Filters and Summary */}
           <div className="md:col-span-4 xl:col-span-3 space-y-6">
-            <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 space-y-4">
+            <div className="p-3 sm:p-4 bg-slate-800 rounded-lg border border-slate-700 space-y-4"> {/* Adjusted padding */}
               <h3 className="text-xl font-semibold text-gray-100 mb-4">Filter Options</h3>
               <div>
                 <label htmlFor="categoryFilter" className="block text-sm font-medium text-gray-200 mb-1.5">Filter by Category:</label>
@@ -84,9 +85,9 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
               </div>
             </div>
 
-            <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 text-center">
-              <p className="text-xl font-semibold text-gray-100 mb-2">Liabilities Summary</p>
-              <p className="text-4xl font-bold text-orange-400">₹{totalFilteredOutstanding.toFixed(2)}</p>
+            <div className="p-3 sm:p-4 bg-slate-800 rounded-lg border border-slate-700 text-center"> {/* Adjusted padding */}
+              <p className="text-lg sm:text-xl font-semibold text-gray-100 mb-1 sm:mb-2">Liabilities Summary</p> {/* Adjusted font size & margin */}
+              <p className="text-3xl sm:text-4xl font-bold text-orange-400">₹{totalFilteredOutstanding.toFixed(2)}</p> {/* Adjusted font size */}
             </div>
 
             <button
