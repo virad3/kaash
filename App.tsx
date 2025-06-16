@@ -125,6 +125,24 @@ const App: React.FC = () => {
     setUpcomingPayments(upcoming);
   }, [liabilities, currentUser]);
 
+  const navigateToDashboard = useCallback(() => { setActiveView('dashboard'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); }, []);
+
+  useEffect(() => {
+    if (activeView === 'liabilityEMIDetail' && selectedLiabilityForEMIs?.id && currentUser) {
+      const currentLiabilityInList = liabilities.find(l => l.id === selectedLiabilityForEMIs.id);
+      if (currentLiabilityInList) {
+        // Compare stringified versions to detect changes in the liability object's data
+        if (JSON.stringify(currentLiabilityInList) !== JSON.stringify(selectedLiabilityForEMIs)) {
+           setSelectedLiabilityForEMIs(currentLiabilityInList);
+        }
+      } else {
+        // Liability might have been deleted from the main list, so the selected one is invalid
+        navigateToDashboard();
+      }
+    }
+  }, [liabilities, activeView, selectedLiabilityForEMIs, currentUser, navigateToDashboard]);
+
+
   const handleLogin = async (email: string, password?: string) => {
     setAuthError(null);
     try {
@@ -549,7 +567,7 @@ const App: React.FC = () => {
   const handleOpenEditLiabilityForm = useCallback((liability: Liability) => { setEditingLiability(liability); setShowLiabilityForm(true); }, []);
   const handleOpenRecordPaymentForm = useCallback((liability: Liability) => setPayingLiability(liability), []);
 
-  const navigateToDashboard = useCallback(() => { setActiveView('dashboard'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); }, []);
+  
   const navigateToIncomeDetails = useCallback(() => { setActiveView('incomeDetails'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); }, []);
   const navigateToExpenseDetails = useCallback(() => { setActiveView('expenseDetails'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); }, []);
   const navigateToSavingsDetails = useCallback(() => { setActiveView('savingsDetails'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); }, []);
