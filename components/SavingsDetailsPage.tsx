@@ -94,23 +94,27 @@ export const SavingsDetailsPage: React.FC<SavingsDetailsPageProps> = ({
   }, [filteredTransactions]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 p-2 sm:p-0 md:p-0 selection:bg-sky-400 selection:text-sky-900"> {/* Adjusted padding */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 p-2 sm:p-0 md:p-0 selection:bg-sky-400 selection:text-sky-900">
       <div className="max-w-4xl mx-auto">
         <header className="sticky top-0 z-30 bg-slate-800/95 backdrop-blur-md border-b border-slate-700 py-2 sm:py-3">
-            <div className="relative flex items-center justify-center h-full px-2 sm:px-0">
-                <div className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2">
+            <div className="flex items-center justify-between h-full px-3 sm:px-4">
+                <div className="flex-none">
                     <button
                         onClick={onBack}
                         className="flex items-center space-x-1 text-sky-400 hover:text-sky-300 p-1.5 sm:p-2 rounded-md hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-800"
-                        aria-label="Back"
+                        aria-label="Back to Dashboard"
                     >
                         <BackIcon className="h-5 w-5" />
                         <span className="text-xs sm:text-sm font-medium hidden sm:inline">Back</span>
                     </button>
                 </div>
-                <h1 className="text-lg sm:text-xl font-semibold text-teal-400 px-12 sm:px-16 text-center truncate">
-                    Savings Details
-                </h1>
+                <div className="flex-grow text-center px-2">
+                    <h1 className="text-lg sm:text-xl font-semibold text-teal-400 truncate">
+                        Savings Details
+                    </h1>
+                </div>
+                 <div className="flex-none w-10 sm:w-[70px]"> {/* Adjusted spacer width */}
+                </div>
             </div>
         </header>
 
