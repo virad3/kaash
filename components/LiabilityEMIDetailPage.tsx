@@ -7,7 +7,7 @@ import { BackIcon } from './icons';
 interface LiabilityEMIDetailPageProps {
   liability: Liability | undefined;
   allTransactions: Transaction[];
-  onBack: () => void;
+  onBack: () => void; // This will now point to navigateToLiabilityDetails
   onEditEMI: (transaction: Transaction) => void; 
   onDeleteEMI: (transactionId: string, relatedLiabilityId: string, emiAmount: number) => void; 
 }
@@ -23,7 +23,18 @@ export const LiabilityEMIDetailPage: React.FC<LiabilityEMIDetailPageProps> = ({
     if (!liability) return [];
     return allTransactions
       .filter(t => t.type === TransactionType.EXPENSE && t.relatedLiabilityId === liability.id)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      .sort((a, b) => {
+        // Primary sort by date (descending)
+        const dateComparison = new Date(b.date).getTime() - new Date(a.date).getTime();
+        if (dateComparison !== 0) return dateComparison;
+        // Secondary sort by createdAt timestamp (descending) for transactions on the same date
+        if (a.createdAt && b.createdAt) {
+          const createdAtA = typeof a.createdAt.toDate === 'function' ? a.createdAt.toDate() : new Date(a.createdAt);
+          const createdAtB = typeof b.createdAt.toDate === 'function' ? b.createdAt.toDate() : new Date(b.createdAt);
+          return createdAtB.getTime() - createdAtA.getTime();
+        }
+        return 0; // Should not happen if createdAt is always present
+      });
   }, [allTransactions, liability]);
 
   if (!liability) {
@@ -31,7 +42,7 @@ export const LiabilityEMIDetailPage: React.FC<LiabilityEMIDetailPageProps> = ({
       <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 p-6 flex flex-col items-center justify-center">
         <p className="text-xl text-red-400">Liability data not found.</p>
         <button
-          onClick={onBack}
+          onClick={onBack} // This onBack should navigate to a safe place, like liability list or dashboard
           className="mt-4 flex items-center space-x-2 text-sky-400 hover:text-sky-300 transition-colors p-2 rounded-md hover:bg-slate-700"
           aria-label="Back"
         >
@@ -47,9 +58,9 @@ export const LiabilityEMIDetailPage: React.FC<LiabilityEMIDetailPageProps> = ({
     return emiTransactions.reduce((sum, t) => sum + t.amount, 0);
   }, [emiTransactions]);
 
+  // Total interest paid is the sum of all actual EMI payments made MINUS the total principal that has been repaid.
+  // liability.amountRepaid should accurately reflect the sum of all principal components from the EMIs.
   const totalInterestPaid = useMemo(() => {
-    // Total Interest Paid = Total EMI Payments Made - Total Principal Repaid
-    // liability.amountRepaid should ideally reflect the sum of principal portions of EMIs.
     const interest = totalEMIsPaidAmount - liability.amountRepaid;
     return Math.max(0, interest); // Interest paid cannot be negative
   }, [totalEMIsPaidAmount, liability.amountRepaid]);
@@ -61,12 +72,12 @@ export const LiabilityEMIDetailPage: React.FC<LiabilityEMIDetailPageProps> = ({
         <header className="mb-6">
           <div className="block">
             <button
-              onClick={onBack}
+              onClick={onBack} // Changed to go back to Liability Details
               className="flex items-center space-x-2 text-sky-400 hover:text-sky-300 transition-colors p-2 rounded-md hover:bg-slate-700 mb-2"
-              aria-label="Back"
+              aria-label="Back to Liability Details"
             >
               <BackIcon className="h-6 w-6" />
-              <span className="text-sm sm:text-base">Back</span>
+              <span className="text-sm sm:text-base">Back to Liabilities</span>
             </button>
             <h1 className="text-2xl sm:text-3xl font-bold text-orange-400 text-center w-full mt-1">
               EMI History for: {liability.name || liability.category}
@@ -106,12 +117,9 @@ export const LiabilityEMIDetailPage: React.FC<LiabilityEMIDetailPageProps> = ({
                   transaction={transaction}
                   onEdit={() => onEditEMI(transaction)} 
                   onDelete={() => {
-                    if (liability) { 
-                      onDeleteEMI(transaction.id, liability.id, transaction.amount);
-                    } else {
-                      console.error("Cannot delete EMI: Liability context is missing.");
-                      alert("Error: Could not determine which liability this EMI belongs to for deletion.");
-                    }
+                    // Liability should always be defined if we are on this page.
+                    // The main component checks for liability before rendering this page.
+                    onDeleteEMI(transaction.id, liability.id, transaction.amount);
                   }}
                 />
               ))}

@@ -44,16 +44,9 @@ export const calculateLoanPaymentDetails = (
   
   const principalPaid = paymentAmount - interestForPeriod;
 
-  // Principal paid cannot make outstanding principal negative.
-  // The actual principal reduction is capped by the outstanding amount.
-  // If paymentAmount is less than interest, principalPaid could be negative,
-  // meaning the loan balance might even increase if not handled (though typically payments cover interest).
-  // For simplicity here, we assume payments aim to reduce principal.
-  // A more advanced scenario would handle negative amortization if payment < interest.
-
   return {
-    interestPaid: Math.max(0, interestForPeriod), // Interest cannot be negative
-    principalPaid: Math.max(0, principalPaid),   // Principal paid cannot be negative for this calculation's purpose
+    interestPaid: Math.max(0, interestForPeriod), 
+    principalPaid: Math.max(0, principalPaid),   
   };
 };
 
@@ -83,23 +76,157 @@ export const calculateRemainingLoanTerm = (
 
   const monthlyInterestRate = annualInterestRate / 12 / 100;
 
-  // Check if EMI is sufficient to cover interest
   if (emiAmount <= outstandingPrincipal * monthlyInterestRate) {
-    return null; // EMI is less than or equal to the interest, loan will never be paid off
+    return null; 
   }
 
-  // N = -log(1 - (P * r) / EMI) / log(1 + r)
-  // where P = outstandingPrincipal, r = monthlyInterestRate, EMI = emiAmount
   const numerator = Math.log(1 - (outstandingPrincipal * monthlyInterestRate) / emiAmount);
   const denominator = Math.log(1 + monthlyInterestRate);
 
-  if (denominator === 0) return null; // Avoid division by zero if monthlyInterestRate is -1 (not practical)
+  if (denominator === 0) return null; 
 
   const remainingMonths = -numerator / denominator;
 
   if (isNaN(remainingMonths) || !isFinite(remainingMonths) || remainingMonths < 0) {
-    return null; // Invalid result from formula
+    return null; 
   }
 
-  return Math.ceil(remainingMonths); // Round up to ensure full payoff
+  return Math.ceil(remainingMonths); 
+};
+
+
+export interface AmortizationResult {
+  termInMonths: number;
+  totalInterestPaid: number;
+  payoffDate: Date;
+  monthlyPayments: Array<{
+    month: number;
+    interestPaid: number;
+    principalPaid: number;
+    remainingBalance: number;
+    additionalPaymentMade: number;
+  }>;
+}
+
+/**
+ * Calculates the loan amortization schedule and summary.
+ * @param currentPrincipal The current outstanding principal.
+ * @param annualInterestRate The annual interest rate (e.g., 5 for 5%).
+ * @param emiAmount The regular monthly EMI amount.
+ * @param additionalMonthlyPayment Extra amount paid each month (defaults to 0).
+ * @param startDate The date from which the calculation should start (typically liability's nextDueDate or current date).
+ * @returns AmortizationResult object.
+ */
+export const calculateLoanAmortization = (
+  currentPrincipal: number,
+  annualInterestRate: number,
+  emiAmount: number,
+  additionalMonthlyPayment: number = 0,
+  startDate: Date
+): AmortizationResult => {
+  if (currentPrincipal <= 0) {
+    return { termInMonths: 0, totalInterestPaid: 0, payoffDate: startDate, monthlyPayments: [] };
+  }
+  if (emiAmount <= 0 && additionalMonthlyPayment <=0) {
+    // This case should ideally be caught before calling, indicates an issue or a loan that won't be paid.
+    // For calculation purposes, return a state indicating non-payment or an extremely long term.
+     return { termInMonths: Infinity, totalInterestPaid: Infinity, payoffDate: new Date('9999-12-31'), monthlyPayments: [] };
+  }
+
+
+  const monthlyInterestRate = annualInterestRate > 0 ? annualInterestRate / 12 / 100 : 0;
+  let remainingBalance = currentPrincipal;
+  let totalInterestPaid = 0;
+  let months = 0;
+  const monthlyPayments: AmortizationResult['monthlyPayments'] = [];
+  let currentDate = new Date(startDate);
+
+  while (remainingBalance > 0 && months < 1200) { // Max 100 years to prevent infinite loops
+    months++;
+    const interestForMonth = monthlyInterestRate > 0 ? remainingBalance * monthlyInterestRate : 0;
+    
+    // Total available for payment this month (regular EMI + additional)
+    const totalPaymentThisMonth = emiAmount + additionalMonthlyPayment;
+
+    // Principal paid from the regular EMI part (cannot be more than EMI itself if interest is high)
+    // and also cannot be more than remaining balance + interest.
+    let principalFromEmi = Math.max(0, emiAmount - interestForMonth);
+    
+    // Actual total payment made, capped by remaining balance + interest
+    const actualTotalPaymentMade = Math.min(totalPaymentThisMonth, remainingBalance + interestForMonth);
+
+    let actualInterestPaid = interestForMonth;
+    let actualPrincipalPaid = actualTotalPaymentMade - actualInterestPaid;
+    
+    // Ensure principal paid does not make balance negative beyond small rounding errors
+    if (actualPrincipalPaid > remainingBalance) {
+        actualPrincipalPaid = remainingBalance;
+        // Adjust actualInterestPaid if total payment was fixed
+        // This scenario means payment covers more than outstanding, common in final payment
+        actualInterestPaid = Math.max(0, actualTotalPaymentMade - actualPrincipalPaid); 
+    }
+    
+    // Ensure interest paid does not exceed total payment
+    actualInterestPaid = Math.min(actualInterestPaid, actualTotalPaymentMade);
+
+
+    totalInterestPaid += actualInterestPaid;
+    remainingBalance -= actualPrincipalPaid;
+    remainingBalance = Math.max(0, remainingBalance); // Ensure balance doesn't go negative
+
+    monthlyPayments.push({
+      month: months,
+      interestPaid: actualInterestPaid,
+      principalPaid: actualPrincipalPaid,
+      remainingBalance: remainingBalance,
+      additionalPaymentMade: additionalMonthlyPayment // Track the additional part if needed
+    });
+
+    if (remainingBalance <= 0) {
+      break;
+    }
+  }
+  
+  const payoffDate = new Date(startDate);
+  payoffDate.setMonth(startDate.getMonth() + months);
+
+  return { termInMonths: months, totalInterestPaid, payoffDate, monthlyPayments };
+};
+
+
+/**
+ * Formats a total number of months into a string like "X years Y months (Z total months)".
+ * @param totalMonths The total number of months.
+ * @returns A formatted string.
+ */
+export const formatMonthsToYearsMonthsString = (totalMonths: number): string => {
+  if (totalMonths === Infinity) return "Never (EMI too low)";
+  if (totalMonths < 0) return "N/A";
+  if (totalMonths === 0) return "0 months";
+
+  const years = Math.floor(totalMonths / 12);
+  const months = totalMonths % 12;
+
+  let result = "";
+  if (years > 0) {
+    result += `${years} year${years > 1 ? 's' : ''}`;
+  }
+  if (months > 0) {
+    if (years > 0) result += " ";
+    result += `${months} month${months > 1 ? 's' : ''}`;
+  }
+  if (!result) result = "0 months"; // Should not happen if totalMonths > 0
+
+  return `${result} (${totalMonths} total months)`;
+};
+
+/**
+ * Formats a Date object into "Month YYYY" (e.g., "July 2024").
+ * @param date The Date object to format.
+ * @returns A string representing the month and year.
+ */
+export const formatDateForDisplay = (date: Date): string => {
+  if (!date || isNaN(date.getTime())) return "N/A";
+  if (date.getFullYear() > 9000) return "Very far future"; // For Infinity payoff date
+  return date.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 };
