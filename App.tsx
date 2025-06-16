@@ -236,13 +236,14 @@ const App: React.FC = () => {
   }, [currentUser, liabilities, transactions]);
 
 
-  const navigateToDashboard = useCallback(() => { setActiveView('dashboard'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); setIsNotificationDropdownOpen(false); closeModal();}, [closeModal]);
-  const navigateToIncomeDetails = useCallback(() => { setActiveView('incomeDetails'); setIsMenuOpen(false); setIsNotificationDropdownOpen(false); closeModal(); }, [closeModal]);
-  const navigateToExpenseDetails = useCallback(() => { setActiveView('expenseDetails'); setIsMenuOpen(false); setIsNotificationDropdownOpen(false); closeModal(); }, [closeModal]);
-  const navigateToSavingsDetails = useCallback(() => { setActiveView('savingsDetails'); setIsMenuOpen(false); setIsNotificationDropdownOpen(false); closeModal(); }, [closeModal]);
-  const navigateToLiabilityDetails = useCallback(() => { setActiveView('liabilityDetails'); setSelectedLiabilityForEMIs(null); setIsMenuOpen(false); setIsNotificationDropdownOpen(false); closeModal(); }, [closeModal]);
-  const navigateToLiabilityEMIDetail = useCallback((liability: Liability) => { setSelectedLiabilityForEMIs(liability); setActiveView('liabilityEMIDetail'); setIsMenuOpen(false); setIsNotificationDropdownOpen(false); closeModal();}, [closeModal]);
-  const navigateToEarlyLoanClosure = useCallback(() => { setActiveView('earlyLoanClosure'); setIsMenuOpen(false); setIsNotificationDropdownOpen(false); closeModal(); }, [closeModal]);
+  const navigateToDashboard = useCallback(() => { setActiveView('dashboard'); setSelectedLiabilityForEMIs(null); setIsNotificationDropdownOpen(false); closeModal();}, [closeModal]);
+  const navigateToIncomeDetails = useCallback(() => { setActiveView('incomeDetails'); setIsNotificationDropdownOpen(false); closeModal(); }, [closeModal]);
+  const navigateToExpenseDetails = useCallback(() => { setActiveView('expenseDetails'); setIsNotificationDropdownOpen(false); closeModal(); }, [closeModal]);
+  const navigateToSavingsDetails = useCallback(() => { setActiveView('savingsDetails'); setIsNotificationDropdownOpen(false); closeModal(); }, [closeModal]);
+  const navigateToLiabilityDetails = useCallback(() => { setActiveView('liabilityDetails'); setSelectedLiabilityForEMIs(null); setIsNotificationDropdownOpen(false); closeModal(); }, [closeModal]);
+  const navigateToLiabilityEMIDetail = useCallback((liability: Liability) => { setSelectedLiabilityForEMIs(liability); setActiveView('liabilityEMIDetail'); setIsNotificationDropdownOpen(false); closeModal();}, [closeModal]);
+  const navigateToEarlyLoanClosure = useCallback(() => { setActiveView('earlyLoanClosure'); setIsNotificationDropdownOpen(false); closeModal(); }, [closeModal]);
+
 
   useEffect(() => {
     if (activeView === 'liabilityEMIDetail' && selectedLiabilityForEMIs?.id && currentUser) {
@@ -785,42 +786,6 @@ const App: React.FC = () => {
                 />
               </div>
             </div>
-            
-             {/* Quick Add Buttons - visually enhanced */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-6 p-4 bg-slate-800 rounded-xl border border-slate-700 shadow-lg">
-                <button
-                    onClick={() => handleOpenNewTransactionForm(TransactionType.INCOME)}
-                    className="flex flex-col items-center justify-center p-3 sm:p-4 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded-lg transition-all duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500"
-                    aria-label="Add new income"
-                >
-                    <AddIncomeIcon className="h-6 w-6 sm:h-7 sm:w-7 mb-1" />
-                    <span className="text-xs sm:text-sm font-medium">Add Income</span>
-                </button>
-                <button
-                    onClick={() => handleOpenNewTransactionForm(TransactionType.EXPENSE)}
-                    className="flex flex-col items-center justify-center p-3 sm:p-4 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-all duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500"
-                    aria-label="Add new expense"
-                >
-                    <AddExpenseIcon className="h-6 w-6 sm:h-7 sm:w-7 mb-1" />
-                    <span className="text-xs sm:text-sm font-medium">Add Expense</span>
-                </button>
-                <button
-                    onClick={() => handleOpenNewTransactionForm(TransactionType.SAVING)}
-                    className="flex flex-col items-center justify-center p-3 sm:p-4 bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 rounded-lg transition-all duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    aria-label="Add new saving"
-                >
-                    <PiggyBankIcon className="h-6 w-6 sm:h-7 sm:w-7 mb-1" />
-                    <span className="text-xs sm:text-sm font-medium">Add Saving</span>
-                </button>
-                <button
-                    onClick={handleOpenNewLiabilityForm}
-                    className="flex flex-col items-center justify-center p-3 sm:p-4 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 rounded-lg transition-all duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    aria-label="Add new liability"
-                >
-                    <AddLiabilityIcon className="h-6 w-6 sm:h-7 sm:w-7 mb-1" />
-                    <span className="text-xs sm:text-sm font-medium">Add Liability</span>
-                </button>
-            </div>
           </div>
         );
       case 'incomeDetails':
@@ -1018,11 +983,11 @@ const App: React.FC = () => {
       <SideMenu 
         isOpen={isMenuOpen} 
         onClose={toggleMenu} 
-        onOpenIncomeForm={() => { handleOpenNewTransactionForm(TransactionType.INCOME); setIsMenuOpen(false);}}
-        onOpenExpenseForm={() => { handleOpenNewTransactionForm(TransactionType.EXPENSE); setIsMenuOpen(false);}}
-        onOpenSavingForm={() => { handleOpenNewTransactionForm(TransactionType.SAVING); setIsMenuOpen(false);}}
-        onOpenLiabilityForm={() => { handleOpenNewLiabilityForm(); setIsMenuOpen(false);}}
-        onNavigateToEarlyLoanClosure={() => { navigateToEarlyLoanClosure(); setIsMenuOpen(false); }}
+        onOpenIncomeForm={() => handleOpenNewTransactionForm(TransactionType.INCOME)}
+        onOpenExpenseForm={() => handleOpenNewTransactionForm(TransactionType.EXPENSE)}
+        onOpenSavingForm={() => handleOpenNewTransactionForm(TransactionType.SAVING)}
+        onOpenLiabilityForm={handleOpenNewLiabilityForm}
+        onNavigateToEarlyLoanClosure={navigateToEarlyLoanClosure}
       />
       
       <main className="pt-2 sm:pt-4"> {/* Padding top for content below sticky header */}
