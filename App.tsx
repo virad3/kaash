@@ -333,6 +333,12 @@ const App: React.FC = () => {
     setIsNotificationDropdownOpen(false);
   }, []);
 
+  const handleOpenEditLiabilityForm = useCallback((liability: Liability) => {
+    setEditingLiability(liability);
+    setShowLiabilityForm(true);
+    setIsNotificationDropdownOpen(false);
+  }, []);
+
 
   const handleAddOrEditTransaction = useCallback(async (data: { 
     id?: string; 
@@ -817,7 +823,7 @@ const App: React.FC = () => {
                   liabilities={liabilities} 
                   allTransactions={transactions}
                   onBack={navigateToDashboard}
-                  onEditLiability={setEditingLiability}
+                  onEditLiability={handleOpenEditLiabilityForm} // Changed from setEditingLiability
                   onDeleteLiability={handleDeleteLiability}
                   onRecordPayment={setPayingLiability}
                   onViewEMIs={(liabilityId) => {

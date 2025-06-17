@@ -95,7 +95,7 @@ export const IncomeDetailsPage: React.FC<IncomeDetailsPageProps> = ({
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 selection:bg-sky-400 selection:text-sky-900">
       <header className="sticky top-0 z-30 bg-slate-800/95 backdrop-blur-md border-b border-slate-700 py-2 sm:py-3">
-          <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-3 sm:px-4">
+          <div className="flex items-center justify-between h-full px-2 sm:px-4 lg:px-6">
               <div className="flex-none">
                   <button
                       onClick={onBack}
@@ -117,133 +117,131 @@ export const IncomeDetailsPage: React.FC<IncomeDetailsPageProps> = ({
           </div>
       </header>
 
-      <div className="max-w-4xl mx-auto">
-        {/* Content now starts with mt-0 relative to this container, padding handled below */}
-        <div className="mt-6 p-3 sm:p-4 md:p-6 space-y-6 md:grid md:grid-cols-12 md:gap-x-8 md:space-y-0">
-          {/* Left Sidebar: Filters and Summary */}
-          <div className="md:col-span-4 xl:col-span-3 space-y-6">
-            {/* Filters */}
-            <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 space-y-4">
-              <h3 className="text-lg font-semibold text-sky-300 mb-3">Filters</h3>
-              <div>
-                <label htmlFor="monthFilter" className="block text-sm font-medium text-gray-300 mb-1">Filter by Month:</label>
-                <select
-                  id="monthFilter"
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-md shadow-sm p-2.5 focus:ring-sky-500 focus:border-sky-500 transition"
-                >
-                  <option value="all">All Months</option>
-                  {uniqueMonths.map(month => (
-                    <option key={month} value={month}>
-                      {new Date(month + '-02').toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })} 
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="categoryFilter" className="block text-sm font-medium text-gray-300 mb-1">Filter by Category:</label>
-                <select
-                  id="categoryFilter"
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-md shadow-sm p-2.5 focus:ring-sky-500 focus:border-sky-500 transition"
-                >
-                  <option value="all">All Categories</option>
-                  {uniqueCategories.map(category => (
-                    <option key={category} value={category}>{category}</option>
-                  ))}
-                </select>
-              </div>
+      {/* Content wrapper "max-w-4xl mx-auto" is removed to allow wider layout */}
+      <div className="mt-6 p-3 sm:p-4 md:p-6 space-y-6 md:grid md:grid-cols-12 md:gap-x-8 md:space-y-0">
+        {/* Left Sidebar: Filters and Summary */}
+        <div className="md:col-span-4 xl:col-span-3 space-y-6">
+          {/* Filters */}
+          <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 space-y-4">
+            <h3 className="text-lg font-semibold text-sky-300 mb-3">Filters</h3>
+            <div>
+              <label htmlFor="monthFilter" className="block text-sm font-medium text-gray-300 mb-1">Filter by Month:</label>
+              <select
+                id="monthFilter"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-md shadow-sm p-2.5 focus:ring-sky-500 focus:border-sky-500 transition"
+              >
+                <option value="all">All Months</option>
+                {uniqueMonths.map(month => (
+                  <option key={month} value={month}>
+                    {new Date(month + '-02').toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })} 
+                  </option>
+                ))}
+              </select>
             </div>
-
-            {/* Summary of Filtered Data */}
-            <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 text-center">
-              <p className="text-sm text-gray-400 uppercase tracking-wider">Income Summary</p>
-              <p className="text-3xl font-bold text-green-400">₹{totalFilteredIncome.toFixed(2)}</p>
+            <div>
+              <label htmlFor="categoryFilter" className="block text-sm font-medium text-gray-300 mb-1">Filter by Category:</label>
+              <select
+                id="categoryFilter"
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-md shadow-sm p-2.5 focus:ring-sky-500 focus:border-sky-500 transition"
+              >
+                <option value="all">All Categories</option>
+                {uniqueCategories.map(category => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
             </div>
-            
-            {/* Add Income Button */}
-            <button
-              onClick={() => onOpenNewTransactionForm(TransactionType.INCOME)}
-              className="w-full mt-4 px-6 py-2.5 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75 flex items-center justify-center gap-2"
-              aria-label="Add new income"
-            >
-              <PlusIcon className="h-5 w-5" /> Add Income
-            </button>
           </div>
 
-          {/* Right Main Content: Chart and List */}
-          <div className="md:col-span-8 xl:col-span-9 space-y-6">
-            {incomeTransactions.length === 0 ? (
-                <div className="text-center py-10 bg-slate-800 rounded-lg border border-slate-700">
-                    <p className="text-xl text-gray-400">No income recorded yet.</p>
-                    <p className="text-gray-500 mt-2 mb-4">Click "Add Income" to get started.</p>
-                </div>
-            ) : (
-                <>
-                    {/* Income Chart */}
-                    {incomeChartData.length > 0 && (
-                        <div className="p-4 bg-slate-800 rounded-lg border border-slate-700">
-                        <h2 className="text-xl font-semibold mb-4 text-center text-sky-300">Income by Category</h2>
-                        <div style={{ width: '100%', height: 300, minHeight: '250px' }}>
-                            <ResponsiveContainer>
-                            <PieChart margin={{ top: 0, right: 0, bottom: 20, left: 0 }}>
-                                <Pie
-                                data={incomeChartData}
-                                cx="50%"
-                                cy="50%"
-                                labelLine={false}
-                                outerRadius="80%"
-                                fill="#8884d8"
-                                dataKey="value"
-                                nameKey="name"
-                                label={renderPieLabel}
-                                >
-                                {incomeChartData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                                ))}
-                                </Pie>
-                                <Tooltip formatter={(value: number) => `₹${value.toFixed(2)}`} />
-                                <Legend 
-                                layout="horizontal" 
-                                verticalAlign="bottom" 
-                                align="center"
-                                wrapperStyle={{fontSize: "10px", paddingTop: "10px", paddingBottom: "0px", lineHeight: "1.2"}}
-                                iconSize={8}
-                                payload={
-                                    incomeChartData.map(
-                                        (entry, index) => ({
-                                        value: entry.name.length > 12 ? `${entry.name.substring(0,10)}...` : entry.name, 
-                                        type: 'circle',
-                                        id: entry.name,
-                                        color: PIE_COLORS[index % PIE_COLORS.length]
-                                        })
-                                    )
-                                    }
-                                />
-                            </PieChart>
-                            </ResponsiveContainer>
-                        </div>
-                        </div>
-                    )}
-                    {incomeChartData.length === 0 && filteredTransactions.length > 0 && (
-                        <div className="p-4 bg-slate-800 rounded-lg border border-slate-700">
-                            <p className="text-gray-400 text-center text-sm">No income data with categories for the current filter to display chart.</p>
-                        </div>
-                    )}
-
-                    {/* Filtered Transaction List */}
-                    <TransactionList
-                        title="Filtered Income Transactions"
-                        transactions={filteredTransactions}
-                        type={TransactionType.INCOME}
-                        onDelete={onDeleteTransaction}
-                        onEdit={onEditTransaction}
-                    />
-                </>
-            )}
+          {/* Summary of Filtered Data */}
+          <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 text-center">
+            <p className="text-sm text-gray-400 uppercase tracking-wider">Income Summary</p>
+            <p className="text-3xl font-bold text-green-400">₹{totalFilteredIncome.toFixed(2)}</p>
           </div>
+          
+          {/* Add Income Button */}
+          <button
+            onClick={() => onOpenNewTransactionForm(TransactionType.INCOME)}
+            className="w-full mt-4 px-6 py-2.5 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75 flex items-center justify-center gap-2"
+            aria-label="Add new income"
+          >
+            <PlusIcon className="h-5 w-5" /> Add Income
+          </button>
+        </div>
+
+        {/* Right Main Content: Chart and List */}
+        <div className="md:col-span-8 xl:col-span-9 space-y-6">
+          {incomeTransactions.length === 0 ? (
+              <div className="text-center py-10 bg-slate-800 rounded-lg border border-slate-700">
+                  <p className="text-xl text-gray-400">No income recorded yet.</p>
+                  <p className="text-gray-500 mt-2 mb-4">Click "Add Income" to get started.</p>
+              </div>
+          ) : (
+              <>
+                  {/* Income Chart */}
+                  {incomeChartData.length > 0 && (
+                      <div className="p-4 bg-slate-800 rounded-lg border border-slate-700">
+                      <h2 className="text-xl font-semibold mb-4 text-center text-sky-300">Income by Category</h2>
+                      <div style={{ width: '100%', height: 300, minHeight: '250px' }}>
+                          <ResponsiveContainer>
+                          <PieChart margin={{ top: 0, right: 0, bottom: 20, left: 0 }}>
+                              <Pie
+                              data={incomeChartData}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              outerRadius="80%"
+                              fill="#8884d8"
+                              dataKey="value"
+                              nameKey="name"
+                              label={renderPieLabel}
+                              >
+                              {incomeChartData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                              ))}
+                              </Pie>
+                              <Tooltip formatter={(value: number) => `₹${value.toFixed(2)}`} />
+                              <Legend 
+                              layout="horizontal" 
+                              verticalAlign="bottom" 
+                              align="center"
+                              wrapperStyle={{fontSize: "10px", paddingTop: "10px", paddingBottom: "0px", lineHeight: "1.2"}}
+                              iconSize={8}
+                              payload={
+                                  incomeChartData.map(
+                                      (entry, index) => ({
+                                      value: entry.name.length > 12 ? `${entry.name.substring(0,10)}...` : entry.name, 
+                                      type: 'circle',
+                                      id: entry.name,
+                                      color: PIE_COLORS[index % PIE_COLORS.length]
+                                      })
+                                  )
+                                  }
+                              />
+                          </PieChart>
+                          </ResponsiveContainer>
+                      </div>
+                      </div>
+                  )}
+                  {incomeChartData.length === 0 && filteredTransactions.length > 0 && (
+                      <div className="p-4 bg-slate-800 rounded-lg border border-slate-700">
+                          <p className="text-gray-400 text-center text-sm">No income data with categories for the current filter to display chart.</p>
+                      </div>
+                  )}
+
+                  {/* Filtered Transaction List */}
+                  <TransactionList
+                      title="Filtered Income Transactions"
+                      transactions={filteredTransactions}
+                      type={TransactionType.INCOME}
+                      onDelete={onDeleteTransaction}
+                      onEdit={onEditTransaction}
+                  />
+              </>
+          )}
         </div>
       </div>
     </div>
