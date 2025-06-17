@@ -869,19 +869,20 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 selection:bg-sky-400 selection:text-sky-900">
       {/* Main Header */}
       <header className="sticky top-0 z-40 bg-slate-800/80 backdrop-blur-md shadow-lg border-b border-slate-700">
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
+        <div className="px-2 sm:px-4 lg:px-6"> {/* Removed max-w-7xl mx-auto */}
           <div className="flex items-center justify-between h-16">
-            {/* Left side: Menu button and Logo */}
-            <div className="flex items-center">
+            {/* Left side: Menu button, Logo, and App Name */}
+            <div className="flex items-center space-x-2"> 
               <button
                 id="main-menu-button"
                 onClick={toggleMenu}
-                className="p-2 rounded-md text-gray-400 hover:text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-sky-500 mr-2"
+                className="p-2 rounded-md text-gray-400 hover:text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-sky-500" 
                 aria-label="Open side menu"
                 aria-expanded={isMenuOpen}
               >
                 <MenuIcon className="h-6 w-6" />
               </button>
+              {/* Logo and App Name Group */}
               <div 
                 onClick={navigateToDashboard} 
                 className="flex-shrink-0 flex items-center space-x-2 cursor-pointer group"
