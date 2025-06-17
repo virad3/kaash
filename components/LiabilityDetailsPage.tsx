@@ -71,10 +71,12 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
   }, [filteredLiabilities, allTransactions]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 p-2 sm:p-0 md:p-0 selection:bg-sky-400 selection:text-sky-900">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 selection:bg-sky-400 selection:text-sky-900">
+      {/* max-w-4xl mx-auto removed from this div */}
+      <div>
         <header className="sticky top-0 z-30 bg-slate-800/95 backdrop-blur-md border-b border-slate-700 py-2 sm:py-3">
-            <div className="flex items-center justify-between h-full px-3 sm:px-4">
+            {/* Padding updated to px-2 sm:px-4 lg:px-6 */}
+            <div className="flex items-center justify-between h-full px-2 sm:px-4 lg:px-6">
                  <div className="flex-none">
                     <button
                         onClick={onBack}
@@ -94,8 +96,8 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
                 </div>
             </div>
         </header>
-
-        <div className="mt-6 p-2 sm:p-4 md:p-6 space-y-6 md:grid md:grid-cols-12 md:gap-x-8 md:space-y-0">
+        {/* Padding updated to p-3 sm:p-4 md:p-6 */}
+        <div className="mt-6 p-3 sm:p-4 md:p-6 space-y-6 md:grid md:grid-cols-12 md:gap-x-8 md:space-y-0">
          <p className="text-center text-gray-400 text-sm -mt-2 mb-6 md:col-span-12">Track and manage your liabilities easily.</p>
           {/* Left Sidebar: Filters and Summary */}
           <div className="md:col-span-4 xl:col-span-3 space-y-6">

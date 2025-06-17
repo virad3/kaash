@@ -203,10 +203,12 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 p-2 sm:p-0 md:p-0 selection:bg-sky-400 selection:text-sky-900">
-      <div className="max-w-5xl mx-auto"> 
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 selection:bg-sky-400 selection:text-sky-900">
+      {/* max-w-5xl mx-auto removed from this div */}
+      <div> 
         <header className="sticky top-0 z-30 bg-slate-800/95 backdrop-blur-md border-b border-slate-700 py-2 sm:py-3">
-            <div className="flex items-center justify-between h-full px-3 sm:px-4">
+             {/* Padding updated to px-2 sm:px-4 lg:px-6 */}
+            <div className="flex items-center justify-between h-full px-2 sm:px-4 lg:px-6">
                 <div className="flex-none">
                     <button
                         onClick={onBack}
@@ -226,7 +228,7 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
                 </div>
             </div>
         </header>
-
+        {/* Content padding p-2 sm:p-4 md:p-6 is fine */}
         <main className="mt-6 p-2 sm:p-4 md:p-6 bg-slate-800 rounded-xl shadow-xl border border-slate-700 space-y-6">
           {activeLiabilities.length === 0 ? (
              <p className="text-gray-300 text-center py-5">
