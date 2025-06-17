@@ -93,37 +93,38 @@ export const IncomeDetailsPage: React.FC<IncomeDetailsPageProps> = ({
   }, [filteredTransactions]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 p-2 sm:p-0 md:p-0 selection:bg-sky-400 selection:text-sky-900">
-      <div className="max-w-4xl mx-auto">
-        <header className="sticky top-0 z-30 bg-slate-800/95 backdrop-blur-md border-b border-slate-700 py-2 sm:py-3">
-            <div className="flex items-center justify-between h-full px-3 sm:px-4">
-                <div className="flex-none">
-                    <button
-                        onClick={onBack}
-                        className="flex items-center space-x-1 text-sky-400 hover:text-sky-300 p-1.5 sm:p-2 rounded-md hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-800"
-                        aria-label="Back to Dashboard"
-                    >
-                        <BackIcon className="h-5 w-5" />
-                        <span className="text-xs sm:text-sm font-medium hidden sm:inline">Back</span>
-                    </button>
-                </div>
-                <div className="flex-grow text-center px-2">
-                    <h1 className="text-lg sm:text-xl font-semibold text-sky-400 truncate">
-                        Income Details
-                    </h1>
-                </div>
-                <div className="flex-none w-10 sm:w-[70px]"> {/* Adjusted spacer width to better match typical back button width with text */}
-                  {/* Spacer for centering title, width approx matches back button */}
-                </div>
-            </div>
-        </header>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 selection:bg-sky-400 selection:text-sky-900">
+      <header className="sticky top-0 z-30 bg-slate-800/95 backdrop-blur-md border-b border-slate-700 py-2 sm:py-3">
+          <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-3 sm:px-4">
+              <div className="flex-none">
+                  <button
+                      onClick={onBack}
+                      className="flex items-center space-x-1 text-sky-400 hover:text-sky-300 p-1.5 sm:p-2 rounded-md hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-800"
+                      aria-label="Back to Dashboard"
+                  >
+                      <BackIcon className="h-5 w-5" />
+                      <span className="text-xs sm:text-sm font-medium hidden sm:inline">Back</span>
+                  </button>
+              </div>
+              <div className="flex-grow text-center px-2">
+                  <h1 className="text-lg sm:text-xl font-semibold text-green-400 truncate">
+                      Income Details
+                  </h1>
+              </div>
+              <div className="flex-none w-10 sm:w-[70px]"> {/* Adjusted spacer width to better match typical back button width with text */}
+                {/* Spacer for centering title, width approx matches back button */}
+              </div>
+          </div>
+      </header>
 
-        {/* Content now starts with mt-6 relative to the sticky header's original flow position */}
-        <div className="mt-6 p-2 sm:p-4 md:p-6 space-y-6 md:grid md:grid-cols-12 md:gap-x-8 md:space-y-0">
+      <div className="max-w-4xl mx-auto">
+        {/* Content now starts with mt-0 relative to this container, padding handled below */}
+        <div className="mt-6 p-3 sm:p-4 md:p-6 space-y-6 md:grid md:grid-cols-12 md:gap-x-8 md:space-y-0">
           {/* Left Sidebar: Filters and Summary */}
           <div className="md:col-span-4 xl:col-span-3 space-y-6">
             {/* Filters */}
             <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 space-y-4">
+              <h3 className="text-lg font-semibold text-sky-300 mb-3">Filters</h3>
               <div>
                 <label htmlFor="monthFilter" className="block text-sm font-medium text-gray-300 mb-1">Filter by Month:</label>
                 <select
