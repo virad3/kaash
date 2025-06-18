@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { BackIcon, CoinsIcon } from './icons'; 
+import { BackIcon, CoinsIcon, InfoIcon } from './icons'; 
 import { Liability, AmortizationResult as SingleLoanAmortizationResult, MultiLoanAmortizationResult, IndividualLoanAmortizationResult } from '../types';
 import { calculateLoanAmortization, formatMonthsToYearsMonthsString, formatDateForDisplay, calculateMultiLoanWeightedPrepaymentAmortization, formatTimeDifferenceString } from '../utils';
 
@@ -268,20 +268,26 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
                   min="0"
                   step="100"
                 />
-                 <p className="text-xs text-gray-400 mt-1">This amount {enableSnowball ? "(plus freed EMIs)" : ""} will be distributed based on a weight of (Outstanding Principal * Interest Rate).</p>
               </div>
 
-              <div className="flex items-center space-x-3 mt-3 mb-3">
-                <input
-                  type="checkbox"
-                  id="enableSnowball"
-                  checked={enableSnowball}
-                  onChange={(e) => {setEnableSnowball(e.target.checked); setResults(null); setError(null);}}
-                  className="h-5 w-5 text-sky-500 bg-slate-600 border-slate-500 rounded focus:ring-sky-400 focus:ring-offset-slate-700 accent-sky-500"
-                />
-                <label htmlFor="enableSnowball" className="text-sm text-gray-300 cursor-pointer">
-                  Reallocate freed-up EMIs (Snowball Effect)
-                </label>
+              <div className="mt-3 mb-3 space-y-1">
+                <div className="flex items-center space-x-3">
+                    <input
+                    type="checkbox"
+                    id="enableSnowball"
+                    checked={enableSnowball}
+                    onChange={(e) => {setEnableSnowball(e.target.checked); setResults(null); setError(null);}}
+                    className="h-5 w-5 text-sky-500 bg-slate-600 border-slate-500 rounded focus:ring-sky-400 focus:ring-offset-slate-700 accent-sky-500"
+                    aria-describedby="snowball-info"
+                    />
+                    <label htmlFor="enableSnowball" className="text-sm text-gray-300 cursor-pointer">
+                    Reallocate freed-up EMIs (Snowball Effect)
+                    </label>
+                </div>
+                <p id="snowball-info" className="text-xs text-gray-400 pl-8">
+                    If checked, when a loan is paid off, its EMI will be added to your additional payment to further accelerate other selected loans.
+                </p>
+                <p className="text-xs text-gray-400 pt-1">Your additional payment {enableSnowball ? "(plus any freed EMIs from paid-off loans in the group)" : ""} will be distributed based on a weight of (Outstanding Principal × Interest Rate) of the remaining loans.</p>
               </div>
 
 
