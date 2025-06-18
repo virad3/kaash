@@ -9,6 +9,16 @@ interface EarlyLoanClosurePageProps {
   onBack: () => void;
 }
 
+// Extended interface for individual results within the DisplayResults
+interface FormattedIndividualLoanResult extends IndividualLoanAmortizationResult {
+  originalTermString: string;
+  originalPayoffDateString: string;
+  newTermString: string;
+  newPayoffDateString: string;
+  timeSavedString: string;
+  avgTotalAdditionalPrincipalFromStrategyPerMonth: number; // New field
+}
+
 // Results structure for the page state
 interface DisplayResults extends MultiLoanAmortizationResult {
   overallOriginalTermString: string;
@@ -16,13 +26,7 @@ interface DisplayResults extends MultiLoanAmortizationResult {
   overallNewTermString: string;
   overallNewPayoffDateString: string;
   timeSavedOverallString: string;
-  individualLoanResultsFormatted: Array<IndividualLoanAmortizationResult & {
-      originalTermString: string;
-      originalPayoffDateString: string;
-      newTermString: string;
-      newPayoffDateString: string;
-      timeSavedString: string;
-  }>;
+  individualLoanResultsFormatted: FormattedIndividualLoanResult[]; // Use extended interface
   enableSnowballEffectActive: boolean; // To show in results if snowball was on/off
 }
 
@@ -78,7 +82,7 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
       let overallOriginalTotalInterestPaid = 0;
       let maxOriginalTermInMonths = 0;
       let latestOriginalPayoffDate = new Date(0); 
-      const individualOriginalResultsBase: Omit<IndividualLoanAmortizationResult, 'newTermInMonths' | 'newTotalInterestPaid' | 'newPayoffDate' | 'interestSaved' | 'timeSavedInMonths' | 'avgShareOfUserMonthlyAddtlPayment'>[] = [];
+      const individualOriginalResultsBase: Omit<IndividualLoanAmortizationResult, 'newTermInMonths' | 'newTotalInterestPaid' | 'newPayoffDate' | 'interestSaved' | 'timeSavedInMonths' | 'avgShareOfUserMonthlyAddtlPayment' | 'totalAdditionalPrincipalFromStrategy' | 'monthsReceivingBenefitFromStrategy'>[] = [];
 
 
       const earliestNextDueDate = selectedLiabilitiesDetails.reduce((earliest, current) => {
@@ -139,20 +143,17 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
         return;
       }
 
-      const finalIndividualResultsFormatted: Array<IndividualLoanAmortizationResult & {
-            originalTermString: string;
-            originalPayoffDateString: string;
-            newTermString: string;
-            newPayoffDateString: string;
-            timeSavedString: string;
-        }> = [];
+      const finalIndividualResultsFormatted: FormattedIndividualLoanResult[] = [];
 
       multiLoanNewResult.individualLoanResults.forEach(newResLoanState => {
         const originalResBase = individualOriginalResultsBase.find(or => or.id === newResLoanState.id);
         if (originalResBase) {
           const interestSaved = originalResBase.originalTotalInterestPaid - newResLoanState.loanNewTotalInterestPaid;
           const timeSavedInMonths = originalResBase.originalTermInMonths - newResLoanState.loanNewTermInMonths;
-          
+          const avgTotalAdditionalPrincipalFromStrategyPerMonth = (newResLoanState.totalAdditionalPrincipalFromStrategyAccumulated && newResLoanState.monthsReceivingBenefitFromStrategyAccumulated > 0)
+            ? newResLoanState.totalAdditionalPrincipalFromStrategyAccumulated / newResLoanState.monthsReceivingBenefitFromStrategyAccumulated
+            : 0;
+
           finalIndividualResultsFormatted.push({
             id: newResLoanState.id,
             name: newResLoanState.name,
@@ -165,11 +166,14 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
             interestSaved: interestSaved, 
             timeSavedInMonths: timeSavedInMonths, 
             avgShareOfUserMonthlyAddtlPayment: newResLoanState.avgShareOfUserMonthlyAddtlPayment,
+            totalAdditionalPrincipalFromStrategy: newResLoanState.totalAdditionalPrincipalFromStrategyAccumulated,
+            monthsReceivingBenefitFromStrategy: newResLoanState.monthsReceivingBenefitFromStrategyAccumulated,
             originalTermString: formatMonthsToYearsMonthsString(originalResBase.originalTermInMonths),
             originalPayoffDateString: formatDateForDisplay(originalResBase.originalPayoffDate),
             newTermString: formatMonthsToYearsMonthsString(newResLoanState.loanNewTermInMonths),
             newPayoffDateString: formatDateForDisplay(newResLoanState.loanNewPayoffDate || new Date('9999-12-31')),
-            timeSavedString: formatTimeDifferenceString(timeSavedInMonths), 
+            timeSavedString: formatTimeDifferenceString(timeSavedInMonths),
+            avgTotalAdditionalPrincipalFromStrategyPerMonth: avgTotalAdditionalPrincipalFromStrategyPerMonth,
           });
         }
       });
@@ -188,7 +192,22 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
         interestSavedOverall: overallInterestSaved, 
         timeSavedOverallInMonths: overallTimeSavedMonths, 
         additionalPaymentApplied: additionalPayNum,
-        individualLoanResults: finalIndividualResultsFormatted, 
+        // The individualLoanResults in MultiLoanAmortizationResult now directly takes the formatted ones
+        individualLoanResults: finalIndividualResultsFormatted.map(f => ({
+            id: f.id,
+            name: f.name,
+            originalTermInMonths: f.originalTermInMonths,
+            originalTotalInterestPaid: f.originalTotalInterestPaid,
+            originalPayoffDate: f.originalPayoffDate,
+            newTermInMonths: f.newTermInMonths,
+            newTotalInterestPaid: f.newTotalInterestPaid,
+            newPayoffDate: f.newPayoffDate,
+            interestSaved: f.interestSaved,
+            timeSavedInMonths: f.timeSavedInMonths,
+            avgShareOfUserMonthlyAddtlPayment: f.avgShareOfUserMonthlyAddtlPayment,
+            totalAdditionalPrincipalFromStrategy: f.totalAdditionalPrincipalFromStrategy,
+            monthsReceivingBenefitFromStrategy: f.monthsReceivingBenefitFromStrategy,
+        })),
         overallOriginalTermString: formatMonthsToYearsMonthsString(maxOriginalTermInMonths),
         overallOriginalPayoffDateString: formatDateForDisplay(latestOriginalPayoffDate),
         overallNewTermString: formatMonthsToYearsMonthsString(multiLoanNewResult.overallNewTermInMonths),
@@ -361,7 +380,8 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
                         <p><span className="text-gray-400">Payoff Date (New):</span> {loanRes.newPayoffDateString}</p>
                         <p className={loanRes.interestSaved >= 0 ? 'text-green-400' : 'text-red-400'}><span className="text-gray-400">Interest Saved:</span> ₹{loanRes.interestSaved.toFixed(2)}</p>
                         <p className={`sm:col-span-2 ${loanRes.timeSavedInMonths >= 0 ? '' : 'text-orange-300'}`}><span className="text-gray-400">Time Impact (vs its original):</span> {loanRes.timeSavedString}</p>
-                        <p className="sm:col-span-2"><span className="text-gray-400">Avg. Share of Your Monthly Addtl. Payment:</span> <span className="text-cyan-400">₹{loanRes.avgShareOfUserMonthlyAddtlPayment.toFixed(2)}</span></p>
+                        <p className="sm:col-span-2"><span className="text-gray-400">Avg. Share of Your Direct Addt'l Pmt /mo:</span> <span className="text-cyan-400">₹{loanRes.avgShareOfUserMonthlyAddtlPayment.toFixed(2)}</span></p>
+                        <p className="sm:col-span-2"><span className="text-gray-400">Avg. Total Addt'l Principal /mo (incl. Snowball):</span> <span className="text-teal-400 font-semibold">₹{loanRes.avgTotalAdditionalPrincipalFromStrategyPerMonth.toFixed(2)}</span></p>
                       </div>
                     </div>
                   ))}

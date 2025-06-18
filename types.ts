@@ -124,7 +124,9 @@ export interface IndividualLoanAmortizationResult {
   newPayoffDate: Date;
   interestSaved: number;
   timeSavedInMonths: number;
-  avgShareOfUserMonthlyAddtlPayment: number; // New field: Average share of user's direct monthly additional payment
+  avgShareOfUserMonthlyAddtlPayment: number; // Average share of user's direct monthly additional payment
+  totalAdditionalPrincipalFromStrategy: number; // Sum of ALL additional principal paid (direct + snowball)
+  monthsReceivingBenefitFromStrategy: number; // Count of months this loan received ANY additional principal (direct or snowball)
 }
 
 export interface MultiLoanAmortizationResult {
