@@ -22,14 +22,15 @@ interface DisplayResults extends MultiLoanAmortizationResult {
       newTermString: string;
       newPayoffDateString: string;
       timeSavedString: string;
-      // avgShareOfUserMonthlyAddtlPayment is already in IndividualLoanAmortizationResult from types.ts
   }>;
+  enableSnowballEffectActive: boolean; // To show in results if snowball was on/off
 }
 
 
 export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liabilities, onBack }) => {
   const [selectedLiabilityIds, setSelectedLiabilityIds] = useState<string[]>([]);
   const [additionalPayment, setAdditionalPayment] = useState<string>('');
+  const [enableSnowball, setEnableSnowball] = useState<boolean>(true); // New state for snowball toggle
   const [results, setResults] = useState<DisplayResults | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -129,7 +130,8 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
       const multiLoanNewResult = calculateMultiLoanWeightedPrepaymentAmortization(
         loansForMultiCalc,
         additionalPayNum,
-        earliestNextDueDate 
+        earliestNextDueDate,
+        enableSnowball // Pass the snowball toggle state
       );
 
       if (multiLoanNewResult.overallNewTermInMonths === Infinity) {
@@ -160,14 +162,14 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
             newTermInMonths: newResLoanState.loanNewTermInMonths,
             newTotalInterestPaid: newResLoanState.loanNewTotalInterestPaid,
             newPayoffDate: newResLoanState.loanNewPayoffDate || new Date('9999-12-31'),
-            interestSaved: interestSaved, // Raw value
-            timeSavedInMonths: timeSavedInMonths, // Raw value
+            interestSaved: interestSaved, 
+            timeSavedInMonths: timeSavedInMonths, 
             avgShareOfUserMonthlyAddtlPayment: newResLoanState.avgShareOfUserMonthlyAddtlPayment,
             originalTermString: formatMonthsToYearsMonthsString(originalResBase.originalTermInMonths),
             originalPayoffDateString: formatDateForDisplay(originalResBase.originalPayoffDate),
             newTermString: formatMonthsToYearsMonthsString(newResLoanState.loanNewTermInMonths),
             newPayoffDateString: formatDateForDisplay(newResLoanState.loanNewPayoffDate || new Date('9999-12-31')),
-            timeSavedString: formatTimeDifferenceString(timeSavedInMonths), // Use new formatter
+            timeSavedString: formatTimeDifferenceString(timeSavedInMonths), 
           });
         }
       });
@@ -183,16 +185,17 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
         overallNewTermInMonths: multiLoanNewResult.overallNewTermInMonths,
         overallNewTotalInterestPaid: multiLoanNewResult.overallNewTotalInterestPaid,
         overallNewPayoffDate: multiLoanNewResult.overallNewPayoffDate,
-        interestSavedOverall: overallInterestSaved, // Raw value
-        timeSavedOverallInMonths: overallTimeSavedMonths, // Raw value
+        interestSavedOverall: overallInterestSaved, 
+        timeSavedOverallInMonths: overallTimeSavedMonths, 
         additionalPaymentApplied: additionalPayNum,
         individualLoanResults: finalIndividualResultsFormatted, 
         overallOriginalTermString: formatMonthsToYearsMonthsString(maxOriginalTermInMonths),
         overallOriginalPayoffDateString: formatDateForDisplay(latestOriginalPayoffDate),
         overallNewTermString: formatMonthsToYearsMonthsString(multiLoanNewResult.overallNewTermInMonths),
         overallNewPayoffDateString: formatDateForDisplay(multiLoanNewResult.overallNewPayoffDate),
-        timeSavedOverallString: formatTimeDifferenceString(overallTimeSavedMonths), // Use new formatter
+        timeSavedOverallString: formatTimeDifferenceString(overallTimeSavedMonths), 
         individualLoanResultsFormatted: finalIndividualResultsFormatted,
+        enableSnowballEffectActive: enableSnowball, // Store the setting used
       });
 
     } catch (e: any) {
@@ -265,8 +268,22 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
                   min="0"
                   step="100"
                 />
-                 <p className="text-xs text-gray-400 mt-1">This amount (plus freed EMIs) will be distributed based on a weight of (Outstanding Principal * Interest Rate).</p>
+                 <p className="text-xs text-gray-400 mt-1">This amount {enableSnowball ? "(plus freed EMIs)" : ""} will be distributed based on a weight of (Outstanding Principal * Interest Rate).</p>
               </div>
+
+              <div className="flex items-center space-x-3 mt-3 mb-3">
+                <input
+                  type="checkbox"
+                  id="enableSnowball"
+                  checked={enableSnowball}
+                  onChange={(e) => {setEnableSnowball(e.target.checked); setResults(null); setError(null);}}
+                  className="h-5 w-5 text-sky-500 bg-slate-600 border-slate-500 rounded focus:ring-sky-400 focus:ring-offset-slate-700 accent-sky-500"
+                />
+                <label htmlFor="enableSnowball" className="text-sm text-gray-300 cursor-pointer">
+                  Reallocate freed-up EMIs (Snowball Effect)
+                </label>
+              </div>
+
 
               <button
                 onClick={handleCalculate}
@@ -286,9 +303,13 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
 
           {results && (
             <div className="mt-6 pt-6 border-t border-slate-700 space-y-8">
-              <h2 className="text-xl sm:text-2xl font-semibold text-center text-sky-300 mb-4">
+              <h2 className="text-xl sm:text-2xl font-semibold text-center text-sky-300 mb-2">
                 Combined Results for Selected Liabilities
               </h2>
+              <p className="text-xs text-gray-400 text-center -mt-1 mb-4">
+                Strategy: Additional Payment ₹{results.additionalPaymentApplied.toFixed(2)}/month 
+                {results.enableSnowballEffectActive ? " with Snowball Effect (freed EMIs reallocated)" : " without Snowball Effect"}.
+              </p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-slate-700/50 p-4 rounded-lg border border-slate-600">
@@ -301,7 +322,7 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
                 </div>
 
                 <div className="bg-slate-700/50 p-4 rounded-lg border border-slate-600">
-                  <h3 className="text-lg font-semibold text-gray-200 mb-3">With Additional ₹{results.additionalPaymentApplied.toFixed(2)}/month</h3>
+                  <h3 className="text-lg font-semibold text-gray-200 mb-3">With Accelerated Plan</h3>
                   <div className="space-y-1.5 text-sm">
                     <p><span className="text-gray-400">New Time to Clear All:</span> {results.overallNewTermString}</p>
                     <p><span className="text-gray-400">New Total Interest Paid:</span> ₹{results.overallNewTotalInterestPaid.toFixed(2)}</p>
@@ -333,7 +354,7 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
                         <p><span className="text-gray-400">Interest Paid (New):</span> ₹{loanRes.newTotalInterestPaid.toFixed(2)}</p>
                         <p><span className="text-gray-400">Payoff Date (New):</span> {loanRes.newPayoffDateString}</p>
                         <p className={loanRes.interestSaved >= 0 ? 'text-green-400' : 'text-red-400'}><span className="text-gray-400">Interest Saved:</span> ₹{loanRes.interestSaved.toFixed(2)}</p>
-                        <p className="sm:col-span-2 ${loanRes.timeSavedInMonths >= 0 ? '' : 'text-orange-300'}"><span className="text-gray-400">Time Impact (vs its original):</span> {loanRes.timeSavedString}</p>
+                        <p className={`sm:col-span-2 ${loanRes.timeSavedInMonths >= 0 ? '' : 'text-orange-300'}`}><span className="text-gray-400">Time Impact (vs its original):</span> {loanRes.timeSavedString}</p>
                         <p className="sm:col-span-2"><span className="text-gray-400">Avg. Share of Your Monthly Addtl. Payment:</span> <span className="text-cyan-400">₹{loanRes.avgShareOfUserMonthlyAddtlPayment.toFixed(2)}</span></p>
                       </div>
                     </div>
@@ -344,13 +365,14 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
                <button
                   onClick={() => {
                     setResults(null);
-                    setSelectedLiabilityIds([]);
-                    setAdditionalPayment('');
+                    // Keep selected liabilities and additional payment as is, user might want to toggle snowball and re-calculate
+                    // setSelectedLiabilityIds([]); 
+                    // setAdditionalPayment('');
                     setError(null);
                   }}
                   className="mt-6 w-full sm:w-auto px-6 py-2 border border-slate-600 text-gray-300 rounded-lg hover:bg-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-500"
                 >
-                  Clear & Reset Calculator
+                  Clear Results (Keep Inputs)
                 </button>
             </div>
           )}

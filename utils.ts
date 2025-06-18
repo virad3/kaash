@@ -1,3 +1,4 @@
+
 /**
  * Calculates the Equated Monthly Installment (EMI).
  * @param principal The principal loan amount.
@@ -281,13 +282,13 @@ export interface SimulatedLoanState {
   loanNewTermInMonths: number;
   loanNewPayoffDate: Date | null;
   
-  sumOfDirectSharesFromUserInput: number; // Sum of portions from user's direct additional payment
-  monthsReceivingDirectShare: number;   // Count of months it received a direct share
-  avgShareOfUserMonthlyAddtlPayment: number; // Calculated average for final result
+  sumOfDirectSharesFromUserInput: number; 
+  monthsReceivingDirectShare: number;   
+  avgShareOfUserMonthlyAddtlPayment: number; 
 
   currentMonthInterest: number;
   currentMonthPrincipalFromEmi: number;
-  currentMonthAdditionalPrincipal: number; // Total additional principal paid this month (from user input + snowball)
+  currentMonthAdditionalPrincipal: number; 
   isPaidOff: boolean;
   paidOffMonth: number | null;
 }
@@ -296,13 +297,14 @@ export interface MultiLoanAmortizationResultForUtil {
   overallNewTermInMonths: number;
   overallNewTotalInterestPaid: number;
   overallNewPayoffDate: Date;
-  individualLoanResults: SimulatedLoanState[]; // This will now include avgShareOfUserMonthlyAddtlPayment
+  individualLoanResults: SimulatedLoanState[]; 
 }
 
 export const calculateMultiLoanWeightedPrepaymentAmortization = (
   selectedLoansData: Array<{id: string; name: string; currentPrincipal: number; annualInterestRate: number; emiAmount: number; nextDueDate: string}>,
-  userDirectMonthlyAdditionalPayment: number, // Renamed for clarity: this is the user's input
-  simulationStartDate: Date 
+  userDirectMonthlyAdditionalPayment: number, 
+  simulationStartDate: Date,
+  enableSnowballEffect: boolean // New parameter
 ): MultiLoanAmortizationResultForUtil => {
 
   const simulatedLoans: SimulatedLoanState[] = selectedLoansData.map(loan => ({
@@ -333,16 +335,16 @@ export const calculateMultiLoanWeightedPrepaymentAmortization = (
     currentOverallMonth++;
     let totalFreedUpEmisThisMonth = 0;
 
-    simulatedLoans.forEach(loan => {
-      if (loan.isPaidOff) {
-        totalFreedUpEmisThisMonth += loan.originalEmiAmount;
-      }
-    });
+    if (enableSnowballEffect) { // Apply snowball based on parameter
+        simulatedLoans.forEach(loan => {
+            if (loan.isPaidOff) {
+                totalFreedUpEmisThisMonth += loan.originalEmiAmount;
+            }
+        });
+    }
     
-    // This is the total pool of additional money available this month for prepayment
     const actualAdditionalPaymentPoolForPrincipalReduction = userDirectMonthlyAdditionalPayment + totalFreedUpEmisThisMonth;
     
-    // Phase 1: Process regular EMIs for all active loans
     for (const simLoan of simulatedLoans) {
       if (simLoan.isPaidOff || simLoan.remainingPrincipal <= 0.005) continue;
 
@@ -358,7 +360,6 @@ export const calculateMultiLoanWeightedPrepaymentAmortization = (
       if (simLoan.currentMonthPrincipalFromEmi < 0) simLoan.currentMonthPrincipalFromEmi = 0; 
     }
 
-    // Phase 2: Distribute `actualAdditionalPaymentPoolForPrincipalReduction` based on weights
     const activeLoansForWeighting = simulatedLoans.filter(loan => 
         !loan.isPaidOff && 
         loan.remainingPrincipal > 0.005 &&
@@ -371,7 +372,7 @@ export const calculateMultiLoanWeightedPrepaymentAmortization = (
     if (activeLoansForWeighting.length > 0) {
         activeLoansForWeighting.forEach(loan => {
             const principalAfterEmiPortion = loan.remainingPrincipal - (loan.currentMonthPrincipalFromEmi || 0);
-            const weight = Math.max(0, principalAfterEmiPortion) * (loan.annualInterestRate > 0 ? loan.annualInterestRate : 0.00001); // Small weight for 0% loans
+            const weight = Math.max(0, principalAfterEmiPortion) * (loan.annualInterestRate > 0 ? loan.annualInterestRate : 0.00001); 
             loanWeights.push({ loan, weight, principalRemainingAfterEmi: principalAfterEmiPortion });
             totalWeight += weight;
         });
@@ -389,11 +390,11 @@ export const calculateMultiLoanWeightedPrepaymentAmortization = (
                 tempAdditionalPool -= extraPaymentAppliedToLoan;
             }
         }
-        // If pool remains (e.g. totalWeight was 0 due to all 0% loans or all loans became fully principal), distribute equally or by principal
+        
         if (tempAdditionalPool > 0.005 && activeLoansForWeighting.length > 0) {
            const sortedActiveForRemainder = activeLoansForWeighting
-            .filter(lw => (lw.remainingPrincipal - (lw.currentMonthPrincipalFromEmi || 0) - (lw.currentMonthAdditionalPrincipal || 0)) > 0.005) // who can still take payment
-            .sort((a,b) => (b.remainingPrincipal - (b.currentMonthPrincipalFromEmi || 0)) - (a.remainingPrincipal - (a.currentMonthPrincipalFromEmi || 0))); // highest principal first
+            .filter(lw => (lw.remainingPrincipal - (lw.currentMonthPrincipalFromEmi || 0) - (lw.currentMonthAdditionalPrincipal || 0)) > 0.005) 
+            .sort((a,b) => (b.remainingPrincipal - (b.currentMonthPrincipalFromEmi || 0)) - (a.remainingPrincipal - (a.currentMonthPrincipalFromEmi || 0))); 
 
             for (const loan of sortedActiveForRemainder) {
                 if (tempAdditionalPool <= 0.005) break;
@@ -405,7 +406,6 @@ export const calculateMultiLoanWeightedPrepaymentAmortization = (
         }
     }
     
-    // Phase 2.5: Calculate and accumulate direct share from user's input for each loan
     let totalCurrentMonthAdditionalPrincipalAllLoans = 0;
     for (const simLoan of simulatedLoans) {
         if (!simLoan.isPaidOff && simLoan.currentMonthAdditionalPrincipal > 0.005) {
@@ -416,9 +416,7 @@ export const calculateMultiLoanWeightedPrepaymentAmortization = (
     if (totalCurrentMonthAdditionalPrincipalAllLoans > 0.005 && userDirectMonthlyAdditionalPayment > 0.005) {
         for (const simLoan of simulatedLoans) {
             if (!simLoan.isPaidOff && simLoan.currentMonthAdditionalPrincipal > 0.005) {
-                // The proportion of this loan's received additional principal out of the total additional principal distributed this month
                 const proportionOfTotalExtra = simLoan.currentMonthAdditionalPrincipal / totalCurrentMonthAdditionalPrincipalAllLoans;
-                // This loan's share of the user's direct input
                 const directShareThisMonth = proportionOfTotalExtra * userDirectMonthlyAdditionalPayment;
 
                 simLoan.sumOfDirectSharesFromUserInput += directShareThisMonth;
@@ -427,8 +425,6 @@ export const calculateMultiLoanWeightedPrepaymentAmortization = (
         }
     }
 
-
-    // Phase 3: Finalize balances and accumulate totals for the month
     for (const simLoan of simulatedLoans) {
       if (simLoan.isPaidOff || simLoan.remainingPrincipal <= 0.005) continue;
 
@@ -437,12 +433,9 @@ export const calculateMultiLoanWeightedPrepaymentAmortization = (
       simLoan.remainingPrincipal -= totalPrincipalPaidThisLoanThisMonth;
       simLoan.loanNewTotalInterestPaid += (simLoan.currentMonthInterest || 0);
       
-      // Increment term only if actual payment (principal or interest) happened or if balance > 0 before this month
-      // This logic was simplified: term increases if loan is not paid off and some activity (interest or principal payment) happens
       if (totalPrincipalPaidThisLoanThisMonth > 0.005 || (simLoan.currentMonthInterest || 0) > 0.005 ) {
            simLoan.loanNewTermInMonths++;
       }
-
 
       if (simLoan.remainingPrincipal <= 0.005) { 
         simLoan.remainingPrincipal = 0;
@@ -455,7 +448,6 @@ export const calculateMultiLoanWeightedPrepaymentAmortization = (
         }
       }
       
-      // Reset for next month
       simLoan.currentMonthInterest = 0;
       simLoan.currentMonthPrincipalFromEmi = 0;
       simLoan.currentMonthAdditionalPrincipal = 0;
@@ -463,7 +455,6 @@ export const calculateMultiLoanWeightedPrepaymentAmortization = (
     overallNewTotalInterestPaid = simulatedLoans.reduce((sum, loan) => sum + loan.loanNewTotalInterestPaid, 0);
   }
 
-  // Calculate average share for each loan
   simulatedLoans.forEach(loan => {
     loan.avgShareOfUserMonthlyAddtlPayment = loan.monthsReceivingDirectShare > 0
       ? loan.sumOfDirectSharesFromUserInput / loan.monthsReceivingDirectShare
@@ -472,7 +463,7 @@ export const calculateMultiLoanWeightedPrepaymentAmortization = (
 
   const overallPayoffDate = new Date(simulationStartDate);
   if (currentOverallMonth === Infinity || currentOverallMonth >= MAX_MONTHS && simulatedLoans.some(l => !l.isPaidOff)) {
-     overallPayoffDate.setFullYear(9999); // Indicate effectively never
+     overallPayoffDate.setFullYear(9999); 
       return {
         overallNewTermInMonths: Infinity,
         overallNewTotalInterestPaid: Infinity,
