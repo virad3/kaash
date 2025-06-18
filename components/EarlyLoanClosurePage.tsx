@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { BackIcon, CoinsIcon } from './icons'; 
 import { Liability, AmortizationResult as SingleLoanAmortizationResult, MultiLoanAmortizationResult, IndividualLoanAmortizationResult } from '../types';
-import { calculateLoanAmortization, formatMonthsToYearsMonthsString, formatDateForDisplay, calculateMultiLoanWeightedPrepaymentAmortization } from '../utils';
+import { calculateLoanAmortization, formatMonthsToYearsMonthsString, formatDateForDisplay, calculateMultiLoanWeightedPrepaymentAmortization, formatTimeDifferenceString } from '../utils';
 
 interface EarlyLoanClosurePageProps {
   liabilities: Liability[];
@@ -160,15 +160,14 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
             newTermInMonths: newResLoanState.loanNewTermInMonths,
             newTotalInterestPaid: newResLoanState.loanNewTotalInterestPaid,
             newPayoffDate: newResLoanState.loanNewPayoffDate || new Date('9999-12-31'),
-            interestSaved: Math.max(0,interestSaved),
-            timeSavedInMonths: Math.max(0,timeSavedInMonths),
-            avgShareOfUserMonthlyAddtlPayment: newResLoanState.avgShareOfUserMonthlyAddtlPayment, // From newResLoanState
-            // Formatted strings for display
+            interestSaved: interestSaved, // Raw value
+            timeSavedInMonths: timeSavedInMonths, // Raw value
+            avgShareOfUserMonthlyAddtlPayment: newResLoanState.avgShareOfUserMonthlyAddtlPayment,
             originalTermString: formatMonthsToYearsMonthsString(originalResBase.originalTermInMonths),
             originalPayoffDateString: formatDateForDisplay(originalResBase.originalPayoffDate),
             newTermString: formatMonthsToYearsMonthsString(newResLoanState.loanNewTermInMonths),
             newPayoffDateString: formatDateForDisplay(newResLoanState.loanNewPayoffDate || new Date('9999-12-31')),
-            timeSavedString: formatMonthsToYearsMonthsString(Math.max(0,timeSavedInMonths)),
+            timeSavedString: formatTimeDifferenceString(timeSavedInMonths), // Use new formatter
           });
         }
       });
@@ -184,15 +183,15 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
         overallNewTermInMonths: multiLoanNewResult.overallNewTermInMonths,
         overallNewTotalInterestPaid: multiLoanNewResult.overallNewTotalInterestPaid,
         overallNewPayoffDate: multiLoanNewResult.overallNewPayoffDate,
-        interestSavedOverall: Math.max(0, overallInterestSaved),
-        timeSavedOverallInMonths: Math.max(0, overallTimeSavedMonths),
+        interestSavedOverall: overallInterestSaved, // Raw value
+        timeSavedOverallInMonths: overallTimeSavedMonths, // Raw value
         additionalPaymentApplied: additionalPayNum,
         individualLoanResults: finalIndividualResultsFormatted, 
         overallOriginalTermString: formatMonthsToYearsMonthsString(maxOriginalTermInMonths),
         overallOriginalPayoffDateString: formatDateForDisplay(latestOriginalPayoffDate),
         overallNewTermString: formatMonthsToYearsMonthsString(multiLoanNewResult.overallNewTermInMonths),
         overallNewPayoffDateString: formatDateForDisplay(multiLoanNewResult.overallNewPayoffDate),
-        timeSavedOverallString: formatMonthsToYearsMonthsString(Math.max(0, overallTimeSavedMonths)),
+        timeSavedOverallString: formatTimeDifferenceString(overallTimeSavedMonths), // Use new formatter
         individualLoanResultsFormatted: finalIndividualResultsFormatted,
       });
 
@@ -204,10 +203,8 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 selection:bg-sky-400 selection:text-sky-900">
-      {/* max-w-5xl mx-auto removed from this div */}
       <div> 
         <header className="sticky top-0 z-30 bg-slate-800/95 backdrop-blur-md border-b border-slate-700 py-2 sm:py-3">
-             {/* Padding updated to px-2 sm:px-4 lg:px-6 */}
             <div className="flex items-center justify-between h-full px-2 sm:px-4 lg:px-6">
                 <div className="flex-none">
                     <button
@@ -224,11 +221,10 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
                         Early Loan Closure Calculator
                     </h1>
                 </div>
-                 <div className="flex-none w-10 sm:w-[70px]"> {/* Adjusted spacer width */}
+                 <div className="flex-none w-10 sm:w-[70px]"> 
                 </div>
             </div>
         </header>
-        {/* Content padding p-2 sm:p-4 md:p-6 is fine */}
         <main className="mt-6 p-2 sm:p-4 md:p-6 bg-slate-800 rounded-xl shadow-xl border border-slate-700 space-y-6">
           {activeLiabilities.length === 0 ? (
              <p className="text-gray-300 text-center py-5">
@@ -317,11 +313,12 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
               <div className="bg-green-500/10 p-4 sm:p-6 rounded-lg border border-green-500/30 text-center">
                 <CoinsIcon className="h-10 w-10 text-green-400 mx-auto mb-3" />
                 <h3 className="text-xl sm:text-2xl font-bold text-green-300 mb-1">Overall Savings!</h3>
-                <p className="text-lg text-green-400 mb-1">
+                <p className={`text-lg mb-1 ${results.interestSavedOverall >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                   Total Interest Saved: <span className="font-semibold">₹{results.interestSavedOverall.toFixed(2)}</span>
+                   {results.interestSavedOverall < 0 && " (More interest paid)"}
                 </p>
-                <p className="text-md text-gray-200">
-                  Overall Time Saved: <span className="font-semibold">{results.timeSavedOverallString}</span>
+                <p className={`text-md ${results.timeSavedOverallInMonths >=0 ? 'text-gray-200' : 'text-orange-300'}`}>
+                  Overall Time Impact: <span className="font-semibold">{results.timeSavedOverallString}</span>
                 </p>
               </div>
 
@@ -335,8 +332,8 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
                         <p><span className="text-gray-400">New Term:</span> {loanRes.newTermString}</p>
                         <p><span className="text-gray-400">Interest Paid (New):</span> ₹{loanRes.newTotalInterestPaid.toFixed(2)}</p>
                         <p><span className="text-gray-400">Payoff Date (New):</span> {loanRes.newPayoffDateString}</p>
-                        <p><span className="text-gray-400">Interest Saved:</span> <span className="text-green-400">₹{loanRes.interestSaved.toFixed(2)}</span></p>
-                        <p className="sm:col-span-2"><span className="text-gray-400">Time Saved (vs its original):</span> {loanRes.timeSavedString}</p>
+                        <p className={loanRes.interestSaved >= 0 ? 'text-green-400' : 'text-red-400'}><span className="text-gray-400">Interest Saved:</span> ₹{loanRes.interestSaved.toFixed(2)}</p>
+                        <p className="sm:col-span-2 ${loanRes.timeSavedInMonths >= 0 ? '' : 'text-orange-300'}"><span className="text-gray-400">Time Impact (vs its original):</span> {loanRes.timeSavedString}</p>
                         <p className="sm:col-span-2"><span className="text-gray-400">Avg. Share of Your Monthly Addtl. Payment:</span> <span className="text-cyan-400">₹{loanRes.avgShareOfUserMonthlyAddtlPayment.toFixed(2)}</span></p>
                       </div>
                     </div>

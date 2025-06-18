@@ -188,12 +188,13 @@ export const calculateLoanAmortization = (
 
 /**
  * Formats a total number of months into a string like "X years Y months (Z total months)".
+ * Focuses on displaying an absolute term.
  * @param totalMonths The total number of months.
- * @returns A formatted string.
+ * @returns A formatted string for term duration.
  */
 export const formatMonthsToYearsMonthsString = (totalMonths: number): string => {
   if (totalMonths === Infinity) return "Never (Payment too low)";
-  if (totalMonths < 0) return "N/A";
+  if (totalMonths < 0) return "N/A (Invalid term)"; // Should not happen for absolute terms
   if (totalMonths === 0) return "0 months";
 
   const years = Math.floor(totalMonths / 12);
@@ -207,12 +208,53 @@ export const formatMonthsToYearsMonthsString = (totalMonths: number): string => 
     if (years > 0) result += " ";
     result += `${months} month${months > 1 ? 's' : ''}`;
   }
-  if (!result && totalMonths > 0) result = "0 months"; 
+  
+  // Handles cases where totalMonths is < 12 or exactly 0 after year/month breakdown (e.g. totalMonths = 0)
+  if (!result && totalMonths > 0) result = `${totalMonths} month${totalMonths > 1 ? 's' : ''}`;
   if (totalMonths === 0 && years === 0 && months === 0) result = "0 months";
 
 
   return `${result} (${totalMonths} total months)`;
 };
+
+/**
+ * Formats a difference in months into a string like "X years Y months saved" or "X years Y months longer".
+ * @param totalMonthsDifference The difference in total months. Positive if time saved, negative if time lost.
+ * @returns A formatted string for time difference.
+ */
+export const formatTimeDifferenceString = (totalMonthsDifference: number): string => {
+  if (totalMonthsDifference === 0) return "No change in duration";
+  if (totalMonthsDifference === Infinity) return "Infinite time saved (was unpayable)";
+  if (totalMonthsDifference === -Infinity) return "Infinitely longer (became unpayable)";
+
+
+  const absTotalMonths = Math.abs(totalMonthsDifference);
+  const years = Math.floor(absTotalMonths / 12);
+  const months = absTotalMonths % 12;
+
+  let termString = "";
+  if (years > 0) {
+    termString += `${years} year${years > 1 ? 's' : ''}`;
+  }
+  if (months > 0) {
+    if (years > 0) termString += " ";
+    termString += `${months} month${months > 1 ? 's' : ''}`;
+  }
+  
+  if (!termString && absTotalMonths > 0) { 
+      termString = `${absTotalMonths} month${absTotalMonths > 1 ? 's' : ''}`;
+  }
+  if (!termString && absTotalMonths === 0) { // Should be caught by totalMonthsDifference === 0
+      return "No change in duration";
+  }
+
+
+  if (totalMonthsDifference < 0) {
+    return `${termString} longer`;
+  }
+  return `${termString} saved`;
+};
+
 
 /**
  * Formats a Date object into "Month YYYY" (e.g., "July 2024").
