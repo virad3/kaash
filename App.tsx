@@ -26,7 +26,7 @@ import { calculateLoanPaymentDetails } from './utils';
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, SAVING_CATEGORIES, LIABILITY_CATEGORIES, APP_NAME } from './constants';
 import { LoadingSpinner } from './components/LoadingSpinner';
 import { BillScanner } from './components/BillScanner';
-import { firebaseConfig } from '../firebaseConfig'; // Import the config
+import { firebaseConfig } from './firebaseConfig'; // Import the config
 import { ConfigurationErrorPage } from './components/ConfigurationErrorPage'; // Import the new page
 
 
