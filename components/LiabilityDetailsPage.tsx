@@ -72,10 +72,8 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 selection:bg-sky-400 selection:text-sky-900">
-      {/* max-w-4xl mx-auto removed from this div */}
       <div>
         <header className="sticky top-0 z-30 bg-slate-800/95 backdrop-blur-md border-b border-slate-700 py-2 sm:py-3">
-            {/* Padding updated to px-2 sm:px-4 lg:px-6 */}
             <div className="flex items-center justify-between h-full px-2 sm:px-4 lg:px-6">
                  <div className="flex-none">
                     <button
@@ -92,15 +90,14 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
                         Liability Details
                     </h1>
                 </div>
-                 <div className="flex-none w-10 sm:w-[70px]"> {/* Adjusted spacer width */}
+                 <div className="flex-none w-10 sm:w-[70px]"> 
                 </div>
             </div>
         </header>
-        {/* Padding updated to p-3 sm:p-4 md:p-6 */}
-        <div className="mt-6 p-3 sm:p-4 md:p-6 space-y-6 md:grid md:grid-cols-12 md:gap-x-8 md:space-y-0">
-         <p className="text-center text-gray-400 text-sm -mt-2 mb-6 md:col-span-12">Track and manage your liabilities easily.</p>
+        <div className="mt-6 p-3 sm:p-4 lg:p-6 space-y-6 lg:grid lg:grid-cols-12 lg:gap-x-8 lg:space-y-0">
+         <p className="text-center text-gray-400 text-sm -mt-2 mb-6 lg:col-span-12">Track and manage your liabilities easily.</p>
           {/* Left Sidebar: Filters and Summary */}
-          <div className="md:col-span-4 xl:col-span-3 space-y-6">
+          <div className="lg:col-span-4 xl:col-span-3 space-y-6">
             <div className="p-3 sm:p-4 bg-slate-800 rounded-lg border border-slate-700 space-y-4">
               <h3 className="text-xl font-semibold text-gray-100 mb-4">Filter Options</h3>
               <div>
@@ -149,7 +146,7 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
           </div>
 
           {/* Right Main Content: Liability List */}
-          <div className="md:col-span-8 xl:col-span-9 space-y-6">
+          <div className="lg:col-span-8 xl:col-span-9 space-y-6">
             {liabilities.length === 0 && filteredLiabilities.length === 0 ? (
                 <div className="text-center py-10 bg-slate-800 rounded-lg border border-slate-700">
                     <p className="text-xl text-gray-400">No liabilities recorded yet.</p>

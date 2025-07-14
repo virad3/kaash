@@ -20,11 +20,12 @@ import { MonthlySummaryChart } from './components/MonthlySummaryChart';
 import { EarlyLoanClosurePage } from './components/EarlyLoanClosurePage'; 
 import * as storageService from './services/storageService';
 import * as authService from './services/authService';
-import { KaashLogoIcon, PlusIcon, BellIcon, PiggyBankIcon, UserIcon, LogoutIcon, MenuIcon, EditIcon as ProfileEditIcon, AddIncomeIcon, AddExpenseIcon, AddLiabilityIcon } from './components/icons'; 
+import { KaashLogoIcon, PlusIcon, BellIcon, PiggyBankIcon, UserIcon, LogoutIcon, MenuIcon, EditIcon as ProfileEditIcon, AddIncomeIcon, AddExpenseIcon, AddLiabilityIcon, ScanIcon } from './components/icons'; 
 import { ExpenseCategory, SavingCategory } from './types'; 
 import { calculateLoanPaymentDetails } from './utils'; 
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, SAVING_CATEGORIES, LIABILITY_CATEGORIES, APP_NAME } from './constants';
 import { LoadingSpinner } from './components/LoadingSpinner';
+import { BillScanner } from './components/BillScanner';
 
 
 const App: React.FC = () => {
@@ -57,6 +58,9 @@ const App: React.FC = () => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isNotificationDropdownOpen, setIsNotificationDropdownOpen] = useState(false);
   const notificationDropdownRef = useRef<HTMLDivElement>(null);
+
+  const [showBillScanner, setShowBillScanner] = useState<boolean>(false);
+  const [amountFromScan, setAmountFromScan] = useState<number | null>(null);
 
 
   const toggleMenu = useCallback(() => setIsMenuOpen(prev => !prev), []);
@@ -91,6 +95,8 @@ const App: React.FC = () => {
     setShowTransactionModal(false); setCurrentTransactionType(null); setEditingTransaction(null);
     setShowLiabilityForm(false); setEditingLiability(null); setPayingLiability(null);
     setShowEditProfileModal(false);
+    setShowBillScanner(false);
+    setAmountFromScan(null);
     //setIsNotificationDropdownOpen(false); // Notification dropdown is handled by its own toggle and click-outside
   }, []);
 
@@ -338,6 +344,22 @@ const App: React.FC = () => {
     setShowLiabilityForm(true);
     setIsNotificationDropdownOpen(false);
   }, []);
+
+  const handleOpenBillScanner = useCallback(() => {
+    setIsMenuOpen(false);
+    setIsNotificationDropdownOpen(false);
+    setShowBillScanner(true);
+  }, []);
+  
+  const handleCloseBillScanner = useCallback(() => {
+    setShowBillScanner(false);
+  }, []);
+  
+  const handleBillScanSuccess = useCallback((amount: number) => {
+    setAmountFromScan(amount);
+    setShowBillScanner(false);
+    handleOpenNewTransactionForm(TransactionType.EXPENSE);
+  }, [handleOpenNewTransactionForm]);
 
 
   const handleAddOrEditTransaction = useCallback(async (data: { 
@@ -762,9 +784,9 @@ const App: React.FC = () => {
     switch (activeView) {
       case 'dashboard':
         return (
-          <div className="space-y-6 p-3 sm:p-4 md:p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-3">
+          <div className="space-y-6 p-3 sm:p-4 lg:p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-3">
                 <SummaryDisplay 
                   totalIncome={totalIncome} 
                   totalExpenses={totalExpenses} 
@@ -779,11 +801,11 @@ const App: React.FC = () => {
                 />
               </div>
             </div>
-             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-              <div className="xl:col-span-2">
+             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
                 <MonthlySummaryChart data={monthlySummaryData} />
               </div>
-              <div className="xl:col-span-1">
+              <div className="lg:col-span-1">
                  <TransactionList 
                   title="Recent Transactions" 
                   transactions={recentTransactions} 
@@ -809,6 +831,7 @@ const App: React.FC = () => {
                   onEditTransaction={handleOpenEditTransactionForm}
                   onDeleteTransaction={handleDeleteTransaction}
                   onOpenNewTransactionForm={handleOpenNewTransactionForm}
+                  onOpenBillScanner={handleOpenBillScanner}
                 />;
       case 'savingsDetails':
         return <SavingsDetailsPage 
@@ -823,7 +846,7 @@ const App: React.FC = () => {
                   liabilities={liabilities} 
                   allTransactions={transactions}
                   onBack={navigateToDashboard}
-                  onEditLiability={handleOpenEditLiabilityForm} // Changed from setEditingLiability
+                  onEditLiability={handleOpenEditLiabilityForm} 
                   onDeleteLiability={handleDeleteLiability}
                   onRecordPayment={setPayingLiability}
                   onViewEMIs={(liabilityId) => {
@@ -994,6 +1017,7 @@ const App: React.FC = () => {
         onOpenExpenseForm={() => handleOpenNewTransactionForm(TransactionType.EXPENSE)}
         onOpenSavingForm={() => handleOpenNewTransactionForm(TransactionType.SAVING)}
         onOpenLiabilityForm={handleOpenNewLiabilityForm}
+        onOpenBillScanner={handleOpenBillScanner}
         onNavigateToEarlyLoanClosure={navigateToEarlyLoanClosure}
       />
       
@@ -1004,13 +1028,14 @@ const App: React.FC = () => {
       {/* Modals */}
       {showTransactionModal && currentTransactionType && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-lg border border-slate-700">
+          <div className="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg border border-slate-700">
             <TransactionForm
               key={forceFormCategoryResetKey + (editingTransaction?.id || 'new')} // Reset form when category lists change
               type={currentTransactionType}
               onSubmit={handleAddOrEditTransaction}
               onCancel={closeModal}
               existingTransaction={editingTransaction}
+              amountFromScan={amountFromScan}
               predefinedCategories={
                 currentTransactionType === TransactionType.INCOME ? INCOME_CATEGORIES.map(String) :
                 currentTransactionType === TransactionType.EXPENSE ? EXPENSE_CATEGORIES.map(String) :
@@ -1043,7 +1068,7 @@ const App: React.FC = () => {
 
       {showLiabilityForm && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-lg border border-slate-700">
+          <div className="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg border border-slate-700">
             <LiabilityForm
               key={forceFormCategoryResetKey + (editingLiability?.id || 'new-liability')}
               onSubmit={handleAddOrEditLiability}
@@ -1061,7 +1086,7 @@ const App: React.FC = () => {
 
       {payingLiability && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-lg border border-slate-700">
+          <div className="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg border border-slate-700">
             <RecordLiabilityPaymentForm
               liability={payingLiability}
               onSubmit={(paymentAmount, paymentDate, newNextDueDate, notes) => 
@@ -1077,6 +1102,12 @@ const App: React.FC = () => {
           user={currentUser}
           onUpdateProfile={handleProfileUpdate}
           onCancel={handleCloseEditProfileModal}
+        />
+      )}
+      {showBillScanner && (
+        <BillScanner
+          onScanSuccess={handleBillScanSuccess}
+          onCancel={handleCloseBillScanner}
         />
       )}
     </div>

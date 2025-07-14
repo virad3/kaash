@@ -1,8 +1,7 @@
-
 import React, { useState, useMemo } from 'react';
 import { Transaction, TransactionType, ExpenseCategory } from '../types';
 import { TransactionList } from './TransactionList';
-import { BackIcon, PlusIcon } from './icons'; 
+import { BackIcon, PlusIcon, ScanIcon } from './icons'; 
 import { EXPENSE_CATEGORIES } from '../constants';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -12,6 +11,7 @@ interface ExpenseDetailsPageProps {
   onEditTransaction: (transaction: Transaction) => void;
   onDeleteTransaction: (id: string) => void;
   onOpenNewTransactionForm: (type: TransactionType) => void;
+  onOpenBillScanner: () => void;
 }
 
 const PIE_COLORS = ['#FF8042', '#FFBB28', '#00C49F', '#0088FE', '#8884D8', '#82CA9D', '#FFC0CB', '#A0522D', '#D2691E', '#FF5733'];
@@ -50,7 +50,8 @@ export const ExpenseDetailsPage: React.FC<ExpenseDetailsPageProps> = ({
   onBack, 
   onEditTransaction, 
   onDeleteTransaction,
-  onOpenNewTransactionForm
+  onOpenNewTransactionForm,
+  onOpenBillScanner
 }) => {
   const [selectedMonth, setSelectedMonth] = useState<string>('all'); 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -95,10 +96,8 @@ export const ExpenseDetailsPage: React.FC<ExpenseDetailsPageProps> = ({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 selection:bg-sky-400 selection:text-sky-900">
-      {/* max-w-4xl mx-auto removed from this div */}
       <div> 
         <header className="sticky top-0 z-30 bg-slate-800/95 backdrop-blur-md border-b border-slate-700 py-2 sm:py-3">
-            {/* Padding updated to px-2 sm:px-4 lg:px-6 */}
             <div className="flex items-center justify-between h-full px-2 sm:px-4 lg:px-6">
                  <div className="flex-none">
                     <button
@@ -115,14 +114,13 @@ export const ExpenseDetailsPage: React.FC<ExpenseDetailsPageProps> = ({
                         Expense Details
                     </h1>
                 </div>
-                <div className="flex-none w-10 sm:w-[70px]"> {/* Adjusted spacer width */}
+                <div className="flex-none w-10 sm:w-[70px]"> 
                 </div>
             </div>
         </header>
-        {/* Padding updated to p-3 sm:p-4 md:p-6 */}
-        <div className="mt-6 p-3 sm:p-4 md:p-6 space-y-6 md:grid md:grid-cols-12 md:gap-x-8 md:space-y-0">
+        <div className="mt-6 p-3 sm:p-4 lg:p-6 space-y-6 lg:grid lg:grid-cols-12 lg:gap-x-8 lg:space-y-0">
           {/* Left Sidebar: Filters and Summary */}
-          <div className="md:col-span-4 xl:col-span-3 space-y-6">
+          <div className="lg:col-span-4 xl:col-span-3 space-y-6">
             <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 space-y-4">
               <h3 className="text-lg font-semibold text-sky-300 mb-3">Filters</h3>
               <div>
@@ -162,17 +160,26 @@ export const ExpenseDetailsPage: React.FC<ExpenseDetailsPageProps> = ({
               <p className="text-3xl font-bold text-red-400">₹{totalFilteredExpenses.toFixed(2)}</p>
             </div>
             
-            <button
-              onClick={() => onOpenNewTransactionForm(TransactionType.EXPENSE)}
-              className="w-full px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-75 flex items-center justify-center gap-2"
-              aria-label="Add new expense"
-            >
-              <PlusIcon className="h-5 w-5" /> Add Expense
-            </button>
+            <div className="space-y-3">
+              <button
+                onClick={() => onOpenNewTransactionForm(TransactionType.EXPENSE)}
+                className="w-full px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-75 flex items-center justify-center gap-2"
+                aria-label="Add new expense"
+              >
+                <PlusIcon className="h-5 w-5" /> Add Expense
+              </button>
+              <button
+                onClick={onOpenBillScanner}
+                className="w-full px-6 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-75 flex items-center justify-center gap-2"
+                aria-label="Scan bill for new expense"
+              >
+                <ScanIcon className="h-5 w-5" /> Scan Bill
+              </button>
+            </div>
           </div>
 
           {/* Right Main Content: Chart and List */}
-          <div className="md:col-span-8 xl:col-span-9 space-y-6">
+          <div className="lg:col-span-8 xl:col-span-9 space-y-6">
             {expenseTransactions.length === 0 ? (
                 <div className="text-center py-10 bg-slate-800 rounded-lg border border-slate-700">
                     <p className="text-xl text-gray-400">No expenses recorded yet.</p>
@@ -202,22 +209,13 @@ export const ExpenseDetailsPage: React.FC<ExpenseDetailsPageProps> = ({
                                 ))}
                               </Pie>
                               <Tooltip formatter={(value: number) => `₹${value.toFixed(2)}`} />
-                              <Legend 
-                                layout="horizontal" 
-                                verticalAlign="bottom" 
+                              <Legend
+                                layout="horizontal"
+                                verticalAlign="bottom"
                                 align="center"
-                                wrapperStyle={{fontSize: "10px", paddingTop: "10px", paddingBottom: "0px", lineHeight: "1.2"}}
+                                wrapperStyle={{ fontSize: "10px", paddingTop: "10px", paddingBottom: "0px", lineHeight: "1.2" }}
                                 iconSize={8}
-                                payload={
-                                    expenseChartData.map(
-                                      (entry, index) => ({
-                                        value: entry.name.length > 12 ? `${entry.name.substring(0,10)}...` : entry.name, 
-                                        type: 'circle',
-                                        id: entry.name,
-                                        color: PIE_COLORS[index % PIE_COLORS.length]
-                                      })
-                                    )
-                                  }
+                                formatter={(value: string) => value.length > 12 ? `${value.substring(0, 10)}...` : value}
                               />
                             </PieChart>
                           </ResponsiveContainer>

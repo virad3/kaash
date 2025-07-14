@@ -39,7 +39,7 @@ export const LiabilityEMIDetailPage: React.FC<LiabilityEMIDetailPageProps> = ({
 
   if (!liability) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 p-6 flex flex-col items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 p-3 sm:p-4 lg:p-6 flex flex-col items-center justify-center">
         <p className="text-xl text-red-400">Liability data not found.</p>
         <button
           onClick={onBack} 
@@ -66,10 +66,8 @@ export const LiabilityEMIDetailPage: React.FC<LiabilityEMIDetailPageProps> = ({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 selection:bg-sky-400 selection:text-sky-900">
-      {/* max-w-4xl mx-auto removed from this div */}
       <div> 
         <header className="sticky top-0 z-30 bg-slate-800/95 backdrop-blur-md border-b border-slate-700 py-2 sm:py-3">
-            {/* Padding updated to px-2 sm:px-4 lg:px-6 */}
             <div className="flex items-center justify-between h-full px-2 sm:px-4 lg:px-6">
                  <div className="flex-none">
                     <button
@@ -86,12 +84,11 @@ export const LiabilityEMIDetailPage: React.FC<LiabilityEMIDetailPageProps> = ({
                         EMI History: {liability.name || liability.category}
                     </h1>
                 </div>
-                 <div className="flex-none w-10 sm:w-[70px]"> {/* Adjusted spacer width */}
+                 <div className="flex-none w-10 sm:w-[70px]"> 
                 </div>
             </div>
         </header>
-        {/* Content padding p-2 sm:p-4 md:p-6 is fine, aligned with dashboard items */}
-        <div className="mt-6 p-2 sm:p-4 md:p-6 space-y-6">
+        <div className="mt-6 p-3 sm:p-4 lg:p-6 space-y-6">
             {/* Liability Summary Card */}
             <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 shadow-lg">
             <h2 className="text-xl font-semibold text-sky-300 mb-3">Liability Summary</h2>
@@ -110,7 +107,7 @@ export const LiabilityEMIDetailPage: React.FC<LiabilityEMIDetailPageProps> = ({
             </div>
 
             {/* EMI Transaction List */}
-            <div className="bg-slate-800 p-3 sm:p-4 md:p-6 rounded-xl shadow-xl border border-slate-700">
+            <div className="bg-slate-800 p-3 sm:p-4 lg:p-6 rounded-xl shadow-xl border border-slate-700">
             <h3 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4 text-sky-400">Recorded EMI Payments ({emiTransactions.length})</h3>
             {emiTransactions.length === 0 ? (
                 <p className="text-gray-400 text-center py-6 sm:py-8 text-sm sm:text-base">

@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Transaction, TransactionType, SavingCategory } from '../types';
 import { TransactionList } from './TransactionList';
@@ -95,10 +94,8 @@ export const SavingsDetailsPage: React.FC<SavingsDetailsPageProps> = ({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 selection:bg-sky-400 selection:text-sky-900">
-      {/* max-w-4xl mx-auto removed from this div */}
       <div>
         <header className="sticky top-0 z-30 bg-slate-800/95 backdrop-blur-md border-b border-slate-700 py-2 sm:py-3">
-            {/* Padding updated to px-2 sm:px-4 lg:px-6 */}
             <div className="flex items-center justify-between h-full px-2 sm:px-4 lg:px-6">
                 <div className="flex-none">
                     <button
@@ -115,14 +112,13 @@ export const SavingsDetailsPage: React.FC<SavingsDetailsPageProps> = ({
                         Savings Details
                     </h1>
                 </div>
-                 <div className="flex-none w-10 sm:w-[70px]"> {/* Adjusted spacer width */}
+                 <div className="flex-none w-10 sm:w-[70px]"> 
                 </div>
             </div>
         </header>
-        {/* Padding updated to p-3 sm:p-4 md:p-6 */}
-        <div className="mt-6 p-3 sm:p-4 md:p-6 space-y-6 md:grid md:grid-cols-12 md:gap-x-8 md:space-y-0">
+        <div className="mt-6 p-3 sm:p-4 lg:p-6 space-y-6 lg:grid lg:grid-cols-12 lg:gap-x-8 lg:space-y-0">
           {/* Left Sidebar: Filters and Summary */}
-          <div className="md:col-span-4 xl:col-span-3 space-y-6">
+          <div className="lg:col-span-4 xl:col-span-3 space-y-6">
             <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 space-y-4">
               <h3 className="text-lg font-semibold text-sky-300 mb-3">Filters</h3>
               <div>
@@ -172,7 +168,7 @@ export const SavingsDetailsPage: React.FC<SavingsDetailsPageProps> = ({
           </div>
 
           {/* Right Main Content: Chart and List */}
-          <div className="md:col-span-8 xl:col-span-9 space-y-6">
+          <div className="lg:col-span-8 xl:col-span-9 space-y-6">
             {savingTransactions.length === 0 ? (
                 <div className="text-center py-10 bg-slate-800 rounded-lg border border-slate-700">
                     <p className="text-xl text-gray-400">No savings recorded yet.</p>
@@ -202,22 +198,13 @@ export const SavingsDetailsPage: React.FC<SavingsDetailsPageProps> = ({
                                 ))}
                               </Pie>
                               <Tooltip formatter={(value: number) => `₹${value.toFixed(2)}`} />
-                              <Legend 
-                                layout="horizontal" 
-                                verticalAlign="bottom" 
+                              <Legend
+                                layout="horizontal"
+                                verticalAlign="bottom"
                                 align="center"
-                                wrapperStyle={{fontSize: "10px", paddingTop: "10px", paddingBottom: "0px", lineHeight: "1.2"}}
+                                wrapperStyle={{ fontSize: "10px", paddingTop: "10px", paddingBottom: "0px", lineHeight: "1.2" }}
                                 iconSize={8}
-                                payload={
-                                    savingChartData.map(
-                                      (entry, index) => ({
-                                        value: entry.name.length > 12 ? `${entry.name.substring(0,10)}...` : entry.name, 
-                                        type: 'circle',
-                                        id: entry.name,
-                                        color: PIE_COLORS[index % PIE_COLORS.length]
-                                      })
-                                    )
-                                  }
+                                formatter={(value: string) => value.length > 12 ? `${value.substring(0, 10)}...` : value}
                               />
                             </PieChart>
                           </ResponsiveContainer>

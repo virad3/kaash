@@ -247,7 +247,7 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
                 </div>
             </div>
         </header>
-        <main className="mt-6 p-2 sm:p-4 md:p-6 bg-slate-800 rounded-xl shadow-xl border border-slate-700 space-y-6">
+        <main className="mt-6 p-3 sm:p-4 lg:p-6 bg-slate-800 rounded-xl shadow-xl border border-slate-700 space-y-6">
           {activeLiabilities.length === 0 ? (
              <p className="text-gray-300 text-center py-5">
               No active liabilities with defined interest rates and EMI amounts available. Add or update liabilities to use this calculator.

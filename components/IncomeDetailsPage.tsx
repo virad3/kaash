@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Transaction, TransactionType } from '../types';
 import { TransactionList } from './TransactionList';
@@ -111,16 +110,14 @@ export const IncomeDetailsPage: React.FC<IncomeDetailsPageProps> = ({
                       Income Details
                   </h1>
               </div>
-              <div className="flex-none w-10 sm:w-[70px]"> {/* Adjusted spacer width to better match typical back button width with text */}
-                {/* Spacer for centering title, width approx matches back button */}
+              <div className="flex-none w-10 sm:w-[70px]"> 
               </div>
           </div>
       </header>
 
-      {/* Content wrapper "max-w-4xl mx-auto" is removed to allow wider layout */}
-      <div className="mt-6 p-3 sm:p-4 md:p-6 space-y-6 md:grid md:grid-cols-12 md:gap-x-8 md:space-y-0">
+      <div className="mt-6 p-3 sm:p-4 lg:p-6 space-y-6 lg:grid lg:grid-cols-12 lg:gap-x-8 lg:space-y-0">
         {/* Left Sidebar: Filters and Summary */}
-        <div className="md:col-span-4 xl:col-span-3 space-y-6">
+        <div className="lg:col-span-4 xl:col-span-3 space-y-6">
           {/* Filters */}
           <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 space-y-4">
             <h3 className="text-lg font-semibold text-sky-300 mb-3">Filters</h3>
@@ -173,7 +170,7 @@ export const IncomeDetailsPage: React.FC<IncomeDetailsPageProps> = ({
         </div>
 
         {/* Right Main Content: Chart and List */}
-        <div className="md:col-span-8 xl:col-span-9 space-y-6">
+        <div className="lg:col-span-8 xl:col-span-9 space-y-6">
           {incomeTransactions.length === 0 ? (
               <div className="text-center py-10 bg-slate-800 rounded-lg border border-slate-700">
                   <p className="text-xl text-gray-400">No income recorded yet.</p>
@@ -204,22 +201,13 @@ export const IncomeDetailsPage: React.FC<IncomeDetailsPageProps> = ({
                               ))}
                               </Pie>
                               <Tooltip formatter={(value: number) => `₹${value.toFixed(2)}`} />
-                              <Legend 
-                              layout="horizontal" 
-                              verticalAlign="bottom" 
-                              align="center"
-                              wrapperStyle={{fontSize: "10px", paddingTop: "10px", paddingBottom: "0px", lineHeight: "1.2"}}
-                              iconSize={8}
-                              payload={
-                                  incomeChartData.map(
-                                      (entry, index) => ({
-                                      value: entry.name.length > 12 ? `${entry.name.substring(0,10)}...` : entry.name, 
-                                      type: 'circle',
-                                      id: entry.name,
-                                      color: PIE_COLORS[index % PIE_COLORS.length]
-                                      })
-                                  )
-                                  }
+                              <Legend
+                                layout="horizontal"
+                                verticalAlign="bottom"
+                                align="center"
+                                wrapperStyle={{ fontSize: "10px", paddingTop: "10px", paddingBottom: "0px", lineHeight: "1.2" }}
+                                iconSize={8}
+                                formatter={(value: string) => value.length > 12 ? `${value.substring(0, 10)}...` : value}
                               />
                           </PieChart>
                           </ResponsiveContainer>
