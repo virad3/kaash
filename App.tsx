@@ -26,9 +26,20 @@ import { calculateLoanPaymentDetails } from './utils';
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, SAVING_CATEGORIES, LIABILITY_CATEGORIES, APP_NAME } from './constants';
 import { LoadingSpinner } from './components/LoadingSpinner';
 import { BillScanner } from './components/BillScanner';
+import { firebaseConfig } from '../firebaseConfig'; // Import the config
+import { ConfigurationErrorPage } from './components/ConfigurationErrorPage'; // Import the new page
 
+
+const PLACEHOLDER_API_KEY = "AIzaSyDUNFxBWKfa1DySUcfq-XSFwtm578FgLOk";
+const PLACEHOLDER_PROJECT_ID = "kaash-d3ed8";
 
 const App: React.FC = () => {
+  // Check for placeholder Firebase config first. This prevents the app from trying to connect
+  // with invalid credentials and shows a helpful guide to the user.
+  if (firebaseConfig.apiKey === PLACEHOLDER_API_KEY || firebaseConfig.projectId === PLACEHOLDER_PROJECT_ID) {
+    return <ConfigurationErrorPage />;
+  }
+
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState<boolean>(true);

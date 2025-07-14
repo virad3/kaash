@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { extractAmountFromBill } from '../services/geminiService';
 import { LoadingSpinner } from './LoadingSpinner';
@@ -25,9 +26,16 @@ export const BillScanner: React.FC<BillScannerProps> = ({ onScanSuccess, onCance
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
       }
-    } catch (err) {
-      console.error("Camera access denied:", err);
-      setError("Camera access is required. Please enable camera permissions for this site in your browser settings and refresh.");
+    } catch (err: any) {
+      console.error("Camera access error:", err);
+      if (err.name === 'NotAllowedError') {
+        setError("Camera access was denied. To use the scanner, please enable camera permissions for this site in your browser's settings.");
+      } else if (err.name === 'NotFoundError') {
+        setError("No camera found on this device. Unable to use the scanner feature.");
+      } else {
+        // This can happen if the user dismisses the prompt, or another error occurs.
+        setError("Could not access the camera. Please grant permission when prompted. If you have already denied it, you may need to adjust your browser's site settings.");
+      }
     }
   }, []);
 
@@ -132,13 +140,22 @@ export const BillScanner: React.FC<BillScannerProps> = ({ onScanSuccess, onCance
               >
                 Cancel
               </button>
-              <button
-                onClick={handleCapture}
-                className="px-8 py-3 bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-lg shadow-md transition-colors"
-                disabled={!!error}
-              >
-                Capture
-              </button>
+              {error ? (
+                  <button
+                    onClick={startCamera}
+                    className="px-8 py-3 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-lg shadow-md transition-colors"
+                  >
+                    Try Again
+                  </button>
+              ) : (
+                  <button
+                    onClick={handleCapture}
+                    className="px-8 py-3 bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-lg shadow-md transition-colors"
+                    disabled={!stream}
+                  >
+                    Capture
+                  </button>
+              )}
             </>
           ) : (
             <>
