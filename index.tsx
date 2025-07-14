@@ -2,11 +2,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-// Import directly for the check, though it's not ideal for direct config access here.
-// A better way would be an environment variable check, but for this context, direct import is simpler.
 
-// The check for placeholder Firebase configuration is now handled inside App.tsx
-// to provide a better user experience with a dedicated error page.
+// The check for placeholder Firebase configuration is now handled by Firebase itself,
+// logging errors to the console if the configuration is invalid.
 
 console.log(
   "%cKaash App Initializing... Reminder: If you encounter Firestore connection issues, " +
