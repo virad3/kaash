@@ -1,6 +1,29 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({apiKey: process.env.API_KEY});
+let ai: GoogleGenAI | null = null;
+
+// Function to get or initialize the AI client
+const getAiClient = (): GoogleGenAI => {
+    // Return existing client if already initialized
+    if (ai) {
+        return ai;
+    }
+    
+    // The hosting environment must provide process.env.API_KEY.
+    const apiKey = process.env.API_KEY;
+    
+    if (!apiKey) {
+        // This provides a clear error message to the developer in the console
+        // and in the UI via the catch block in the calling component.
+        throw new Error("Gemini API key is not configured. Please ensure the API_KEY environment variable is set.");
+    }
+
+    // Initialize the client
+    ai = new GoogleGenAI({ apiKey });
+    return ai;
+};
+
 
 const billSchema = {
     type: Type.OBJECT,
@@ -14,6 +37,8 @@ const billSchema = {
 
 export const extractAmountFromBill = async (base64Image: string): Promise<number | null> => {
     try {
+        const client = getAiClient(); // This will throw if the key is missing.
+
         console.log("Starting bill extraction with Gemini...");
         const imagePart = {
             inlineData: {
@@ -29,7 +54,7 @@ export const extractAmountFromBill = async (base64Image: string): Promise<number
                    Return only this numeric value.`,
         };
 
-        const response = await ai.models.generateContent({
+        const response = await client.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: { parts: [imagePart, textPart] },
             config: {
@@ -57,8 +82,7 @@ export const extractAmountFromBill = async (base64Image: string): Promise<number
 
     } catch (error) {
         console.error("Error processing bill with Gemini API:", error);
-        // It's good practice to re-throw or handle the error appropriately
-        // For this app, returning null and letting the UI handle it is fine.
-        return null;
+        // Re-throw the error so the UI component can catch it and display a specific message.
+        throw error;
     }
 };
