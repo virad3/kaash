@@ -38,14 +38,14 @@ const firebaseConfig = {
 };
 
 // Log a warning if the API key looks like the default placeholder
-if (firebaseConfig.apiKey === "AIzaSyDUNFxBWKfa1DySUcfq-XSFwtm578FgLOk" || firebaseConfig.projectId === "kaash-d3ed8" ) {
-  console.warn(
-    "%cIMPORTANT: Firebase configuration in 'firebaseConfig.ts' might be using placeholder values. " +
-    "Please replace them with your actual Firebase project credentials to connect to Firestore. " +
-    "Refer to the comments in 'firebaseConfig.ts' for instructions.",
-    "color: red; font-size: 14px; font-weight: bold;"
-  );
-}
+// if (firebaseConfig.apiKey === "AIzaSyDUNFxBWKfa1DySUcfq-XSFwtm578FgLOk" || firebaseConfig.projectId === "kaash-d3ed8" ) {
+//   console.warn(
+//     "%cIMPORTANT: Firebase configuration in 'firebaseConfig.ts' might be using placeholder values. " +
+//     "Please replace them with your actual Firebase project credentials to connect to Firestore. " +
+//     "Refer to the comments in 'firebaseConfig.ts' for instructions.",
+//     "color: red; font-size: 14px; font-weight: bold;"
+//   );
+// }
 
 
 // Initialize Firebase
