@@ -57,7 +57,7 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 const googleProvider = new firebase.auth.GoogleAuthProvider();
 
-export { auth, db, googleProvider };
+export { auth, db, googleProvider, firebaseConfig };
 
 // AFTER UPDATING THE CONFIG ABOVE AND VERIFYING FIREBASE PROJECT SETUP:
 // Ensure your Firestore Security Rules are set up.
