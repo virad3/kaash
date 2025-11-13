@@ -37,15 +37,20 @@ const firebaseConfig = {
   measurementId: "G-WS9GMLW5XB"
 };
 
-// Log a warning if the API key looks like the default placeholder
-// if (firebaseConfig.apiKey === "AIzaSyDUNFxBWKfa1DySUcfq-XSFwtm578FgLOk" || firebaseConfig.projectId === "kaash-d3ed8" ) {
-//   console.warn(
-//     "%cIMPORTANT: Firebase configuration in 'firebaseConfig.ts' might be using placeholder values. " +
-//     "Please replace them with your actual Firebase project credentials to connect to Firestore. " +
-//     "Refer to the comments in 'firebaseConfig.ts' for instructions.",
-//     "color: red; font-size: 14px; font-weight: bold;"
-//   );
-// }
+// This flag will be used by the main App component to render an error screen
+// if the developer hasn't replaced the placeholder config.
+export const isConfigPlaceholder = firebaseConfig.projectId === "kaash-d3ed8";
+
+
+// Log a warning if the project ID looks like the default placeholder
+if (isConfigPlaceholder) {
+  console.warn(
+    "%cIMPORTANT: Firebase configuration in 'firebaseConfig.ts' might be using placeholder values. " +
+    "Please replace them with your actual Firebase project credentials to connect to Firestore. " +
+    "Refer to the comments in 'firebaseConfig.ts' for instructions.",
+    "color: red; font-size: 14px; font-weight: bold;"
+  );
+}
 
 
 // Initialize Firebase

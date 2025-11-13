@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { User, Transaction, TransactionType, Liability, View, UserDefinedCategories, CategoryTypeIdentifier, AppNotification, CreditCard, CreditCardBill } from './types'; 
 import { TransactionForm } from './components/TransactionForm';
@@ -25,9 +26,17 @@ import { ExpenseCategory, SavingCategory } from './types';
 import { calculateLoanPaymentDetails } from './utils'; 
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, SAVING_CATEGORIES, LIABILITY_CATEGORIES, APP_NAME } from './constants';
 import { LoadingSpinner } from './components/LoadingSpinner';
+import { isConfigPlaceholder } from './firebaseConfig';
+import { ConfigurationErrorPage } from './components/ConfigurationErrorPage';
 
 
 const App: React.FC = () => {
+  // Immediately check for placeholder configuration and render an error page if it's found.
+  // This prevents the app from running in a broken state where data cannot be saved.
+  if (isConfigPlaceholder) {
+    return <ConfigurationErrorPage />;
+  }
+
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState<boolean>(true);
