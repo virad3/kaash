@@ -1,4 +1,3 @@
-
 import { IncomeCategory, ExpenseCategory, SavingCategory, LiabilityCategory } from './types';
 
 export const INCOME_CATEGORIES: IncomeCategory[] = [
@@ -64,6 +63,49 @@ export const BANK_NAMES: string[] = [
   'Citibank',
   'Other',
 ];
+
+// New data structure for pre-defined credit cards
+export interface CreditCardInfo {
+  cardName: string;
+  annualFee: number;
+  waiverSpend: number;
+}
+
+export const BANK_CREDIT_CARDS: Record<string, CreditCardInfo[]> = {
+  'HDFC Bank': [
+    { cardName: 'Millennia', annualFee: 1000, waiverSpend: 100000 },
+    { cardName: 'Regalia Gold', annualFee: 2500, waiverSpend: 400000 },
+    { cardName: 'Infinia', annualFee: 12500, waiverSpend: 1000000 },
+    { cardName: 'Diners Club Black', annualFee: 10000, waiverSpend: 800000 },
+    { cardName: 'Tata Neu Plus', annualFee: 499, waiverSpend: 100000 },
+    { cardName: 'Tata Neu Infinity', annualFee: 1499, waiverSpend: 300000 },
+  ],
+  'ICICI Bank': [
+    { cardName: 'Amazon Pay', annualFee: 0, waiverSpend: 0 },
+    { cardName: 'Sapphiro', annualFee: 6500, waiverSpend: 600000 },
+    { cardName: 'Rubyx', annualFee: 3000, waiverSpend: 300000 },
+    { cardName: 'Coral', annualFee: 500, waiverSpend: 150000 },
+  ],
+  'SBI Card': [
+    { cardName: 'SimplyCLICK', annualFee: 499, waiverSpend: 100000 },
+    { cardName: 'SimplySAVE', annualFee: 499, waiverSpend: 100000 },
+    { cardName: 'PRIME', annualFee: 2999, waiverSpend: 300000 },
+    { cardName: 'ELITE', annualFee: 4999, waiverSpend: 1000000 },
+    { cardName: 'Cashback', annualFee: 999, waiverSpend: 200000 },
+  ],
+  'Axis Bank': [
+    { cardName: 'Magnus', annualFee: 12500, waiverSpend: 2500000 },
+    { cardName: 'Vistara Infinite', annualFee: 10000, waiverSpend: 0 },
+    { cardName: 'Flipkart Axis Bank', annualFee: 500, waiverSpend: 200000 },
+    { cardName: 'Airtel Axis Bank', annualFee: 500, waiverSpend: 200000 },
+    { cardName: 'My Zone', annualFee: 500, waiverSpend: 0 },
+  ],
+  'American Express': [
+    { cardName: 'Platinum Travel', annualFee: 5000, waiverSpend: 400000 },
+    { cardName: 'Membership Rewards', annualFee: 4500, waiverSpend: 250000 },
+    { cardName: 'SmartEarn', annualFee: 495, waiverSpend: 40000 },
+  ],
+};
 
 
 export const APP_NAME = "Kaash";

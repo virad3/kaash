@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { CreditCardBill } from '../types';
 
@@ -47,7 +46,7 @@ export const AddCreditCardBillForm: React.FC<AddCreditCardBillFormProps> = ({ cr
       isPaid: existingBill?.isPaid || false,
       notes: notes.trim() || undefined,
     });
-    onCancel();
+    // The onCancel call is removed from here. The parent component will handle closing the modal.
   };
 
   const title = existingBill ? 'Edit Bill' : 'Add New Bill';

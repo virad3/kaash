@@ -1,13 +1,14 @@
-
 import React, { useState, useEffect } from 'react';
 import { CreditCard } from '../types';
-import { BANK_NAMES } from '../constants';
+import { BANK_NAMES, BANK_CREDIT_CARDS, CreditCardInfo } from '../constants';
 
 interface AddCreditCardFormProps {
   onSubmit: (data: Omit<CreditCard, 'id' | 'createdAt' | 'userId'> & { id?: string }) => void;
   onCancel: () => void;
   existingCard?: CreditCard | null;
 }
+
+const PREDEFINED_CARD_OTHER_VALUE = 'other';
 
 export const AddCreditCardForm: React.FC<AddCreditCardFormProps> = ({ onSubmit, onCancel, existingCard }) => {
   const [bankName, setBankName] = useState(BANK_NAMES[0]);
@@ -16,7 +17,23 @@ export const AddCreditCardForm: React.FC<AddCreditCardFormProps> = ({ onSubmit, 
   const [annualFeeWaiverSpend, setAnnualFeeWaiverSpend] = useState('');
   const [billingCycleDate, setBillingCycleDate] = useState('15');
   const [cardAddedDate, setCardAddedDate] = useState(new Date().toISOString().split('T')[0]);
+
+  const [availableCards, setAvailableCards] = useState<CreditCardInfo[]>([]);
+  const [selectedPredefinedCard, setSelectedPredefinedCard] = useState('');
+
+  // Effect to update available cards when bank changes
+  useEffect(() => {
+    setAvailableCards(BANK_CREDIT_CARDS[bankName] || []);
+    // Reset selections when bank changes, unless we are editing
+    if (!existingCard) {
+      setSelectedPredefinedCard('');
+      setCardName('');
+      setAnnualFee('');
+      setAnnualFeeWaiverSpend('');
+    }
+  }, [bankName, existingCard]);
   
+  // Effect to populate form when editing an existing card
   useEffect(() => {
     if (existingCard) {
       setBankName(existingCard.bankName);
@@ -25,8 +42,34 @@ export const AddCreditCardForm: React.FC<AddCreditCardFormProps> = ({ onSubmit, 
       setAnnualFeeWaiverSpend(existingCard.annualFeeWaiverSpend.toString());
       setBillingCycleDate(existingCard.billingCycleDate.toString());
       setCardAddedDate(existingCard.cardAddedDate);
+
+      // Check if the existing card matches a predefined one to set the dropdown correctly
+      const matchingPredefined = (BANK_CREDIT_CARDS[existingCard.bankName] || []).find(c => c.cardName === existingCard.cardName);
+      if (matchingPredefined) {
+        setSelectedPredefinedCard(existingCard.cardName);
+      } else {
+        setSelectedPredefinedCard(PREDEFINED_CARD_OTHER_VALUE);
+      }
     }
   }, [existingCard]);
+
+  const handlePredefinedCardChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedCardName = e.target.value;
+    setSelectedPredefinedCard(selectedCardName);
+
+    if (selectedCardName === PREDEFINED_CARD_OTHER_VALUE) {
+      setCardName('');
+      setAnnualFee('');
+      setAnnualFeeWaiverSpend('');
+    } else {
+      const cardInfo = availableCards.find(c => c.cardName === selectedCardName);
+      if (cardInfo) {
+        setCardName(cardInfo.cardName);
+        setAnnualFee(cardInfo.annualFee.toString());
+        setAnnualFeeWaiverSpend(cardInfo.waiverSpend.toString());
+      }
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,10 +86,11 @@ export const AddCreditCardForm: React.FC<AddCreditCardFormProps> = ({ onSubmit, 
       billingCycleDate: parseInt(billingCycleDate, 10),
       cardAddedDate,
     });
-    onCancel();
+    // The onCancel call is removed from here. The parent component will handle closing the modal.
   };
   
   const title = existingCard ? 'Edit Credit Card' : 'Add New Credit Card';
+  const isManualEntry = selectedPredefinedCard === PREDEFINED_CARD_OTHER_VALUE;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-2 text-gray-100 max-h-[80vh] overflow-y-auto">
@@ -64,18 +108,36 @@ export const AddCreditCardForm: React.FC<AddCreditCardFormProps> = ({ onSubmit, 
         </select>
       </div>
 
-      <div>
-        <label htmlFor="cardName" className="block text-sm font-medium text-gray-300 mb-1">Card Name*</label>
-        <input
-          type="text"
-          id="cardName"
-          value={cardName}
-          onChange={(e) => setCardName(e.target.value)}
-          className="w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-md shadow-sm p-3 focus:ring-sky-500 focus:border-sky-500 transition"
-          placeholder="e.g., Millennia, Amazon Pay ICICI"
-          required
-        />
-      </div>
+      {availableCards.length > 0 && (
+        <div>
+          <label htmlFor="predefinedCard" className="block text-sm font-medium text-gray-300 mb-1">Card*</label>
+          <select
+            id="predefinedCard"
+            value={selectedPredefinedCard}
+            onChange={handlePredefinedCardChange}
+            className="w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-md shadow-sm p-3 focus:ring-sky-500 focus:border-sky-500 transition"
+          >
+            <option value="">-- Select a Card --</option>
+            {availableCards.map(card => <option key={card.cardName} value={card.cardName}>{card.cardName}</option>)}
+            <option value={PREDEFINED_CARD_OTHER_VALUE}>Other (Enter Manually)</option>
+          </select>
+        </div>
+      )}
+
+      {(isManualEntry || availableCards.length === 0) && (
+        <div>
+          <label htmlFor="cardName" className="block text-sm font-medium text-gray-300 mb-1">Card Name*</label>
+          <input
+            type="text"
+            id="cardName"
+            value={cardName}
+            onChange={(e) => setCardName(e.target.value)}
+            className="w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-md shadow-sm p-3 focus:ring-sky-500 focus:border-sky-500 transition"
+            placeholder="e.g., Millennia, Amazon Pay ICICI"
+            required
+          />
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -90,6 +152,7 @@ export const AddCreditCardForm: React.FC<AddCreditCardFormProps> = ({ onSubmit, 
             min="0"
             step="1"
             required
+            readOnly={!isManualEntry && availableCards.length > 0}
           />
         </div>
         <div>
@@ -104,6 +167,7 @@ export const AddCreditCardForm: React.FC<AddCreditCardFormProps> = ({ onSubmit, 
             min="0"
             step="1000"
             required
+            readOnly={!isManualEntry && availableCards.length > 0}
           />
         </div>
       </div>

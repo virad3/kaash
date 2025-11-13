@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { User, Transaction, TransactionType, Liability, View, UserDefinedCategories, CategoryTypeIdentifier, AppNotification, CreditCard, CreditCardBill } from './types'; 
 import { TransactionForm } from './components/TransactionForm';
@@ -693,7 +692,7 @@ const App: React.FC = () => {
     }
   }, [liabilities, currentUser]);
 
-  const handleAddOrEditCreditCard = useCallback(async (data: Omit<CreditCard, 'id' | 'createdAt' | 'userId'> & { id?: string }) => {
+  const handleAddOrEditCreditCard = useCallback(async (data: Omit<CreditCard, 'id' | 'createdAt' | 'userId'> & { id?: string }): Promise<void> => {
     if (!currentUser?.uid) return;
     const { id, ...cardDetails } = data;
     try {
@@ -720,7 +719,7 @@ const App: React.FC = () => {
     }
   }, [currentUser]);
 
-  const handleAddOrEditCreditCardBill = useCallback(async (data: Omit<CreditCardBill, 'id' | 'createdAt' | 'userId'> & { id?: string }) => {
+  const handleAddOrEditCreditCardBill = useCallback(async (data: Omit<CreditCardBill, 'id' | 'createdAt' | 'userId'> & { id?: string }): Promise<void> => {
     if (!currentUser?.uid) return;
     const { id, ...billDetails } = data;
     try {

@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { CreditCard, CreditCardBill } from '../types';
 import { TrashIcon, EditIcon, PaymentIcon } from './icons';

@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { CreditCard, CreditCardBill } from '../types';
 import { BackIcon, PlusIcon } from './icons';
@@ -9,9 +8,9 @@ import { AddCreditCardBillForm } from './AddCreditCardBillForm';
 interface CreditCardsPageProps {
   creditCards: CreditCard[];
   creditCardBills: CreditCardBill[];
-  onAddOrEditCard: (data: Omit<CreditCard, 'id' | 'createdAt' | 'userId'> & { id?: string }) => void;
+  onAddOrEditCard: (data: Omit<CreditCard, 'id' | 'createdAt' | 'userId'> & { id?: string }) => Promise<void>;
   onDeleteCard: (id: string) => void;
-  onAddOrEditBill: (data: Omit<CreditCardBill, 'id' | 'createdAt' | 'userId'> & { id?: string }) => void;
+  onAddOrEditBill: (data: Omit<CreditCardBill, 'id' | 'createdAt' | 'userId'> & { id?: string }) => Promise<void>;
   onDeleteBill: (id: string) => void;
   onUpdateBillPaidStatus: (bill: CreditCardBill, isPaid: boolean) => void;
   onBack: () => void;
@@ -59,6 +58,18 @@ export const CreditCardsPage: React.FC<CreditCardsPageProps> = ({
     }
   };
 
+  // New handler to ensure async operation completes before modal closes
+  const handleCardSubmit = async (data: Omit<CreditCard, 'id' | 'createdAt' | 'userId'> & { id?: string }) => {
+    await onAddOrEditCard(data);
+    setShowCardForm(false);
+  };
+
+  // New handler for bill submission
+  const handleBillSubmit = async (data: Omit<CreditCardBill, 'id' | 'createdAt' | 'userId'> & { id?: string }) => {
+    await onAddOrEditBill(data);
+    setShowBillForm(false);
+  };
+
   const billsByCardId = useMemo(() => {
     return creditCardBills.reduce((acc, bill) => {
       (acc[bill.creditCardId] = acc[bill.creditCardId] || []).push(bill);
@@ -98,7 +109,7 @@ export const CreditCardsPage: React.FC<CreditCardsPageProps> = ({
               <CreditCardItem
                 key={card.id}
                 card={card}
-                bills={billsByCardId[card.id] || []}
+                bills={(billsByCardId[card.id] || []).sort((a,b) => new Date(b.billDate).getTime() - new Date(a.billDate).getTime())}
                 onAddBill={handleOpenNewBillForm}
                 onEditBill={handleOpenEditBillForm}
                 onDeleteBill={onDeleteBill}
@@ -115,7 +126,7 @@ export const CreditCardsPage: React.FC<CreditCardsPageProps> = ({
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
           <div className="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg border border-slate-700">
             <AddCreditCardForm
-              onSubmit={onAddOrEditCard}
+              onSubmit={handleCardSubmit}
               onCancel={() => setShowCardForm(false)}
               existingCard={editingCard}
             />
@@ -128,7 +139,7 @@ export const CreditCardsPage: React.FC<CreditCardsPageProps> = ({
           <div className="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg border border-slate-700">
             <AddCreditCardBillForm
               creditCardId={activeCardForBill.id}
-              onSubmit={onAddOrEditBill}
+              onSubmit={handleBillSubmit}
               onCancel={() => setShowBillForm(false)}
               existingBill={editingBill}
             />
