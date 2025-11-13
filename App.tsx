@@ -399,10 +399,10 @@ const App: React.FC = () => {
     date: string; 
     category: string; 
     relatedLiabilityId?: string; 
-  }) => {
+  }): Promise<void> => {
     if (!currentUser?.uid) {
         console.warn("handleAddOrEditTransaction: No current user, aborting.");
-        return;
+        throw new Error("User not authenticated.");
     }
     
     const { id, ...transactionDetailsFromForm } = data; 
@@ -410,7 +410,7 @@ const App: React.FC = () => {
 
     if (!finalCategory) {
         alert("Category cannot be empty. Please select or add a category.");
-        return;
+        throw new Error("Category cannot be empty.");
     }
 
     const payload: Omit<Transaction, 'id' | 'createdAt' | 'userId'> & { relatedLiabilityId?: string } = {
@@ -512,14 +512,22 @@ const App: React.FC = () => {
             }
         }
       }
-      
-      closeModal();
     } catch (error: any) { 
       const operationDescription = id ? 'update' : 'add';
       console.error(`Error ${operationDescription} transaction (User: ${currentUser.uid}, ID: ${id || 'new'}):`, error);
       alert(`Failed to save transaction. Error: ${error.message || 'Unknown error'}.`);
+      throw error;
     }
-  }, [currentUser, userDefinedCategories, editingTransaction, closeModal, liabilities, transactions]);
+  }, [currentUser, userDefinedCategories, editingTransaction, liabilities, transactions]);
+
+  const handleTransactionFormSubmit = async (data: any) => {
+    try {
+      await handleAddOrEditTransaction(data);
+      closeModal();
+    } catch (error) {
+      console.log("Transaction submission failed. Modal remains open.");
+    }
+  };
 
 
   const handleEditEMI = useCallback((transaction: Transaction) => {
@@ -590,14 +598,14 @@ const App: React.FC = () => {
     }
   }, [currentUser, transactions, handleDeleteEMI]);
 
-  const handleAddOrEditLiability = useCallback(async (data: Omit<Liability, 'id' | 'createdAt' | 'userId' | 'amountRepaid' | 'name' | 'notes'> & { id?: string; name?: string; category: string; amountRepaid?: number; loanTermInMonths?: number; }) => {
-    if (!currentUser?.uid) return;
+  const handleAddOrEditLiability = useCallback(async (data: Omit<Liability, 'id' | 'createdAt' | 'userId' | 'amountRepaid' | 'name' | 'notes'> & { id?: string; name?: string; category: string; amountRepaid?: number; loanTermInMonths?: number; }): Promise<void> => {
+    if (!currentUser?.uid) { throw new Error("User not authenticated."); }
     const { id, ...liabilityDetails } = data;
     const finalCategory = liabilityDetails.category.trim();
 
      if (!finalCategory) {
         alert("Category cannot be empty. Please select or add a category.");
-        return;
+        throw new Error("Category cannot be empty.");
     }
 
     const payload = {
@@ -625,10 +633,21 @@ const App: React.FC = () => {
       if (isNewUserDefinedCategory) {
          await storageService.addUserDefinedCategory(currentUser.uid, 'liability', finalCategory);
       }
+    } catch (error: any) {
+      console.error("Error saving liability:", error);
+      alert(`Failed to save liability. Error: ${error.message}`);
+      throw error;
+    }
+  }, [currentUser, liabilities, userDefinedCategories]);
 
+  const handleLiabilityFormSubmit = async (data: any) => {
+    try {
+      await handleAddOrEditLiability(data);
       closeModal();
-    } catch (error: any) { console.error("Error saving liability:", error); alert(`Failed to save liability. Error: ${error.message}`); }
-  }, [currentUser, liabilities, userDefinedCategories, closeModal]);
+    } catch (error) {
+      console.log("Liability submission failed. Modal remains open.");
+    }
+  };
 
   const handleDeleteLiability = useCallback(async (id: string) => {
     if (!currentUser?.uid) return;
@@ -693,7 +712,7 @@ const App: React.FC = () => {
   }, [liabilities, currentUser]);
 
   const handleAddOrEditCreditCard = useCallback(async (data: Omit<CreditCard, 'id' | 'createdAt' | 'userId'> & { id?: string }): Promise<void> => {
-    if (!currentUser?.uid) return;
+    if (!currentUser?.uid) { throw new Error("User not authenticated."); }
     const { id, ...cardDetails } = data;
     try {
       if (id) {
@@ -704,6 +723,7 @@ const App: React.FC = () => {
     } catch (error: any) {
       console.error("Error saving credit card:", error);
       alert(`Failed to save credit card. Error: ${error.message}`);
+      throw error;
     }
   }, [currentUser]);
 
@@ -720,7 +740,7 @@ const App: React.FC = () => {
   }, [currentUser]);
 
   const handleAddOrEditCreditCardBill = useCallback(async (data: Omit<CreditCardBill, 'id' | 'createdAt' | 'userId'> & { id?: string }): Promise<void> => {
-    if (!currentUser?.uid) return;
+    if (!currentUser?.uid) { throw new Error("User not authenticated."); }
     const { id, ...billDetails } = data;
     try {
       if (id) {
@@ -731,6 +751,7 @@ const App: React.FC = () => {
     } catch (error: any) {
       console.error("Error saving credit card bill:", error);
       alert(`Failed to save credit card bill. Error: ${error.message}`);
+      throw error;
     }
   }, [currentUser]);
 
@@ -1139,7 +1160,7 @@ const App: React.FC = () => {
             <TransactionForm
               key={forceFormCategoryResetKey + (editingTransaction?.id || 'new')} // Reset form when category lists change
               type={currentTransactionType}
-              onSubmit={handleAddOrEditTransaction}
+              onSubmit={handleTransactionFormSubmit}
               onCancel={closeModal}
               existingTransaction={editingTransaction}
               predefinedCategories={
@@ -1177,7 +1198,7 @@ const App: React.FC = () => {
           <div className="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg border border-slate-700">
             <LiabilityForm
               key={forceFormCategoryResetKey + (editingLiability?.id || 'new-liability')}
-              onSubmit={handleAddOrEditLiability}
+              onSubmit={handleLiabilityFormSubmit}
               onCancel={closeModal}
               existingLiability={editingLiability}
               predefinedLiabilityCategories={LIABILITY_CATEGORIES.map(String)}

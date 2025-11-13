@@ -58,16 +58,22 @@ export const CreditCardsPage: React.FC<CreditCardsPageProps> = ({
     }
   };
 
-  // New handler to ensure async operation completes before modal closes
   const handleCardSubmit = async (data: Omit<CreditCard, 'id' | 'createdAt' | 'userId'> & { id?: string }) => {
-    await onAddOrEditCard(data);
-    setShowCardForm(false);
+    try {
+      await onAddOrEditCard(data);
+      setShowCardForm(false);
+    } catch (error) {
+      console.log("Card submission failed. Modal remains open.");
+    }
   };
 
-  // New handler for bill submission
   const handleBillSubmit = async (data: Omit<CreditCardBill, 'id' | 'createdAt' | 'userId'> & { id?: string }) => {
-    await onAddOrEditBill(data);
-    setShowBillForm(false);
+    try {
+      await onAddOrEditBill(data);
+      setShowBillForm(false);
+    } catch (error) {
+      console.log("Bill submission failed. Modal remains open.");
+    }
   };
 
   const billsByCardId = useMemo(() => {

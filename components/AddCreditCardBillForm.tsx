@@ -3,7 +3,7 @@ import { CreditCardBill } from '../types';
 
 interface AddCreditCardBillFormProps {
   creditCardId: string;
-  onSubmit: (data: Omit<CreditCardBill, 'id' | 'createdAt' | 'userId'> & { id?: string }) => void;
+  onSubmit: (data: Omit<CreditCardBill, 'id' | 'createdAt' | 'userId'> & { id?: string }) => Promise<void>;
   onCancel: () => void;
   existingBill?: CreditCardBill | null;
 }
@@ -31,13 +31,13 @@ export const AddCreditCardBillForm: React.FC<AddCreditCardBillFormProps> = ({ cr
     }
   }, [existingBill]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || parseFloat(amount) <= 0 || !billDate || !paymentDueDate) {
       alert('Please fill in all required fields. Amount must be greater than zero.');
       return;
     }
-    onSubmit({
+    await onSubmit({
       id: existingBill?.id,
       creditCardId: creditCardId,
       amount: parseFloat(amount),
@@ -46,7 +46,6 @@ export const AddCreditCardBillForm: React.FC<AddCreditCardBillFormProps> = ({ cr
       isPaid: existingBill?.isPaid || false,
       notes: notes.trim() || undefined,
     });
-    // The onCancel call is removed from here. The parent component will handle closing the modal.
   };
 
   const title = existingBill ? 'Edit Bill' : 'Add New Bill';

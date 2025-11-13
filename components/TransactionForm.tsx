@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Transaction, TransactionType, IncomeCategory, ExpenseCategory, SavingCategory } from '../types';
 import { CustomCategorySelect } from './CustomCategorySelect'; // Import the new component
@@ -14,7 +13,7 @@ interface TransactionFormProps {
     date: string; 
     category: string; 
     relatedLiabilityId?: string;
-  }) => void;
+  }) => Promise<void>;
   onCancel: () => void;
   existingTransaction?: Transaction | null;
   
@@ -107,14 +106,14 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   }, [selectedCategory, allAvailableMergedCategories, currentUserDefinedCategories, predefinedCategories]);
 
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCategory || !amount || parseFloat(amount) <= 0 || !date) {
         alert(`Please fill in Amount, Date, and select a Category. Amount must be greater than zero.`);
         return;
     }
     
-    onSubmit({
+    await onSubmit({
       id: existingTransaction?.id,
       type,
       description: description.trim() || undefined,

@@ -3,7 +3,7 @@ import { CreditCard } from '../types';
 import { BANK_NAMES, BANK_CREDIT_CARDS, CreditCardInfo } from '../constants';
 
 interface AddCreditCardFormProps {
-  onSubmit: (data: Omit<CreditCard, 'id' | 'createdAt' | 'userId'> & { id?: string }) => void;
+  onSubmit: (data: Omit<CreditCard, 'id' | 'createdAt' | 'userId'> & { id?: string }) => Promise<void>;
   onCancel: () => void;
   existingCard?: CreditCard | null;
 }
@@ -71,13 +71,13 @@ export const AddCreditCardForm: React.FC<AddCreditCardFormProps> = ({ onSubmit, 
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!cardName.trim() || !annualFee || parseFloat(annualFee) < 0 || !annualFeeWaiverSpend || parseFloat(annualFeeWaiverSpend) < 0 || !billingCycleDate) {
       alert('Please fill in all required fields with valid numbers.');
       return;
     }
-    onSubmit({
+    await onSubmit({
       id: existingCard?.id,
       bankName,
       cardName: cardName.trim(),
@@ -86,7 +86,6 @@ export const AddCreditCardForm: React.FC<AddCreditCardFormProps> = ({ onSubmit, 
       billingCycleDate: parseInt(billingCycleDate, 10),
       cardAddedDate,
     });
-    // The onCancel call is removed from here. The parent component will handle closing the modal.
   };
   
   const title = existingCard ? 'Edit Credit Card' : 'Add New Credit Card';

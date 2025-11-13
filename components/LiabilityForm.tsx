@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Liability, LiabilityCategory } from '../types';
 import { LIABILITY_CATEGORIES } from '../constants';
@@ -6,7 +5,7 @@ import { calculateEMI } from '../utils';
 import { CustomCategorySelect } from './CustomCategorySelect'; // Import the new component
 
 interface LiabilityFormProps {
-  onSubmit: (data: Omit<Liability, 'id' | 'amountRepaid' | 'createdAt' | 'name' | 'notes'> & { id?: string; amountRepaid?: number; name?: string; category: string; loanTermInMonths?: number; }) => void;
+  onSubmit: (data: Omit<Liability, 'id' | 'amountRepaid' | 'createdAt' | 'name' | 'notes'> & { id?: string; amountRepaid?: number; name?: string; category: string; loanTermInMonths?: number; }) => Promise<void>;
   onCancel: () => void;
   existingLiability?: Liability | null;
 
@@ -120,14 +119,14 @@ export const LiabilityForm: React.FC<LiabilityFormProps> = ({
   }, [initialAmount, interestRate, loanTermInMonths, existingLiability, autoCalculateEMI]);
 
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCategory || !initialAmount || parseFloat(initialAmount) <= 0 || !nextDueDate) {
       alert('Please fill in Category, Initial Amount, and Next Due Date. Initial Amount must be greater than zero.');
       return;
     }
 
-    onSubmit({
+    await onSubmit({
       id: existingLiability?.id,
       name: name.trim() || undefined,
       initialAmount: parseFloat(initialAmount),
