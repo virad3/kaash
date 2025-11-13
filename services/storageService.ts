@@ -387,7 +387,20 @@ export const subscribeToCreditCards = (userId: string, callback: (cards: CreditC
     const cards: CreditCard[] = [];
     querySnapshot.forEach((docSnap) => {
       const data = docSnap.data();
-      cards.push({ id: docSnap.id, ...data } as CreditCard);
+      const cardItem = { id: docSnap.id, ...data } as CreditCard;
+
+      // Add validation to ensure data integrity
+      if (!cardItem.cardName || typeof cardItem.cardName !== 'string' ||
+          !cardItem.bankName || typeof cardItem.bankName !== 'string' ||
+          typeof cardItem.annualFee !== 'number' ||
+          typeof cardItem.annualFeeWaiverSpend !== 'number' ||
+          typeof cardItem.billingCycleDate !== 'number' ||
+          !cardItem.cardAddedDate || typeof cardItem.cardAddedDate !== 'string') {
+        console.warn(`Credit Card ${cardItem.id} from Firestore is missing fields or has incorrect types. Skipping.`, data);
+        return; // This acts like 'continue' in a forEach loop
+      }
+
+      cards.push(cardItem);
     });
     callback(cards);
   }, (error) => {
@@ -439,7 +452,19 @@ export const subscribeToCreditCardBills = (userId: string, callback: (bills: Cre
     const bills: CreditCardBill[] = [];
     querySnapshot.forEach((docSnap) => {
       const data = docSnap.data();
-      bills.push({ id: docSnap.id, ...data } as CreditCardBill);
+      const billItem = { id: docSnap.id, ...data } as CreditCardBill;
+
+      // Add validation to ensure data integrity
+      if (!billItem.creditCardId || typeof billItem.creditCardId !== 'string' ||
+          typeof billItem.amount !== 'number' ||
+          !billItem.billDate || typeof billItem.billDate !== 'string' ||
+          !billItem.paymentDueDate || typeof billItem.paymentDueDate !== 'string' ||
+          typeof billItem.isPaid !== 'boolean') {
+        console.warn(`Credit Card Bill ${billItem.id} from Firestore is missing fields or has incorrect types. Skipping.`, data);
+        return; // This acts like 'continue' in a forEach loop
+      }
+
+      bills.push(billItem);
     });
     callback(bills);
   }, (error) => {
