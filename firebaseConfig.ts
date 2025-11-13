@@ -1,7 +1,7 @@
 
 import { initializeApp, getApps, getApp } from "firebase/app";
-import "firebase/auth"; // Import for side-effects to register auth service
-import "firebase/firestore"; // Import for side-effects to register firestore service
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!   CRITICAL ACTION REQUIRED   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -10,8 +10,8 @@ import "firebase/firestore"; // Import for side-effects to register firestore se
 //          YOU MUST REPLACE THE PLACEHOLDER VALUES BELOW WITH YOUR
 //          ACTUAL FIREBASE PROJECT CONFIGURATION.
 //
-//          FAILURE TO DO SO WILL RESULT IN THE ERROR:
-//          "Could not reach Cloud Firestore backend. Connection failed..."
+//          FAILURE TO DO SO WILL PREVENT THE APP FROM CONNECTING TO ANY
+//          DATABASE, AND DATA WILL NOT BE SAVED.
 //
 //          HOW TO GET YOUR CONFIGURATION:
 //          1. Go to your Firebase project console: https://console.firebase.google.com/
@@ -25,7 +25,6 @@ import "firebase/firestore"; // Import for side-effects to register firestore se
 //          9. Paste them below, replacing EACH "REPLACE_THIS_WITH_YOUR_..." string.
 //
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 const firebaseConfig = {
   apiKey: "AIzaSyDUNFxBWKfa1DySUcfq-XSFwtm578FgLOk",
@@ -37,25 +36,52 @@ const firebaseConfig = {
   measurementId: "G-WS9GMLW5XB"
 };
 
-// Log a warning if the API key looks like the default placeholder
-// if (firebaseConfig.apiKey === "AIzaSyDUNFxBWKfa1DySUcfq-XSFwtm578FgLOk" || firebaseConfig.projectId === "kaash-d3ed8" ) {
-//   console.warn(
-//     "%cIMPORTANT: Firebase configuration in 'firebaseConfig.ts' might be using placeholder values. " +
-//     "Please replace them with your actual Firebase project credentials to connect to Firestore. " +
-//     "Refer to the comments in 'firebaseConfig.ts' for instructions.",
-//     "color: red; font-size: 14px; font-weight: bold;"
-//   );
-// }
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  FIRESTORE SECURITY RULES  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//
+//          AFTER CONFIGURING YOUR PROJECT, YOU MUST SET UP FIRESTORE SECURITY RULES.
+//          WITHOUT CORRECT RULES, ALL ATTEMPTS TO SAVE DATA (like credit cards) WILL FAIL.
+//
+//          HOW TO SET YOUR SECURITY RULES:
+//          1. Go to your Firebase project console.
+//          2. Navigate to Build > Firestore Database.
+//          3. Click on the "Rules" tab at the top.
+//          4. Replace the existing content with the rules below.
+//          5. Click "Publish".
+//
+//          COPY AND PASTE THE FOLLOWING RULES INTO THE FIREBASE CONSOLE:
+//
+//  rules_version = '2';
+//  service cloud.firestore {
+//    match /databases/{database}/documents {
+//      // Allow users to read and write only their own data.
+//      // The user's data is stored in a document path that includes their UID.
+//      match /users/{userId}/{document=**} {
+//        allow read, write: if request.auth != null && request.auth.uid == userId;
+//      }
+//    }
+//  }
+//
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+// This flag will be used by the main App component to render an error screen
+// if the developer hasn't replaced the placeholder config.
+
 
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-export { app, firebaseConfig };
+// Initialize and export Firebase services
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+
+export { app, auth, db, firebaseConfig };
 
 // AFTER UPDATING THE CONFIG ABOVE AND VERIFYING FIREBASE PROJECT SETUP:
-// Ensure your Firestore Security Rules are set up.
-// You can deploy rules via Firebase Console > Build > Firestore Database > Rules tab.
-//
 // ALSO ENSURE IN YOUR FIREBASE PROJECT (Firebase Console):
 // - Firestore Database IS CREATED AND A REGION IS SELECTED.
 // - Authentication Methods (e.g., Email/Password, Google) ARE ENABLED.

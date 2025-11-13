@@ -1,5 +1,5 @@
 
-import { app } from '../firebaseConfig'; 
+import { db } from '../firebaseConfig'; 
 import { 
   collection, 
   query, 
@@ -17,12 +17,10 @@ import {
   getDocs,
   writeBatch,
   where,
-  runTransaction,
-  getFirestore
+  runTransaction
 } from 'firebase/firestore';
 import { Transaction, Liability, TransactionType, UserDefinedCategories, CategoryTypeIdentifier, CreditCard, CreditCardBill } from '../types'; 
 
-const db = getFirestore(app);
 
 const sanitizeDataForFirestore = (data: any) => {
   const sanitized: any = {};

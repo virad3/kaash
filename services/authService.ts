@@ -7,13 +7,11 @@ import {
   onAuthStateChanged,
   updateProfile,
   User as FirebaseUser,
-  getAuth,
   GoogleAuthProvider,
 } from 'firebase/auth';
-import { app } from '../firebaseConfig';
+import { auth } from '../firebaseConfig';
 import { User } from '../types'; // Your app's User type
 
-const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
 export const registerUserWithEmail = async (name: string, email: string, password?: string): Promise<User> => {

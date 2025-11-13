@@ -31,7 +31,6 @@ import { ConfigurationErrorPage } from './components/ConfigurationErrorPage';
 
 const App: React.FC = () => {
   // Immediately check for placeholder configuration and render an error page if it's found.
-  // This prevents the app from running in a broken state where data cannot be saved.
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
