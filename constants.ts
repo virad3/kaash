@@ -59,6 +59,7 @@ export const BANK_NAMES: string[] = [
   'RBL Bank',
   'IDFC First Bank',
   'Yes Bank',
+  'Federal Bank',
   'Standard Chartered',
   'Citibank',
   'Other',
@@ -92,18 +93,42 @@ export const BANK_CREDIT_CARDS: Record<string, CreditCardInfo[]> = {
     { cardName: 'PRIME', annualFee: 2999, waiverSpend: 300000 },
     { cardName: 'ELITE', annualFee: 4999, waiverSpend: 1000000 },
     { cardName: 'Cashback', annualFee: 999, waiverSpend: 200000 },
+    { cardName: 'Octane', annualFee: 1499, waiverSpend: 200000 },
   ],
   'Axis Bank': [
     { cardName: 'Magnus', annualFee: 12500, waiverSpend: 2500000 },
     { cardName: 'Vistara Infinite', annualFee: 10000, waiverSpend: 0 },
-    { cardName: 'Flipkart Axis Bank', annualFee: 500, waiverSpend: 200000 },
+    { cardName: 'Flipkart Axis Bank', annualFee: 500, waiverSpend: 350000 },
     { cardName: 'Airtel Axis Bank', annualFee: 500, waiverSpend: 200000 },
     { cardName: 'My Zone', annualFee: 500, waiverSpend: 0 },
+    { cardName: 'Atlas', annualFee: 5000, waiverSpend: 0 },
   ],
   'American Express': [
     { cardName: 'Platinum Travel', annualFee: 5000, waiverSpend: 400000 },
     { cardName: 'Membership Rewards', annualFee: 4500, waiverSpend: 250000 },
     { cardName: 'SmartEarn', annualFee: 495, waiverSpend: 40000 },
+  ],
+  'Kotak Mahindra Bank': [
+    { cardName: 'Urbane Gold', annualFee: 199, waiverSpend: 0 },
+    { cardName: 'League Platinum', annualFee: 499, waiverSpend: 50000 },
+    { cardName: 'Zen Signature', annualFee: 1500, waiverSpend: 150000 },
+  ],
+  'RBL Bank': [
+    { cardName: 'ShopRite', annualFee: 500, waiverSpend: 100000 },
+    { cardName: 'Monthly Treats', annualFee: 1000, waiverSpend: 0 },
+    { cardName: 'BookMyShow Play', annualFee: 500, waiverSpend: 0 },
+    { cardName: 'Indian Oil Xtra', annualFee: 1499, waiverSpend: 275000 },
+  ],
+  'IDFC First Bank': [
+    { cardName: 'Millennia', annualFee: 0, waiverSpend: 0 },
+    { cardName: 'Select', annualFee: 0, waiverSpend: 0 },
+    { cardName: 'Wealth', annualFee: 0, waiverSpend: 0 },
+  ],
+  'Yes Bank': [
+    { cardName: 'Kiwi', annualFee: 0, waiverSpend: 0 },
+  ],
+  'Federal Bank': [
+    { cardName: 'Scapia', annualFee: 0, waiverSpend: 0 },
   ],
 };
 

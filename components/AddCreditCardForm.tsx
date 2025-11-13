@@ -57,7 +57,7 @@ export const AddCreditCardForm: React.FC<AddCreditCardFormProps> = ({ onSubmit, 
     const selectedCardName = e.target.value;
     setSelectedPredefinedCard(selectedCardName);
 
-    if (selectedCardName === PREDEFINED_CARD_OTHER_VALUE) {
+    if (selectedCardName === PREDEFINED_CARD_OTHER_VALUE || !selectedCardName) {
       setCardName('');
       setAnnualFee('');
       setAnnualFeeWaiverSpend('');
@@ -89,7 +89,8 @@ export const AddCreditCardForm: React.FC<AddCreditCardFormProps> = ({ onSubmit, 
   };
   
   const title = existingCard ? 'Edit Credit Card' : 'Add New Credit Card';
-  const isManualEntry = selectedPredefinedCard === PREDEFINED_CARD_OTHER_VALUE;
+  const isManualEntry = selectedPredefinedCard === PREDEFINED_CARD_OTHER_VALUE || selectedPredefinedCard === '';
+  const showManualCardName = isManualEntry || availableCards.length === 0;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-2 text-gray-100 max-h-[80vh] overflow-y-auto">
@@ -109,7 +110,7 @@ export const AddCreditCardForm: React.FC<AddCreditCardFormProps> = ({ onSubmit, 
 
       {availableCards.length > 0 && (
         <div>
-          <label htmlFor="predefinedCard" className="block text-sm font-medium text-gray-300 mb-1">Card*</label>
+          <label htmlFor="predefinedCard" className="block text-sm font-medium text-gray-300 mb-1">Select Card*</label>
           <select
             id="predefinedCard"
             value={selectedPredefinedCard}
@@ -123,7 +124,7 @@ export const AddCreditCardForm: React.FC<AddCreditCardFormProps> = ({ onSubmit, 
         </div>
       )}
 
-      {(isManualEntry || availableCards.length === 0) && (
+      {showManualCardName && (
         <div>
           <label htmlFor="cardName" className="block text-sm font-medium text-gray-300 mb-1">Card Name*</label>
           <input
@@ -146,7 +147,7 @@ export const AddCreditCardForm: React.FC<AddCreditCardFormProps> = ({ onSubmit, 
             id="annualFee"
             value={annualFee}
             onChange={(e) => setAnnualFee(e.target.value)}
-            className="w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-md shadow-sm p-3"
+            className={`w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-md shadow-sm p-3 ${!isManualEntry && availableCards.length > 0 ? 'bg-slate-600' : ''}`}
             placeholder="e.g., 499"
             min="0"
             step="1"
@@ -161,7 +162,7 @@ export const AddCreditCardForm: React.FC<AddCreditCardFormProps> = ({ onSubmit, 
             id="waiverSpend"
             value={annualFeeWaiverSpend}
             onChange={(e) => setAnnualFeeWaiverSpend(e.target.value)}
-            className="w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-md shadow-sm p-3"
+            className={`w-full bg-slate-700 border border-slate-600 text-gray-100 rounded-md shadow-sm p-3 ${!isManualEntry && availableCards.length > 0 ? 'bg-slate-600' : ''}`}
             placeholder="e.g., 100000"
             min="0"
             step="1000"
