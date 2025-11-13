@@ -1,4 +1,5 @@
-import { db } from '../firebaseConfig'; 
+
+import { app } from '../firebaseConfig'; 
 import { 
   collection, 
   query, 
@@ -16,9 +17,12 @@ import {
   getDocs,
   writeBatch,
   where,
-  runTransaction
+  runTransaction,
+  getFirestore
 } from 'firebase/firestore';
-import { Transaction, Liability, TransactionType, UserDefinedCategories, CategoryTypeIdentifier } from '../types'; 
+import { Transaction, Liability, TransactionType, UserDefinedCategories, CategoryTypeIdentifier, CreditCard, CreditCardBill } from '../types'; 
+
+const db = getFirestore(app);
 
 const sanitizeDataForFirestore = (data: any) => {
   const sanitized: any = {};
@@ -372,4 +376,93 @@ export const updateTransactionAndLiabilityAmountRepaid = async (
     firestoreTransaction.update(liabilityDocRef, { amountRepaid: newAmountRepaid });
     firestoreTransaction.update(transactionDocRef, sanitizeDataForFirestore(sanitizedTransactionData));
   });
+};
+
+
+// --- Credit Cards ---
+export const subscribeToCreditCards = (userId: string, callback: (cards: CreditCard[]) => void): (() => void) => {
+  if (!userId) return () => {};
+  const cardsCol = collection(db, 'users', userId, 'creditCards');
+  const q = query(cardsCol, orderBy('bankName', 'asc'), orderBy('cardName', 'asc'));
+
+  return onSnapshot(q, (querySnapshot) => {
+    const cards: CreditCard[] = [];
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      cards.push({ id: docSnap.id, ...data } as CreditCard);
+    });
+    callback(cards);
+  }, (error) => {
+    console.error("Error fetching credit cards:", error);
+    callback([]);
+  });
+};
+
+export const addCreditCard = async (userId: string, cardData: Omit<CreditCard, 'id' | 'createdAt' | 'userId'>): Promise<string> => {
+  const cardsCol = collection(db, 'users', userId, 'creditCards');
+  const payload = { ...cardData, userId, createdAt: serverTimestamp() };
+  const docRef = await addDoc(cardsCol, sanitizeDataForFirestore(payload));
+  return docRef.id;
+};
+
+export const updateCreditCard = async (userId: string, cardId: string, cardData: Partial<Omit<CreditCard, 'id' | 'createdAt' | 'userId'>>): Promise<void> => {
+  const cardDoc = doc(db, 'users', userId, 'creditCards', cardId);
+  await updateDoc(cardDoc, sanitizeDataForFirestore(cardData));
+};
+
+export const deleteCreditCard = async (userId: string, cardId: string): Promise<void> => {
+  if (!userId || !cardId) return;
+
+  const batch = writeBatch(db);
+
+  // Delete the card document
+  const cardDocRef = doc(db, 'users', userId, 'creditCards', cardId);
+  batch.delete(cardDocRef);
+
+  // Query for and delete all associated bills
+  const billsColRef = collection(db, 'users', userId, 'creditCardBills');
+  const q = query(billsColRef, where("creditCardId", "==", cardId));
+  const billsSnapshot = await getDocs(q);
+  billsSnapshot.forEach(billDoc => {
+    batch.delete(billDoc.ref);
+  });
+
+  await batch.commit();
+};
+
+
+// --- Credit Card Bills ---
+export const subscribeToCreditCardBills = (userId: string, callback: (bills: CreditCardBill[]) => void): (() => void) => {
+  if (!userId) return () => {};
+  const billsCol = collection(db, 'users', userId, 'creditCardBills');
+  const q = query(billsCol, orderBy('billDate', 'desc'));
+
+  return onSnapshot(q, (querySnapshot) => {
+    const bills: CreditCardBill[] = [];
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      bills.push({ id: docSnap.id, ...data } as CreditCardBill);
+    });
+    callback(bills);
+  }, (error) => {
+    console.error("Error fetching credit card bills:", error);
+    callback([]);
+  });
+};
+
+export const addCreditCardBill = async (userId: string, billData: Omit<CreditCardBill, 'id' | 'createdAt' | 'userId'>): Promise<string> => {
+  const billsCol = collection(db, 'users', userId, 'creditCardBills');
+  const payload = { ...billData, userId, createdAt: serverTimestamp() };
+  const docRef = await addDoc(billsCol, sanitizeDataForFirestore(payload));
+  return docRef.id;
+};
+
+export const updateCreditCardBill = async (userId: string, billId: string, billData: Partial<Omit<CreditCardBill, 'id' | 'createdAt' | 'userId'>>): Promise<void> => {
+  const billDoc = doc(db, 'users', userId, 'creditCardBills', billId);
+  await updateDoc(billDoc, sanitizeDataForFirestore(billData));
+};
+
+export const deleteCreditCardBill = async (userId: string, billId: string): Promise<void> => {
+  const billDoc = doc(db, 'users', userId, 'creditCardBills', billId);
+  await deleteDoc(billDoc);
 };

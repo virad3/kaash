@@ -1,3 +1,4 @@
+
 import { IncomeCategory, ExpenseCategory, SavingCategory, LiabilityCategory } from './types';
 
 export const INCOME_CATEGORIES: IncomeCategory[] = [
@@ -47,6 +48,21 @@ export const LIABILITY_CATEGORIES: LiabilityCategory[] = [
   LiabilityCategory.BUSINESS_LOAN,
   LiabilityCategory.TAX_DEBT,
   LiabilityCategory.OTHER,
+];
+
+export const BANK_NAMES: string[] = [
+  'HDFC Bank',
+  'ICICI Bank',
+  'SBI Card',
+  'Axis Bank',
+  'American Express',
+  'Kotak Mahindra Bank',
+  'RBL Bank',
+  'IDFC First Bank',
+  'Yes Bank',
+  'Standard Chartered',
+  'Citibank',
+  'Other',
 ];
 
 

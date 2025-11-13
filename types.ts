@@ -1,3 +1,4 @@
+
 export enum TransactionType {
   INCOME = 'INCOME',
   EXPENSE = 'EXPENSE',
@@ -80,6 +81,31 @@ export interface Liability {
   userId?: string;
 }
 
+export interface CreditCard {
+  id: string;
+  userId: string;
+  cardName: string;
+  bankName: string;
+  annualFee: number;
+  annualFeeWaiverSpend: number;
+  billingCycleDate: number; // Day of month (1-31)
+  cardAddedDate: string; // ISO Date string 'YYYY-MM-DD'
+  createdAt: any;
+}
+
+export interface CreditCardBill {
+  id: string;
+  userId: string;
+  creditCardId: string;
+  billDate: string; // ISO Date string 'YYYY-MM-DD'
+  amount: number;
+  isPaid: boolean;
+  paymentDueDate: string; // ISO Date string 'YYYY-MM-DD'
+  notes?: string;
+  createdAt: any;
+}
+
+
 export interface User {
   uid: string; 
   email: string | null;
@@ -87,7 +113,7 @@ export interface User {
   photoURL?: string | null;
 }
 
-export type View = 'dashboard' | 'incomeDetails' | 'expenseDetails' | 'savingsDetails' | 'liabilityDetails' | 'liabilityEMIDetail' | 'earlyLoanClosure';
+export type View = 'dashboard' | 'incomeDetails' | 'expenseDetails' | 'savingsDetails' | 'liabilityDetails' | 'liabilityEMIDetail' | 'earlyLoanClosure' | 'creditCards';
 
 export type CategoryTypeIdentifier = TransactionType | 'liability';
 
@@ -147,7 +173,7 @@ export interface MultiLoanAmortizationResult {
 
 export interface AppNotification {
   id: string;
-  type: 'emi_due' | 'saving_reminder';
+  type: 'emi_due' | 'saving_reminder' | 'cc_waiver_achieved';
   title: string;
   message: string;
   date?: string; // Due date for EMIs

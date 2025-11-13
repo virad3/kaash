@@ -17,7 +17,6 @@ interface TransactionFormProps {
   }) => void;
   onCancel: () => void;
   existingTransaction?: Transaction | null;
-  amountFromScan?: number | null;
   
   predefinedCategories: string[]; // Generic predefined categories for the current type
   currentUserDefinedCategories: string[]; // User-defined categories for the current type
@@ -33,7 +32,6 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   onSubmit, 
   onCancel, 
   existingTransaction, 
-  amountFromScan,
   predefinedCategories,
   currentUserDefinedCategories,
   onUserAddCategory, 
@@ -78,7 +76,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
     } else { // New transaction
       setDescription('');
-      setAmount(amountFromScan ? amountFromScan.toString() : '');
+      setAmount('');
       setDate(new Date().toISOString().split('T')[0]);
       // Set initial category: try first user-defined, then first predefined, else first available, or empty
       if (currentUserDefinedCategories.length > 0) {
@@ -91,7 +89,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         setSelectedCategory('');
       }
     }
-  }, [existingTransaction, type, predefinedCategories, currentUserDefinedCategories, allAvailableMergedCategories, amountFromScan]);
+  }, [existingTransaction, type, predefinedCategories, currentUserDefinedCategories, allAvailableMergedCategories]);
 
   // Effect to reset selectedCategory if it becomes invalid (e.g., deleted)
    useEffect(() => {
@@ -261,7 +259,6 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             min="0.01"
             step="0.01"
             required
-            autoFocus={!!amountFromScan}
           />
         </div>
 

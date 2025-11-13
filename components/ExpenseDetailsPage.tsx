@@ -1,7 +1,8 @@
+
 import React, { useState, useMemo } from 'react';
 import { Transaction, TransactionType, ExpenseCategory } from '../types';
 import { TransactionList } from './TransactionList';
-import { BackIcon, PlusIcon, ScanIcon } from './icons'; 
+import { BackIcon, PlusIcon } from './icons'; 
 import { EXPENSE_CATEGORIES } from '../constants';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -11,7 +12,6 @@ interface ExpenseDetailsPageProps {
   onEditTransaction: (transaction: Transaction) => void;
   onDeleteTransaction: (id: string) => void;
   onOpenNewTransactionForm: (type: TransactionType) => void;
-  onOpenBillScanner: () => void;
 }
 
 const PIE_COLORS = ['#FF8042', '#FFBB28', '#00C49F', '#0088FE', '#8884D8', '#82CA9D', '#FFC0CB', '#A0522D', '#D2691E', '#FF5733'];
@@ -50,8 +50,7 @@ export const ExpenseDetailsPage: React.FC<ExpenseDetailsPageProps> = ({
   onBack, 
   onEditTransaction, 
   onDeleteTransaction,
-  onOpenNewTransactionForm,
-  onOpenBillScanner
+  onOpenNewTransactionForm
 }) => {
   const [selectedMonth, setSelectedMonth] = useState<string>('all'); 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -167,13 +166,6 @@ export const ExpenseDetailsPage: React.FC<ExpenseDetailsPageProps> = ({
                 aria-label="Add new expense"
               >
                 <PlusIcon className="h-5 w-5" /> Add Expense
-              </button>
-              <button
-                onClick={onOpenBillScanner}
-                className="w-full px-6 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-75 flex items-center justify-center gap-2"
-                aria-label="Scan bill for new expense"
-              >
-                <ScanIcon className="h-5 w-5" /> Scan Bill
               </button>
             </div>
           </div>

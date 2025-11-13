@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { User, Transaction, TransactionType, Liability, View, UserDefinedCategories, CategoryTypeIdentifier, AppNotification } from './types'; 
+import { User, Transaction, TransactionType, Liability, View, UserDefinedCategories, CategoryTypeIdentifier, AppNotification, CreditCard, CreditCardBill } from './types'; 
 import { TransactionForm } from './components/TransactionForm';
 import { TransactionList } from './components/TransactionList';
 import { SummaryDisplay } from './components/SummaryDisplay';
@@ -18,14 +18,14 @@ import { SideMenu } from './components/SideMenu';
 import { EditProfileModal } from './components/EditProfileModal'; 
 import { MonthlySummaryChart } from './components/MonthlySummaryChart';
 import { EarlyLoanClosurePage } from './components/EarlyLoanClosurePage'; 
+import { CreditCardsPage } from './components/CreditCardsPage';
 import * as storageService from './services/storageService';
 import * as authService from './services/authService';
-import { KaashLogoIcon, PlusIcon, BellIcon, PiggyBankIcon, UserIcon, LogoutIcon, MenuIcon, EditIcon as ProfileEditIcon, AddIncomeIcon, AddExpenseIcon, AddLiabilityIcon, ScanIcon } from './components/icons'; 
+import { KaashLogoIcon, PlusIcon, BellIcon, PiggyBankIcon, UserIcon, LogoutIcon, MenuIcon, EditIcon as ProfileEditIcon, AddIncomeIcon, AddExpenseIcon, AddLiabilityIcon } from './components/icons'; 
 import { ExpenseCategory, SavingCategory } from './types'; 
 import { calculateLoanPaymentDetails } from './utils'; 
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, SAVING_CATEGORIES, LIABILITY_CATEGORIES, APP_NAME } from './constants';
 import { LoadingSpinner } from './components/LoadingSpinner';
-import { BillScanner } from './components/BillScanner';
 
 
 const App: React.FC = () => {
@@ -35,6 +35,8 @@ const App: React.FC = () => {
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [liabilities, setLiabilities] = useState<Liability[]>([]);
+  const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
+  const [creditCardBills, setCreditCardBills] = useState<CreditCardBill[]>([]);
   const [userDefinedCategories, setUserDefinedCategories] = useState<UserDefinedCategories>({ income: [], expense: [], saving: [], liability: [] });
   
   const [showTransactionModal, setShowTransactionModal] = useState<boolean>(false);
@@ -58,9 +60,6 @@ const App: React.FC = () => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isNotificationDropdownOpen, setIsNotificationDropdownOpen] = useState(false);
   const notificationDropdownRef = useRef<HTMLDivElement>(null);
-
-  const [showBillScanner, setShowBillScanner] = useState<boolean>(false);
-  const [amountFromScan, setAmountFromScan] = useState<number | null>(null);
 
 
   const toggleMenu = useCallback(() => setIsMenuOpen(prev => !prev), []);
@@ -95,8 +94,6 @@ const App: React.FC = () => {
     setShowTransactionModal(false); setCurrentTransactionType(null); setEditingTransaction(null);
     setShowLiabilityForm(false); setEditingLiability(null); setPayingLiability(null);
     setShowEditProfileModal(false);
-    setShowBillScanner(false);
-    setAmountFromScan(null);
     //setIsNotificationDropdownOpen(false); // Notification dropdown is handled by its own toggle and click-outside
   }, []);
 
@@ -116,6 +113,8 @@ const App: React.FC = () => {
       } else {
         setTransactions([]);
         setLiabilities([]);
+        setCreditCards([]);
+        setCreditCardBills([]);
         setUserDefinedCategories({ income: [], expense: [], saving: [], liability: [] });
         setActiveView('dashboard');
         setSelectedLiabilityForEMIs(null);
@@ -133,16 +132,22 @@ const App: React.FC = () => {
     let unsubTransactions = () => {};
     let unsubLiabilities = () => {};
     let unsubUserCategories = () => {};
+    let unsubCreditCards = () => {};
+    let unsubCreditCardBills = () => {};
 
     if (currentUser?.uid) {
       unsubTransactions = storageService.subscribeToTransactions(currentUser.uid, setTransactions);
       unsubLiabilities = storageService.subscribeToLiabilities(currentUser.uid, setLiabilities);
       unsubUserCategories = storageService.subscribeToUserDefinedCategories(currentUser.uid, setUserDefinedCategories);
+      unsubCreditCards = storageService.subscribeToCreditCards(currentUser.uid, setCreditCards);
+      unsubCreditCardBills = storageService.subscribeToCreditCardBills(currentUser.uid, setCreditCardBills);
     }
     return () => {
       unsubTransactions();
       unsubLiabilities();
       unsubUserCategories();
+      unsubCreditCards();
+      unsubCreditCardBills();
     };
   }, [currentUser]);
 
@@ -170,21 +175,22 @@ const App: React.FC = () => {
       setNotifications([]);
       return;
     }
-
-    const newNotificationsList: AppNotification[] = [];
+  
+    const baseNotifications: AppNotification[] = [];
     const today = new Date();
-    today.setHours(0,0,0,0);
-
+    today.setHours(0, 0, 0, 0);
+  
+    // EMI Due Notifications
     const sevenDaysFromNow = new Date(today);
     sevenDaysFromNow.setDate(today.getDate() + 7);
-
+  
     liabilities.forEach(l => {
-      if ((l.initialAmount - l.amountRepaid) <= 0.005) return; 
-
-      const dueDate = new Date(l.nextDueDate + 'T00:00:00Z'); 
+      if ((l.initialAmount - l.amountRepaid) <= 0.005) return;
+  
+      const dueDate = new Date(l.nextDueDate + 'T00:00:00Z');
       if (dueDate >= today && dueDate <= sevenDaysFromNow) {
-        newNotificationsList.push({
-          id: `emi-${l.id}-${l.nextDueDate}`, 
+        baseNotifications.push({
+          id: `emi-${l.id}-${l.nextDueDate}`,
           type: 'emi_due',
           title: `EMI Due: ${l.name || l.category}`,
           message: `₹${l.emiAmount?.toFixed(2) || (l.initialAmount - l.amountRepaid).toFixed(2)} due on ${dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}.`,
@@ -194,32 +200,33 @@ const App: React.FC = () => {
         });
       }
     });
-
+  
+    // Saving Reminder Notifications
     if (today.getDate() <= 7) {
-      const currentMonth = today.getMonth(); 
+      const currentMonth = today.getMonth();
       const currentYear = today.getFullYear();
       
-      const prevMonthDate = new Date(currentYear, currentMonth -1, 1); 
+      const prevMonthDate = new Date(currentYear, currentMonth - 1, 1);
       const prevMonthYear = prevMonthDate.getFullYear();
       const prevMonth = prevMonthDate.getMonth();
-
+  
       const savingsLastMonth = transactions.filter(t => {
-        const txDate = new Date(t.date); 
+        const txDate = new Date(t.date);
         return t.type === TransactionType.SAVING && txDate.getFullYear() === prevMonthYear && txDate.getMonth() === prevMonth;
       });
-
+  
       const savingsThisMonth = transactions.filter(t => {
         const txDate = new Date(t.date);
         return t.type === TransactionType.SAVING && txDate.getFullYear() === currentYear && txDate.getMonth() === currentMonth;
       });
-
+  
       const categoriesSavedLastMonth = new Set(savingsLastMonth.map(s => s.category));
       const categoriesSavedThisMonth = new Set(savingsThisMonth.map(s => s.category));
-
+  
       categoriesSavedLastMonth.forEach(category => {
         if (!categoriesSavedThisMonth.has(category)) {
-          newNotificationsList.push({
-            id: `saving-${category}-${currentYear}-${currentMonth + 1}`, 
+          baseNotifications.push({
+            id: `saving-${category}-${currentYear}-${currentMonth + 1}`,
             type: 'saving_reminder',
             title: `Saving Reminder: ${category}`,
             message: `Consider making your saving for '${category}'. You saved for this category last month.`,
@@ -230,16 +237,54 @@ const App: React.FC = () => {
       });
     }
 
-    newNotificationsList.sort((a, b) => {
-      if (a.type === 'emi_due' && b.type !== 'emi_due') return -1;
-      if (a.type !== 'emi_due' && b.type === 'emi_due') return 1;
-      if (a.date && b.date) return new Date(a.date).getTime() - new Date(b.date).getTime();
-      if (a.type === 'saving_reminder' && b.type === 'saving_reminder') return (a.category || "").localeCompare(b.category || ""); 
-      return 0;
+    // Credit Card Waiver Notifications
+    creditCards.forEach(card => {
+        if (card.annualFeeWaiverSpend <= 0) return;
+  
+        const cardAddedDate = new Date(card.cardAddedDate + 'T00:00:00Z');
+        const now = new Date();
+        
+        let yearsSinceAdded = now.getUTCFullYear() - cardAddedDate.getUTCFullYear();
+        let yearStartDate = new Date(cardAddedDate);
+        yearStartDate.setUTCFullYear(cardAddedDate.getUTCFullYear() + yearsSinceAdded);
+  
+        if (now < yearStartDate) {
+          yearsSinceAdded -= 1;
+          yearStartDate.setUTCFullYear(cardAddedDate.getUTCFullYear() + yearsSinceAdded);
+        }
+        
+        const yearEndDate = new Date(yearStartDate);
+        yearEndDate.setUTCFullYear(yearStartDate.getUTCFullYear() + 1);
+  
+        const spendInCurrentYear = creditCardBills
+          .filter(bill => {
+            const billDate = new Date(bill.billDate + 'T00:00:00Z');
+            return bill.creditCardId === card.id && billDate >= yearStartDate && billDate < yearEndDate;
+          })
+          .reduce((sum, bill) => sum + bill.amount, 0);
+  
+        if (spendInCurrentYear >= card.annualFeeWaiverSpend) {
+            baseNotifications.push({
+            id: `cc-waiver-${card.id}-${yearStartDate.getUTCFullYear()}`,
+            type: 'cc_waiver_achieved',
+            title: `Fee Waived: ${card.cardName}`,
+            message: `Congrats! You've spent ₹${spendInCurrentYear.toFixed(2)} and met the ₹${card.annualFeeWaiverSpend.toFixed(2)} goal to waive the ₹${card.annualFee.toFixed(2)} annual fee.`,
+            isRead: false,
+          });
+        }
     });
-
-    setNotifications(newNotificationsList);
-  }, [currentUser, liabilities, transactions]);
+  
+    baseNotifications.sort((a, b) => {
+      const typePriority = { 'emi_due': 1, 'cc_waiver_achieved': 2, 'saving_reminder': 3 };
+      if (typePriority[a.type] !== typePriority[b.type]) {
+        return typePriority[a.type] - typePriority[b.type];
+      }
+      if (a.date && b.date) return new Date(a.date).getTime() - new Date(b.date).getTime();
+      return (a.title || "").localeCompare(b.title || "");
+    });
+  
+    setNotifications(baseNotifications);
+  }, [currentUser, liabilities, transactions, creditCards, creditCardBills]);
 
 
   const navigateToDashboard = useCallback(() => { setActiveView('dashboard'); setSelectedLiabilityForEMIs(null); setIsNotificationDropdownOpen(false); closeModal();}, [closeModal]);
@@ -249,6 +294,7 @@ const App: React.FC = () => {
   const navigateToLiabilityDetails = useCallback(() => { setActiveView('liabilityDetails'); setSelectedLiabilityForEMIs(null); setIsNotificationDropdownOpen(false); closeModal(); }, [closeModal]);
   const navigateToLiabilityEMIDetail = useCallback((liability: Liability) => { setSelectedLiabilityForEMIs(liability); setActiveView('liabilityEMIDetail'); setIsNotificationDropdownOpen(false); closeModal();}, [closeModal]);
   const navigateToEarlyLoanClosure = useCallback(() => { setActiveView('earlyLoanClosure'); setIsNotificationDropdownOpen(false); closeModal(); }, [closeModal]);
+  const navigateToCreditCards = useCallback(() => { setActiveView('creditCards'); setSelectedLiabilityForEMIs(null); setIsNotificationDropdownOpen(false); closeModal();}, [closeModal]);
 
 
   useEffect(() => {
@@ -344,22 +390,6 @@ const App: React.FC = () => {
     setShowLiabilityForm(true);
     setIsNotificationDropdownOpen(false);
   }, []);
-
-  const handleOpenBillScanner = useCallback(() => {
-    setIsMenuOpen(false);
-    setIsNotificationDropdownOpen(false);
-    setShowBillScanner(true);
-  }, []);
-  
-  const handleCloseBillScanner = useCallback(() => {
-    setShowBillScanner(false);
-  }, []);
-  
-  const handleBillScanSuccess = useCallback((amount: number) => {
-    setAmountFromScan(amount);
-    setShowBillScanner(false);
-    handleOpenNewTransactionForm(TransactionType.EXPENSE);
-  }, [handleOpenNewTransactionForm]);
 
 
   const handleAddOrEditTransaction = useCallback(async (data: { 
@@ -663,6 +693,70 @@ const App: React.FC = () => {
     }
   }, [liabilities, currentUser]);
 
+  const handleAddOrEditCreditCard = useCallback(async (data: Omit<CreditCard, 'id' | 'createdAt' | 'userId'> & { id?: string }) => {
+    if (!currentUser?.uid) return;
+    const { id, ...cardDetails } = data;
+    try {
+      if (id) {
+        await storageService.updateCreditCard(currentUser.uid, id, cardDetails);
+      } else {
+        await storageService.addCreditCard(currentUser.uid, cardDetails as Omit<CreditCard, 'id' | 'createdAt' | 'userId'>);
+      }
+    } catch (error: any) {
+      console.error("Error saving credit card:", error);
+      alert(`Failed to save credit card. Error: ${error.message}`);
+    }
+  }, [currentUser]);
+
+  const handleDeleteCreditCard = useCallback(async (id: string) => {
+    if (!currentUser?.uid) return;
+    if (window.confirm("Are you sure you want to delete this credit card and all its associated bills? This action cannot be undone.")) {
+      try {
+        await storageService.deleteCreditCard(currentUser.uid, id);
+      } catch (error: any) {
+        console.error("Error deleting credit card:", error);
+        alert(`Failed to delete credit card. Error: ${error.message}`);
+      }
+    }
+  }, [currentUser]);
+
+  const handleAddOrEditCreditCardBill = useCallback(async (data: Omit<CreditCardBill, 'id' | 'createdAt' | 'userId'> & { id?: string }) => {
+    if (!currentUser?.uid) return;
+    const { id, ...billDetails } = data;
+    try {
+      if (id) {
+        await storageService.updateCreditCardBill(currentUser.uid, id, billDetails);
+      } else {
+        await storageService.addCreditCardBill(currentUser.uid, billDetails as Omit<CreditCardBill, 'id' | 'createdAt' | 'userId'>);
+      }
+    } catch (error: any) {
+      console.error("Error saving credit card bill:", error);
+      alert(`Failed to save credit card bill. Error: ${error.message}`);
+    }
+  }, [currentUser]);
+
+  const handleDeleteCreditCardBill = useCallback(async (id: string) => {
+    if (!currentUser?.uid) return;
+    if (window.confirm("Are you sure you want to delete this bill record?")) {
+      try {
+        await storageService.deleteCreditCardBill(currentUser.uid, id);
+      } catch (error: any) {
+        console.error("Error deleting credit card bill:", error);
+        alert(`Failed to delete credit card bill. Error: ${error.message}`);
+      }
+    }
+  }, [currentUser]);
+
+  const handleUpdateCreditCardBillPaidStatus = useCallback(async (bill: CreditCardBill, isPaid: boolean) => {
+    if (!currentUser?.uid) return;
+    try {
+      await storageService.updateCreditCardBill(currentUser.uid, bill.id, { isPaid });
+    } catch (error: any) {
+      console.error("Error updating bill status:", error);
+      alert(`Failed to update bill status. Error: ${error.message}`);
+    }
+  }, [currentUser]);
+
 
   const createCategoryHandlers = useCallback((
     categoryType: CategoryTypeIdentifier, 
@@ -831,7 +925,6 @@ const App: React.FC = () => {
                   onEditTransaction={handleOpenEditTransactionForm}
                   onDeleteTransaction={handleDeleteTransaction}
                   onOpenNewTransactionForm={handleOpenNewTransactionForm}
-                  onOpenBillScanner={handleOpenBillScanner}
                 />;
       case 'savingsDetails':
         return <SavingsDetailsPage 
@@ -869,6 +962,17 @@ const App: React.FC = () => {
         return null;
       case 'earlyLoanClosure':
         return <EarlyLoanClosurePage liabilities={liabilities} onBack={navigateToDashboard} />;
+      case 'creditCards':
+        return <CreditCardsPage
+                  creditCards={creditCards}
+                  creditCardBills={creditCardBills}
+                  onAddOrEditCard={handleAddOrEditCreditCard}
+                  onDeleteCard={handleDeleteCreditCard}
+                  onAddOrEditBill={handleAddOrEditCreditCardBill}
+                  onDeleteBill={handleDeleteCreditCardBill}
+                  onUpdateBillPaidStatus={handleUpdateCreditCardBillPaidStatus}
+                  onBack={navigateToDashboard}
+                />;
       default:
         return <p>Unknown view</p>;
     }
@@ -943,7 +1047,11 @@ const App: React.FC = () => {
                     {notifications.length > 0 ? (
                       notifications.map(n => (
                         <div key={n.id} className="px-3 py-2.5 border-b border-slate-600 last:border-b-0 hover:bg-slate-600/70 transition-colors">
-                          <p className={`font-semibold text-sm ${n.type === 'emi_due' ? 'text-orange-300' : 'text-teal-300'}`}>{n.title}</p>
+                          <p className={`font-semibold text-sm ${
+                              n.type === 'emi_due' ? 'text-orange-300' :
+                              n.type === 'cc_waiver_achieved' ? 'text-green-300' :
+                              'text-teal-300'
+                          }`}>{n.title}</p>
                           <p className="text-xs text-gray-300">{n.message}</p>
                         </div>
                       ))
@@ -1017,8 +1125,8 @@ const App: React.FC = () => {
         onOpenExpenseForm={() => handleOpenNewTransactionForm(TransactionType.EXPENSE)}
         onOpenSavingForm={() => handleOpenNewTransactionForm(TransactionType.SAVING)}
         onOpenLiabilityForm={handleOpenNewLiabilityForm}
-        onOpenBillScanner={handleOpenBillScanner}
         onNavigateToEarlyLoanClosure={navigateToEarlyLoanClosure}
+        onNavigateToCreditCards={navigateToCreditCards}
       />
       
       <main className="pt-2 sm:pt-4"> {/* Padding top for content below sticky header */}
@@ -1035,7 +1143,6 @@ const App: React.FC = () => {
               onSubmit={handleAddOrEditTransaction}
               onCancel={closeModal}
               existingTransaction={editingTransaction}
-              amountFromScan={amountFromScan}
               predefinedCategories={
                 currentTransactionType === TransactionType.INCOME ? INCOME_CATEGORIES.map(String) :
                 currentTransactionType === TransactionType.EXPENSE ? EXPENSE_CATEGORIES.map(String) :
@@ -1102,12 +1209,6 @@ const App: React.FC = () => {
           user={currentUser}
           onUpdateProfile={handleProfileUpdate}
           onCancel={handleCloseEditProfileModal}
-        />
-      )}
-      {showBillScanner && (
-        <BillScanner
-          onScanSuccess={handleBillScanSuccess}
-          onCancel={handleCloseBillScanner}
         />
       )}
     </div>
