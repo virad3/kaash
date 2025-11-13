@@ -36,7 +36,7 @@ const sanitizeDataForFirestore = (data: any) => {
 export const subscribeToTransactions = (userId: string, callback: (transactions: Transaction[]) => void): (() => void) => {
   if (!userId) return () => {}; 
   const transactionsCol = collection(db, 'users', userId, 'transactions');
-  const q = query(transactionsCol, orderBy('date', 'desc'), orderBy('createdAt', 'desc'));
+  const q = query(transactionsCol);
 
   return onSnapshot(q, (querySnapshot) => {
     const transactions: Transaction[] = [];
@@ -71,6 +71,19 @@ export const subscribeToTransactions = (userId: string, callback: (transactions:
       
       transactions.push(transactionItem);
     });
+
+    // Client-side sorting to remove dependency on composite indexes
+    transactions.sort((a, b) => {
+        const dateComp = new Date(b.date).getTime() - new Date(a.date).getTime();
+        if (dateComp !== 0) return dateComp;
+        if (a.createdAt && b.createdAt) {
+            const tsA = typeof a.createdAt.toDate === 'function' ? a.createdAt.toDate() : new Date(a.createdAt);
+            const tsB = typeof b.createdAt.toDate === 'function' ? b.createdAt.toDate() : new Date(b.createdAt);
+            return tsB.getTime() - tsA.getTime();
+        }
+        return 0;
+    });
+
     callback(transactions);
   }, (error) => {
     console.error("Error fetching transactions:", error);
@@ -115,7 +128,7 @@ export const deleteTransaction = async (userId: string, transactionId: string): 
 export const subscribeToLiabilities = (userId: string, callback: (liabilities: Liability[]) => void): (() => void) => {
   if (!userId) return () => {};
   const liabilitiesCol = collection(db, 'users', userId, 'liabilities');
-  const q = query(liabilitiesCol, orderBy('nextDueDate', 'asc'));
+  const q = query(liabilitiesCol);
 
   return onSnapshot(q, (querySnapshot) => {
     const liabilitiesData: Liability[] = [];
@@ -151,6 +164,10 @@ export const subscribeToLiabilities = (userId: string, callback: (liabilities: L
       }
       liabilitiesData.push(liabilityItem);
     });
+    
+    // Client-side sorting
+    liabilitiesData.sort((a, b) => new Date(a.nextDueDate).getTime() - new Date(b.nextDueDate).getTime());
+
     callback(liabilitiesData);
   }, (error) => {
     console.error("Error fetching liabilities:", error);
@@ -381,7 +398,7 @@ export const updateTransactionAndLiabilityAmountRepaid = async (
 export const subscribeToCreditCards = (userId: string, callback: (cards: CreditCard[]) => void): (() => void) => {
   if (!userId) return () => {};
   const cardsCol = collection(db, 'users', userId, 'creditCards');
-  const q = query(cardsCol, orderBy('bankName', 'asc'), orderBy('cardName', 'asc'));
+  const q = query(cardsCol);
 
   return onSnapshot(q, (querySnapshot) => {
     const cards: CreditCard[] = [];
@@ -402,6 +419,14 @@ export const subscribeToCreditCards = (userId: string, callback: (cards: CreditC
 
       cards.push(cardItem);
     });
+    
+    // Client-side sorting
+    cards.sort((a, b) => {
+      const bankComp = a.bankName.localeCompare(b.bankName);
+      if (bankComp !== 0) return bankComp;
+      return a.cardName.localeCompare(b.cardName);
+    });
+    
     callback(cards);
   }, (error) => {
     console.error("Error fetching credit cards:", error);
@@ -446,7 +471,7 @@ export const deleteCreditCard = async (userId: string, cardId: string): Promise<
 export const subscribeToCreditCardBills = (userId: string, callback: (bills: CreditCardBill[]) => void): (() => void) => {
   if (!userId) return () => {};
   const billsCol = collection(db, 'users', userId, 'creditCardBills');
-  const q = query(billsCol, orderBy('billDate', 'desc'));
+  const q = query(billsCol);
 
   return onSnapshot(q, (querySnapshot) => {
     const bills: CreditCardBill[] = [];
@@ -466,6 +491,10 @@ export const subscribeToCreditCardBills = (userId: string, callback: (bills: Cre
 
       bills.push(billItem);
     });
+    
+    // Client-side sorting
+    bills.sort((a, b) => new Date(b.billDate).getTime() - new Date(a.billDate).getTime());
+
     callback(bills);
   }, (error) => {
     console.error("Error fetching credit card bills:", error);
