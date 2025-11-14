@@ -18,8 +18,20 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
 
   const { annualFeeWaiverSpend, annualFee, cardAddedDate } = card;
 
-  const { currentYearSpend, yearStartDate, yearEndDate, monthsRemaining } = useMemo(() => {
+  const { currentYearSpend, yearStartDate, yearEndDate, monthsRemaining, isDateValid } = useMemo(() => {
     const cardAdded = new Date(cardAddedDate + 'T00:00:00Z');
+    
+    if (!cardAddedDate || isNaN(cardAdded.getTime())) {
+      console.warn(`Invalid 'cardAddedDate' (${cardAddedDate}) for card: ${card.cardName}`);
+      return { 
+        currentYearSpend: 0, 
+        yearStartDate: new Date(), 
+        yearEndDate: new Date(), 
+        monthsRemaining: 0,
+        isDateValid: false
+      };
+    }
+
     const now = new Date();
     
     let yearsSinceAdded = now.getUTCFullYear() - cardAdded.getUTCFullYear();
@@ -46,7 +58,7 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
     // Using 30.44 as the average number of days in a month (365.25 / 12)
     const remainingMonths = Math.ceil(daysRemaining / 30.44);
 
-    return { currentYearSpend: spend, yearStartDate: start, yearEndDate: end, monthsRemaining };
+    return { currentYearSpend: spend, yearStartDate: start, yearEndDate: end, monthsRemaining, isDateValid: true };
   }, [card, bills]);
 
   const progressPercent = annualFeeWaiverSpend > 0 ? Math.min((currentYearSpend / annualFeeWaiverSpend) * 100, 100) : 0;
@@ -65,7 +77,7 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
         </div>
       </div>
 
-      {annualFeeWaiverSpend > 0 && (
+      {annualFeeWaiverSpend > 0 && isDateValid && (
         <div>
           <div className="flex justify-between items-baseline text-xs mb-1">
             <span className="text-gray-300">Annual Fee Waiver Progress</span>
@@ -86,6 +98,12 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
           <p className="text-[10px] text-center text-gray-500">
             Tracking period: {yearStartDate.toLocaleDateString('en-CA')} to {yearEndDate.toLocaleDateString('en-CA')}
           </p>
+        </div>
+      )}
+      
+      {annualFeeWaiverSpend > 0 && !isDateValid && (
+         <div className="text-xs text-center text-yellow-400 bg-yellow-500/10 p-2 rounded-md">
+            Could not calculate waiver progress due to an invalid 'Start Date' for this card. Please edit the card to fix it.
         </div>
       )}
 
