@@ -1,4 +1,5 @@
-import { IncomeCategory, ExpenseCategory, SavingCategory, LiabilityCategory, CreditCardInfo } from './types';
+import { IncomeCategory, ExpenseCategory, SavingCategory, LiabilityCategory } from './types';
+import type { CreditCardInfo } from './types';
 
 export const INCOME_CATEGORIES: IncomeCategory[] = [
   IncomeCategory.SALARY,

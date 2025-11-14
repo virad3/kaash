@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, CreditCardInfo } from '../types';
+import type { CreditCard, CreditCardInfo } from '../types';
 import { BANK_NAMES, BANK_CREDIT_CARDS } from '../constants';
 
 interface AddCreditCardFormProps {
