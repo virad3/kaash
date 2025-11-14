@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard } from '../types';
-import { BANK_NAMES, BANK_CREDIT_CARDS, CreditCardInfo } from '../constants';
+import { CreditCard, CreditCardInfo } from '../types';
+import { BANK_NAMES, BANK_CREDIT_CARDS } from '../constants';
 
 interface AddCreditCardFormProps {
   onSubmit: (data: Omit<CreditCard, 'id' | 'createdAt' | 'userId'> & { id?: string }) => Promise<void>;

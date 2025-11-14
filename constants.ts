@@ -1,4 +1,4 @@
-import { IncomeCategory, ExpenseCategory, SavingCategory, LiabilityCategory } from './types';
+import { IncomeCategory, ExpenseCategory, SavingCategory, LiabilityCategory, CreditCardInfo } from './types';
 
 export const INCOME_CATEGORIES: IncomeCategory[] = [
   IncomeCategory.SALARY,
@@ -66,11 +66,7 @@ export const BANK_NAMES: string[] = [
 ];
 
 // New data structure for pre-defined credit cards
-export interface CreditCardInfo {
-  cardName: string;
-  annualFee: number;
-  waiverSpend: number;
-}
+// The CreditCardInfo interface is now imported from types.ts
 
 export const BANK_CREDIT_CARDS: Record<string, CreditCardInfo[]> = {
   'HDFC Bank': [

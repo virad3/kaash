@@ -81,6 +81,13 @@ export interface Liability {
   userId?: string;
 }
 
+// Data structure for pre-defined credit cards, moved from constants.ts
+export interface CreditCardInfo {
+  cardName: string;
+  annualFee: number;
+  waiverSpend: number;
+}
+
 export interface CreditCard {
   id: string;
   userId: string;
