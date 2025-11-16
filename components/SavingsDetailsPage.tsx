@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Transaction, TransactionType, SavingCategory } from '../types';
 import { TransactionList } from './TransactionList';
@@ -66,7 +67,7 @@ export const SavingsDetailsPage: React.FC<SavingsDetailsPageProps> = ({
   const uniqueCategories = useMemo(() => {
     const categoriesFromTransactions = new Set<string>();
     savingTransactions.forEach(t => categoriesFromTransactions.add(t.category));
-    const allUnique = new Set([...SAVING_CATEGORIES.map(String), ...Array.from(categoriesFromTransactions)]);
+    const allUnique = new Set([...SAVING_CATEGORIES, ...Array.from(categoriesFromTransactions)]);
     return Array.from(allUnique).sort();
   }, [savingTransactions]);
 

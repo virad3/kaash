@@ -1,53 +1,52 @@
-import { IncomeCategory, ExpenseCategory, SavingCategory, LiabilityCategory } from './types';
 import type { CreditCardInfo } from './types';
 
-export const INCOME_CATEGORIES: IncomeCategory[] = [
-  IncomeCategory.SALARY,
-  IncomeCategory.FREELANCE,
-  IncomeCategory.INVESTMENTS,
-  IncomeCategory.GIFTS,
-  IncomeCategory.RENTAL,
-  IncomeCategory.BUSINESS,
-  IncomeCategory.OTHER,
+export const INCOME_CATEGORIES: string[] = [
+  'Salary',
+  'Freelance Income',
+  'Investments',
+  'Gifts Received',
+  'Rental Income',
+  'Business Profit',
+  'Other Income',
 ];
 
-export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
-  ExpenseCategory.FOOD,
-  ExpenseCategory.TRANSPORT,
-  ExpenseCategory.HOUSING,
-  ExpenseCategory.UTILITIES,
-  ExpenseCategory.ENTERTAINMENT,
-  ExpenseCategory.HEALTHCARE,
-  ExpenseCategory.EDUCATION,
-  ExpenseCategory.CLOTHING,
-  ExpenseCategory.SAVINGS,
-  ExpenseCategory.DEBT,
-  ExpenseCategory.LIABILITY_PAYMENT,
-  ExpenseCategory.OTHER,
+export const EXPENSE_CATEGORIES: string[] = [
+  'Food',
+  'Transport',
+  'Housing',
+  'Utilities',
+  'Entertainment',
+  'Healthcare',
+  'Education',
+  'Clothing',
+  'Savings (General)',
+  'Debt Repayment',
+  'Liability Payment',
+  'Other',
 ];
 
-export const SAVING_CATEGORIES: SavingCategory[] = [
-  SavingCategory.EMERGENCY_FUND,
-  SavingCategory.VACATION,
-  SavingCategory.NEW_VEHICLE,
-  SavingCategory.HOME_DOWN_PAYMENT,
-  SavingCategory.EDUCATION_FUND,
-  SavingCategory.RETIREMENT,
-  SavingCategory.INVESTMENT_POOL,
-  SavingCategory.GENERAL_SAVINGS,
-  SavingCategory.OTHER,
+export const SAVING_CATEGORIES: string[] = [
+  'Emergency Fund',
+  'Vacation/Travel',
+  'New Car/Vehicle',
+  'House Down Payment',
+  'Education Fund',
+  'Retirement Fund',
+  'Investment Pool',
+  'General Savings',
+  'Other Savings',
 ];
 
-export const LIABILITY_CATEGORIES: LiabilityCategory[] = [
-  LiabilityCategory.MORTGAGE,
-  LiabilityCategory.AUTO_LOAN,
-  LiabilityCategory.STUDENT_LOAN,
-  LiabilityCategory.PERSONAL_LOAN,
-  LiabilityCategory.CREDIT_CARD_DEBT,
-  LiabilityCategory.MEDICAL_BILL,
-  LiabilityCategory.BUSINESS_LOAN,
-  LiabilityCategory.TAX_DEBT,
-  LiabilityCategory.OTHER,
+export const LIABILITY_CATEGORIES: string[] = [
+  'Mortgage/Home Loan',
+  'Auto Loan',
+  'Student Loan',
+  'Personal Loan',
+  'Credit Card Debt',
+  'Medical Bill',
+  'Business Loan',
+  'Tax Debt',
+  'Other Liability',
 ];
 
 export const BANK_NAMES: string[] = [

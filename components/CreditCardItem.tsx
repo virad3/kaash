@@ -18,7 +18,7 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
 
   const { annualFeeWaiverSpend, annualFee, cardAddedDate } = card;
 
-  const { currentYearSpend, yearStartDate, yearEndDate, monthsRemaining, isDateValid } = useMemo(() => {
+  const { currentYearSpend, yearStartDate, yearEndDate, isDateValid } = useMemo(() => {
     const cardAdded = new Date(cardAddedDate + 'T00:00:00Z');
     
     if (!cardAddedDate || isNaN(cardAdded.getTime())) {
@@ -27,7 +27,6 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
         currentYearSpend: 0, 
         yearStartDate: new Date(), 
         yearEndDate: new Date(), 
-        monthsRemaining: 0,
         isDateValid: false
       };
     }
@@ -53,12 +52,7 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
       })
       .reduce((sum, bill) => sum + bill.amount, 0);
 
-    const diffMs = Math.max(0, end.getTime() - now.getTime());
-    const daysRemaining = diffMs / (1000 * 60 * 60 * 24);
-    // Using 30.44 as the average number of days in a month (365.25 / 12)
-    const remainingMonths = Math.ceil(daysRemaining / 30.44);
-
-    return { currentYearSpend: spend, yearStartDate: start, yearEndDate: end, monthsRemaining, isDateValid: true };
+    return { currentYearSpend: spend, yearStartDate: start, yearEndDate: end, isDateValid: true };
   }, [card, bills]);
 
   const progressPercent = annualFeeWaiverSpend > 0 ? Math.min((currentYearSpend / annualFeeWaiverSpend) * 100, 100) : 0;
@@ -92,7 +86,7 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
           <p className="text-xs text-center mt-1.5 text-gray-400">
             {progressPercent >= 100 ? 
               `Goal met! ₹${annualFee} fee should be waived.` :
-              `Spend ₹${remainingSpend.toFixed(2)} more in the next ${monthsRemaining} ${monthsRemaining === 1 ? 'month' : 'months'} to waive the ₹${annualFee} fee.`
+              `Spend ₹${remainingSpend.toFixed(2)} more to waive the ₹${annualFee} fee.`
             }
           </p>
           <p className="text-[10px] text-center text-gray-500">

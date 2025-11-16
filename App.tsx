@@ -31,7 +31,7 @@ import { ConfigurationErrorPage } from './components/ConfigurationErrorPage';
 
 const App: React.FC = () => {
   // Immediately check for placeholder configuration and render an error page if it's found.
-
+  // This prevents the app from running in a broken state where data cannot be saved.
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState<boolean>(true);
@@ -490,19 +490,19 @@ const App: React.FC = () => {
 
         switch (data.type) {
           case TransactionType.INCOME:
-            baseCategoriesForType = INCOME_CATEGORIES.map(String);
+            baseCategoriesForType = INCOME_CATEGORIES;
             currentUserCategoriesForType = userDefinedCategories.income;
             break;
           case TransactionType.EXPENSE:
             if (payload.category !== ExpenseCategory.LIABILITY_PAYMENT) {
-                baseCategoriesForType = EXPENSE_CATEGORIES.map(String);
+                baseCategoriesForType = EXPENSE_CATEGORIES;
                 currentUserCategoriesForType = userDefinedCategories.expense;
             } else { 
                 categoryTypeIdentifier = null; 
             }
             break;
           case TransactionType.SAVING:
-            baseCategoriesForType = SAVING_CATEGORIES.map(String);
+            baseCategoriesForType = SAVING_CATEGORIES;
             currentUserCategoriesForType = userDefinedCategories.saving;
             break;
         }
@@ -629,7 +629,7 @@ const App: React.FC = () => {
         await storageService.addLiability(currentUser.uid, payload as Omit<Liability, 'id' | 'createdAt' | 'userId' | 'notes'>);
       }
 
-      const baseCategoriesForType = LIABILITY_CATEGORIES.map(String);
+      const baseCategoriesForType = LIABILITY_CATEGORIES;
       const currentUserCategoriesForType = userDefinedCategories.liability;
       const isCustomCategory = !baseCategoriesForType.includes(finalCategory);
       const isNewUserDefinedCategory = isCustomCategory && !currentUserCategoriesForType.includes(finalCategory);
@@ -788,7 +788,7 @@ const App: React.FC = () => {
   ) => {
     const handleAdd = async (categoryName: string) => {
       if (!currentUser?.uid || !categoryName.trim()) return;
-      if (predefinedCategoriesConst.map(String).includes(categoryName)) {
+      if (predefinedCategoriesConst.includes(categoryName)) {
         alert(`"${categoryName}" is a predefined category and cannot be added again.`);
         return;
       }
@@ -802,7 +802,7 @@ const App: React.FC = () => {
 
     const handleEdit = async (oldName: string, newName: string) => {
       if (!currentUser?.uid || !oldName.trim() || !newName.trim() || oldName === newName) return;
-      if (predefinedCategoriesConst.map(String).includes(oldName)) {
+      if (predefinedCategoriesConst.includes(oldName)) {
         alert(`"${oldName}" is a predefined category and cannot be edited.`);
         return;
       }
@@ -816,7 +816,7 @@ const App: React.FC = () => {
 
     const handleDelete = async (categoryName: string) => {
       if (!currentUser?.uid || !categoryName.trim()) return;
-      if (predefinedCategoriesConst.map(String).includes(categoryName)) {
+      if (predefinedCategoriesConst.includes(categoryName)) {
         alert(`"${categoryName}" is a predefined category and cannot be deleted.`);
         return;
       }
@@ -833,10 +833,10 @@ const App: React.FC = () => {
     return { handleAdd, handleEdit, handleDelete };
   }, [currentUser]);
 
-  const incomeCategoryHandlers = useMemo(() => createCategoryHandlers(TransactionType.INCOME, INCOME_CATEGORIES.map(String)), [currentUser, createCategoryHandlers]);
-  const expenseCategoryHandlers = useMemo(() => createCategoryHandlers(TransactionType.EXPENSE, EXPENSE_CATEGORIES.map(String)), [currentUser, createCategoryHandlers]);
-  const savingCategoryHandlers = useMemo(() => createCategoryHandlers(TransactionType.SAVING, SAVING_CATEGORIES.map(String)), [currentUser, createCategoryHandlers]);
-  const liabilityCategoryHandlers = useMemo(() => createCategoryHandlers('liability', LIABILITY_CATEGORIES.map(String)), [currentUser, createCategoryHandlers]);
+  const incomeCategoryHandlers = useMemo(() => createCategoryHandlers(TransactionType.INCOME, INCOME_CATEGORIES), [currentUser, createCategoryHandlers]);
+  const expenseCategoryHandlers = useMemo(() => createCategoryHandlers(TransactionType.EXPENSE, EXPENSE_CATEGORIES), [currentUser, createCategoryHandlers]);
+  const savingCategoryHandlers = useMemo(() => createCategoryHandlers(TransactionType.SAVING, SAVING_CATEGORIES), [currentUser, createCategoryHandlers]);
+  const liabilityCategoryHandlers = useMemo(() => createCategoryHandlers('liability', LIABILITY_CATEGORIES), [currentUser, createCategoryHandlers]);
 
 
   const incomeTransactions = useMemo(() => transactions.filter(t => t.type === TransactionType.INCOME), [transactions]);
@@ -1168,9 +1168,9 @@ const App: React.FC = () => {
               onCancel={closeModal}
               existingTransaction={editingTransaction}
               predefinedCategories={
-                currentTransactionType === TransactionType.INCOME ? INCOME_CATEGORIES.map(String) :
-                currentTransactionType === TransactionType.EXPENSE ? EXPENSE_CATEGORIES.map(String) :
-                SAVING_CATEGORIES.map(String)
+                currentTransactionType === TransactionType.INCOME ? INCOME_CATEGORIES :
+                currentTransactionType === TransactionType.EXPENSE ? EXPENSE_CATEGORIES :
+                SAVING_CATEGORIES
               }
               currentUserDefinedCategories={
                 currentTransactionType === TransactionType.INCOME ? userDefinedCategories.income :
@@ -1205,7 +1205,7 @@ const App: React.FC = () => {
               onSubmit={handleLiabilityFormSubmit}
               onCancel={closeModal}
               existingLiability={editingLiability}
-              predefinedLiabilityCategories={LIABILITY_CATEGORIES.map(String)}
+              predefinedLiabilityCategories={LIABILITY_CATEGORIES}
               currentUserDefinedLiabilityCategories={userDefinedCategories.liability}
               onUserAddLiabilityCategory={liabilityCategoryHandlers.handleAdd}
               onUserEditLiabilityCategory={liabilityCategoryHandlers.handleEdit}

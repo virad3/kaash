@@ -31,7 +31,7 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
   const uniqueCategories = useMemo(() => {
     const categoriesFromLiabilities = new Set<string>();
     liabilities.forEach(l => categoriesFromLiabilities.add(l.category));
-    const allUnique = new Set([...LIABILITY_CATEGORIES.map(String), ...Array.from(categoriesFromLiabilities)]);
+    const allUnique = new Set([...LIABILITY_CATEGORIES, ...Array.from(categoriesFromLiabilities)]);
     return Array.from(allUnique).sort();
   }, [liabilities]);
 

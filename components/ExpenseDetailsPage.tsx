@@ -67,7 +67,7 @@ export const ExpenseDetailsPage: React.FC<ExpenseDetailsPageProps> = ({
   const uniqueCategories = useMemo(() => {
     const categoriesFromTransactions = new Set<string>();
     expenseTransactions.forEach(t => categoriesFromTransactions.add(t.category));
-    const allUnique = new Set([...EXPENSE_CATEGORIES.map(String), ...Array.from(categoriesFromTransactions)]);
+    const allUnique = new Set([...EXPENSE_CATEGORIES, ...Array.from(categoriesFromTransactions)]);
     return Array.from(allUnique).sort();
   }, [expenseTransactions]);
 
