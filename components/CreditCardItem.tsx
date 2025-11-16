@@ -18,7 +18,7 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
 
   const { annualFeeWaiverSpend, annualFee, cardAddedDate } = card;
 
-  const { currentYearSpend, yearStartDate, yearEndDate, isDateValid } = useMemo(() => {
+  const { currentYearSpend, yearStartDate, yearEndDate, isDateValid, monthsRemaining } = useMemo(() => {
     const cardAdded = new Date(cardAddedDate + 'T00:00:00Z');
     
     if (!cardAddedDate || isNaN(cardAdded.getTime())) {
@@ -27,7 +27,8 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
         currentYearSpend: 0, 
         yearStartDate: new Date(), 
         yearEndDate: new Date(), 
-        isDateValid: false
+        isDateValid: false,
+        monthsRemaining: 0
       };
     }
 
@@ -51,8 +52,23 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
         return bill.creditCardId === card.id && billDate >= start && billDate < end;
       })
       .reduce((sum, bill) => sum + bill.amount, 0);
+      
+    let monthsLeft = 0;
+    if (now < end) {
+        const endYear = end.getUTCFullYear();
+        const endMonth = end.getUTCMonth();
+        const nowYear = now.getUTCFullYear();
+        const nowMonth = now.getUTCMonth();
+        monthsLeft = (endYear - nowYear) * 12 + (endMonth - nowMonth);
+    }
 
-    return { currentYearSpend: spend, yearStartDate: start, yearEndDate: end, isDateValid: true };
+    return { 
+      currentYearSpend: spend, 
+      yearStartDate: start, 
+      yearEndDate: end, 
+      isDateValid: true,
+      monthsRemaining: Math.max(0, monthsLeft)
+    };
   }, [card, bills]);
 
   const progressPercent = annualFeeWaiverSpend > 0 ? Math.min((currentYearSpend / annualFeeWaiverSpend) * 100, 100) : 0;
@@ -86,7 +102,7 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
           <p className="text-xs text-center mt-1.5 text-gray-400">
             {progressPercent >= 100 ? 
               `Goal met! ₹${annualFee} fee should be waived.` :
-              `Spend ₹${remainingSpend.toFixed(2)} more to waive the ₹${annualFee} fee.`
+              `Spend ₹${remainingSpend.toFixed(2)} more in the remaining ${monthsRemaining} ${monthsRemaining === 1 ? 'month' : 'months'} to waive the ₹${annualFee} fee.`
             }
           </p>
           <p className="text-[10px] text-center text-gray-500">
