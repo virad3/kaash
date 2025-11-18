@@ -73,6 +73,9 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
 
   const progressPercent = annualFeeWaiverSpend > 0 ? Math.min((currentYearSpend / annualFeeWaiverSpend) * 100, 100) : 0;
   const remainingSpend = Math.max(0, annualFeeWaiverSpend - currentYearSpend);
+  const totalSpendSoFar = useMemo(() => {
+    return bills.reduce((sum, bill) => sum + bill.amount, 0);
+  }, [bills]);
 
   return (
     <li className="p-4 bg-slate-700/50 rounded-lg shadow-md space-y-3">
@@ -87,36 +90,43 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
         </div>
       </div>
 
-      {annualFeeWaiverSpend > 0 && isDateValid && (
-        <div>
-          <div className="flex justify-between items-baseline text-xs mb-1">
-            <span className="text-gray-300">Annual Fee Waiver Progress</span>
-            <span className="font-medium text-gray-200">₹{currentYearSpend.toFixed(0)} / ₹{annualFeeWaiverSpend.toFixed(0)}</span>
+      {annualFeeWaiverSpend > 0 ? (
+        isDateValid ? (
+          <div>
+            <div className="flex justify-between items-baseline text-xs mb-1">
+              <span className="text-gray-300">Annual Fee Waiver Progress</span>
+              <span className="font-medium text-gray-200">₹{currentYearSpend.toFixed(0)} / ₹{annualFeeWaiverSpend.toFixed(0)}</span>
+            </div>
+            <div className="h-2.5 w-full rounded-full bg-slate-600">
+              <div
+                className="h-2.5 rounded-full bg-gradient-to-r from-sky-500 to-cyan-400 transition-all duration-500"
+                style={{ width: `${progressPercent}%` }}
+              ></div>
+            </div>
+            <p className="text-xs text-center mt-1.5 text-gray-400">
+              {progressPercent >= 100 ? 
+                `Goal met! ₹${annualFee} fee should be waived.` :
+                `Spend ₹${remainingSpend.toFixed(2)} more to waive the ₹${annualFee} fee. You have ${monthsRemaining} ${monthsRemaining === 1 ? 'month' : 'months'} left in the tracking period.`
+              }
+            </p>
+            <p className="text-[10px] text-center text-gray-500">
+              Tracking period: {yearStartDate.toLocaleDateString('en-CA')} to {yearEndDate.toLocaleDateString('en-CA')}
+            </p>
           </div>
-          <div className="h-2.5 w-full rounded-full bg-slate-600">
-            <div
-              className="h-2.5 rounded-full bg-gradient-to-r from-sky-500 to-cyan-400 transition-all duration-500"
-              style={{ width: `${progressPercent}%` }}
-            ></div>
+        ) : (
+          <div className="text-xs text-center text-yellow-400 bg-yellow-500/10 p-2 rounded-md">
+            Could not calculate waiver progress due to an invalid 'Start Date' for this card. Please edit the card to fix it.
           </div>
-          <p className="text-xs text-center mt-1.5 text-gray-400">
-            {progressPercent >= 100 ? 
-              `Goal met! ₹${annualFee} fee should be waived.` :
-              `Spend ₹${remainingSpend.toFixed(2)} more in the remaining ${monthsRemaining} ${monthsRemaining === 1 ? 'month' : 'months'} to waive the ₹${annualFee} fee.`
-            }
-          </p>
-          <p className="text-[10px] text-center text-gray-500">
-            Tracking period: {yearStartDate.toLocaleDateString('en-CA')} to {yearEndDate.toLocaleDateString('en-CA')}
-          </p>
+        )
+      ) : (
+        <div className="text-sm text-center p-2 rounded-md bg-slate-800 border border-slate-600">
+          <span className="text-gray-400">Total spend recorded on this card: </span>
+          <span className="font-semibold text-gray-200">
+              ₹{totalSpendSoFar.toFixed(2)}
+          </span>
         </div>
       )}
       
-      {annualFeeWaiverSpend > 0 && !isDateValid && (
-         <div className="text-xs text-center text-yellow-400 bg-yellow-500/10 p-2 rounded-md">
-            Could not calculate waiver progress due to an invalid 'Start Date' for this card. Please edit the card to fix it.
-        </div>
-      )}
-
       <div className="flex items-center justify-between pt-2 border-t border-slate-600/50">
         <button onClick={() => setIsBillsVisible(!isBillsVisible)} className="text-sm text-sky-400 hover:underline">
           {isBillsVisible ? 'Hide Bills' : `Show Bills (${bills.length})`}
