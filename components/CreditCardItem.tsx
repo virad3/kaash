@@ -152,16 +152,19 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
           {bills.length === 0 ? <p className="text-xs text-gray-400 text-center">No bills recorded for this card yet.</p> : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {bills.map(bill => (
-                 <div key={bill.id} className="bg-slate-800 rounded-lg border border-slate-600 flex overflow-hidden shadow-sm hover:border-slate-500 transition-colors relative group">
-                    <div className="bg-slate-900/60 w-14 flex flex-col items-center justify-center border-r border-slate-600/60 p-1.5 flex-shrink-0">
-                        <span className="text-[10px] font-bold text-sky-400 uppercase tracking-wider">{getMonthName(bill.billDate)}</span>
-                        <span className="text-lg font-bold text-gray-200 leading-none mt-0.5">{getDay(bill.billDate)}</span>
+                 <div key={bill.id} className={`bg-slate-800 rounded-lg border ${bill.isPaid ? 'border-green-900/50' : 'border-slate-600'} flex overflow-hidden shadow-sm hover:border-slate-500 transition-colors relative group`}>
+                    <div className={`w-16 flex flex-col items-center justify-center border-r ${bill.isPaid ? 'bg-green-900/20 border-green-900/50' : 'bg-slate-900/60 border-slate-600/60'} p-1.5 flex-shrink-0 transition-colors`}>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider ${bill.isPaid ? 'text-green-400' : 'text-sky-400'}`}>{getMonthName(bill.billDate)}</span>
+                        <span className={`text-lg font-bold leading-none mt-0.5 ${bill.isPaid ? 'text-green-200' : 'text-gray-200'}`}>{getDay(bill.billDate)}</span>
+                         <span className={`text-[9px] font-bold uppercase mt-1 px-1 rounded-sm ${bill.isPaid ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
+                            {bill.isPaid ? 'PAID' : 'UNPAID'}
+                        </span>
                     </div>
                     
                     <div className="flex-1 p-2 flex flex-col justify-between min-w-0">
                         <div className="flex justify-between items-start w-full">
                              <div className="min-w-0 flex-1 mr-1">
-                                <p className={`text-sm font-bold truncate ${bill.isPaid ? 'text-gray-500 line-through' : 'text-gray-100'}`} title={`₹${bill.amount.toLocaleString('en-IN')}`}>
+                                <p className={`text-sm font-bold truncate ${bill.isPaid ? 'text-green-400' : 'text-gray-100'}`} title={`₹${bill.amount.toLocaleString('en-IN')}`}>
                                     ₹{bill.amount.toLocaleString('en-IN')}
                                 </p>
                                 {bill.notes && <p className="text-[10px] text-gray-500 truncate">{bill.notes}</p>}
@@ -170,7 +173,7 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
                                 type="checkbox" 
                                 checked={bill.isPaid}
                                 onChange={(e) => onUpdateBillPaidStatus(bill, e.target.checked)}
-                                className="h-3.5 w-3.5 rounded bg-slate-700 border-slate-500 text-green-500 focus:ring-green-500 accent-green-500 cursor-pointer flex-shrink-0 mt-0.5"
+                                className={`h-4 w-4 rounded border-slate-500 cursor-pointer flex-shrink-0 mt-0.5 focus:ring-offset-slate-800 ${bill.isPaid ? 'text-green-500 focus:ring-green-500 accent-green-500' : 'bg-slate-700'}`}
                                 title={bill.isPaid ? 'Mark as Unpaid' : 'Mark as Paid'}
                               />
                         </div>
