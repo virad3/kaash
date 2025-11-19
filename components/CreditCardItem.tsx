@@ -1,7 +1,6 @@
-
 import React, { useState, useMemo } from 'react';
 import { CreditCard, CreditCardBill } from '../types';
-import { TrashIcon, EditIcon, PaymentIcon, PlusIcon } from './icons';
+import { TrashIcon, EditIcon, PlusIcon } from './icons';
 
 interface CreditCardItemProps {
   card: CreditCard;
@@ -31,11 +30,12 @@ const getCardGradient = (bankName: string) => {
 };
 
 export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onAddBill, onEditBill, onDeleteBill, onUpdateBillPaidStatus, onEditCard, onDeleteCard }) => {
-  const [isBillsVisible, setIsBillsVisible] = useState(false);
+  // State to track if the card is expanded (showing actions and bills)
+  const [isExpanded, setIsExpanded] = useState(false);
 
-  const { annualFeeWaiverSpend, annualFee, cardAddedDate } = card;
+  const { annualFeeWaiverSpend, cardAddedDate } = card;
 
-  const { currentYearSpend, yearStartDate, yearEndDate, isDateValid, monthsRemaining } = useMemo(() => {
+  const { currentYearSpend, isDateValid, monthsRemaining } = useMemo(() => {
     const cardAdded = new Date(cardAddedDate + 'T00:00:00Z');
     
     if (!cardAddedDate || isNaN(cardAdded.getTime())) {
@@ -88,7 +88,6 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
   }, [card, bills]);
 
   const progressPercent = annualFeeWaiverSpend > 0 ? Math.min((currentYearSpend / annualFeeWaiverSpend) * 100, 100) : 0;
-  const remainingSpend = Math.max(0, annualFeeWaiverSpend - currentYearSpend);
   const totalSpendSoFar = useMemo(() => {
     return bills.reduce((sum, bill) => sum + bill.amount, 0);
   }, [bills]);
@@ -105,9 +104,12 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
   };
 
   return (
-    <li className="mb-8 mx-auto max-w-md sm:max-w-lg">
-      {/* Card Visual */}
-      <div className={`relative w-full aspect-[1.586/1] rounded-2xl shadow-2xl overflow-hidden text-white transition-transform transform hover:scale-[1.02] duration-300 group ${getCardGradient(card.bankName)}`}>
+    <div className={`rounded-2xl transition-all duration-500 ease-in-out ${isExpanded ? 'mb-8' : 'mb-0'}`}>
+      {/* Card Visual - Clickable Area */}
+      <div 
+        onClick={() => setIsExpanded(!isExpanded)}
+        className={`relative w-full aspect-[1.586/1] rounded-2xl shadow-2xl overflow-hidden text-white cursor-pointer z-10 ${getCardGradient(card.bankName)}`}
+      >
         
         {/* Glossy Effect Overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none"></div>
@@ -178,104 +180,104 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
                 </div>
             </div>
 
-            {/* Card Actions (Top Right) */}
-            <div className="absolute top-4 right-4 flex space-x-2">
-                <button 
-                    onClick={(e) => { e.stopPropagation(); onEditCard(card); }} 
-                    className="p-1.5 bg-black/20 hover:bg-black/50 rounded-full text-white/70 hover:text-white transition-all backdrop-blur-md"
-                    title="Edit Card"
-                >
-                    <EditIcon className="w-4 h-4" />
-                </button>
-                <button 
-                    onClick={(e) => { e.stopPropagation(); onDeleteCard(card.id); }} 
-                    className="p-1.5 bg-black/20 hover:bg-red-900/60 rounded-full text-white/70 hover:text-red-200 transition-all backdrop-blur-md"
-                    title="Delete Card"
-                >
-                    <TrashIcon className="w-4 h-4" />
-                </button>
-            </div>
+            {/* Card Actions (Top Right) - Visible only when expanded */}
+            {isExpanded && (
+              <div className="absolute top-4 right-4 flex space-x-2 animate-fade-in">
+                  <button 
+                      onClick={(e) => { e.stopPropagation(); onEditCard(card); }} 
+                      className="p-1.5 bg-black/40 hover:bg-black/60 rounded-full text-white/90 hover:text-white transition-all backdrop-blur-md"
+                      title="Edit Card"
+                  >
+                      <EditIcon className="w-4 h-4" />
+                  </button>
+                  <button 
+                      onClick={(e) => { e.stopPropagation(); onDeleteCard(card.id); }} 
+                      className="p-1.5 bg-black/40 hover:bg-red-900/80 rounded-full text-white/90 hover:text-red-200 transition-all backdrop-blur-md"
+                      title="Delete Card"
+                  >
+                      <TrashIcon className="w-4 h-4" />
+                  </button>
+              </div>
+            )}
         </div>
       </div>
 
-      {/* Actions Bar */}
-      <div className="flex justify-between items-center px-4 mt-4">
-          <div className="text-xs text-gray-500">
-             {bills.length > 0 
-                ? <span>Last Bill: <span className="text-gray-300">{bills[0].billDate}</span></span> 
-                : <span>No bills recorded</span>
-             }
-          </div>
+      {/* Expanded Content Container */}
+      <div className={`bg-slate-800/50 rounded-b-2xl -mt-4 pt-6 pb-4 px-4 border-x border-b border-slate-700/50 shadow-lg transition-all duration-300 origin-top ${isExpanded ? 'opacity-100 max-h-[2000px]' : 'opacity-0 max-h-0 overflow-hidden invisible'}`}>
           
-          <div className="flex items-center gap-4">
-             <button 
-                onClick={() => setIsBillsVisible(!isBillsVisible)} 
-                className="text-sm font-medium text-sky-400 hover:text-sky-300 transition-colors focus:outline-none"
-             >
-                 {isBillsVisible ? 'Hide History' : 'History'}
-             </button>
-             <button 
-                onClick={() => onAddBill(card)} 
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold rounded-full transition-colors shadow-md"
-             >
-                 <PlusIcon className="w-4 h-4 text-sky-400" /> Pay/Add Bill
-             </button>
+          {/* Actions Bar */}
+          <div className="flex justify-between items-center mb-4">
+              <div className="text-xs text-gray-500">
+                 {bills.length > 0 
+                    ? <span>Last Bill: <span className="text-gray-300">{bills[0].billDate}</span></span> 
+                    : <span>No bills recorded</span>
+                 }
+              </div>
+              
+              <div className="flex items-center gap-4">
+                 <button 
+                    onClick={() => onAddBill(card)} 
+                    className="flex items-center gap-1.5 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white text-sm font-semibold rounded-full transition-colors shadow-md"
+                 >
+                     <PlusIcon className="w-4 h-4" /> Pay/Add Bill
+                 </button>
+              </div>
+          </div>
+
+          {/* Bills List */}
+          <div>
+              {bills.length === 0 ? (
+                  <div className="p-6 text-center bg-slate-800/50 rounded-xl border border-slate-700/50 border-dashed">
+                      <p className="text-sm text-gray-400">No bills recorded yet.</p>
+                  </div>
+              ) : (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                  {bills.map(bill => (
+                     <div key={bill.id} className={`relative group bg-slate-900 rounded-xl border ${bill.isPaid ? 'border-green-900/50' : 'border-slate-700'} overflow-hidden shadow-sm hover:border-slate-500 transition-all`}>
+                        {/* Month Header */}
+                        <div className={`flex flex-col items-center justify-center py-2 ${bill.isPaid ? 'bg-green-900/10' : 'bg-slate-800/50'} border-b border-slate-700/50`}>
+                            <span className={`text-[10px] font-bold uppercase tracking-widest ${bill.isPaid ? 'text-green-400' : 'text-sky-400'}`}>{getMonthName(bill.billDate)}</span>
+                            <span className={`text-xl font-bold leading-none mt-0.5 ${bill.isPaid ? 'text-green-200' : 'text-white'}`}>{getDay(bill.billDate)}</span>
+                        </div>
+                        
+                        {/* Content */}
+                        <div className="p-2 text-center">
+                            <p className={`text-sm font-bold truncate ${bill.isPaid ? 'text-green-400' : 'text-gray-200'}`} title={`₹${bill.amount.toLocaleString('en-IN')}`}>
+                                ₹{bill.amount > 10000 ? (bill.amount/1000).toFixed(1) + 'k' : bill.amount}
+                            </p>
+                             <div className={`text-[9px] font-bold uppercase mt-1 inline-block px-1.5 py-0.5 rounded ${bill.isPaid ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                                {bill.isPaid ? 'PAID' : 'UNPAID'}
+                            </div>
+                        </div>
+
+                        {/* Hover Actions Overlay */}
+                        <div className="absolute inset-0 bg-slate-900/90 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2 backdrop-blur-[1px]">
+                             <div className="flex items-center gap-2 mb-1">
+                                <label className="text-[10px] text-gray-300 cursor-pointer flex items-center gap-1">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={bill.isPaid}
+                                        onChange={(e) => onUpdateBillPaidStatus(bill, e.target.checked)}
+                                        className="rounded bg-slate-700 border-slate-500 text-green-500 focus:ring-0 w-3 h-3"
+                                    />
+                                    {bill.isPaid ? 'Paid' : 'Pay?'}
+                                </label>
+                             </div>
+                             <div className="flex gap-2">
+                                <button onClick={() => onEditBill(bill)} className="p-1.5 bg-slate-700 hover:bg-yellow-600/20 text-yellow-400 rounded-full" title="Edit">
+                                    <EditIcon className="w-3 h-3" />
+                                </button>
+                                <button onClick={() => onDeleteBill(bill.id)} className="p-1.5 bg-slate-700 hover:bg-red-600/20 text-red-400 rounded-full" title="Delete">
+                                    <TrashIcon className="w-3 h-3" />
+                                </button>
+                             </div>
+                        </div>
+                     </div>
+                  ))}
+                </div>
+              )}
           </div>
       </div>
-
-      {/* Bills Accordion */}
-      <div className={`overflow-hidden transition-all duration-500 ease-in-out origin-top ${isBillsVisible ? 'max-h-[1000px] opacity-100 mt-4' : 'max-h-0 opacity-0 mt-0'}`}>
-          {bills.length === 0 ? (
-              <div className="p-6 text-center bg-slate-800/50 rounded-xl border border-slate-700/50 border-dashed">
-                  <p className="text-sm text-gray-400">No bills recorded yet.</p>
-              </div>
-          ) : (
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-              {bills.map(bill => (
-                 <div key={bill.id} className={`relative group bg-slate-800 rounded-xl border ${bill.isPaid ? 'border-green-900/50' : 'border-slate-700'} overflow-hidden shadow-sm hover:border-slate-500 transition-all`}>
-                    {/* Month Header */}
-                    <div className={`flex flex-col items-center justify-center py-2 ${bill.isPaid ? 'bg-green-900/10' : 'bg-slate-700/30'} border-b border-slate-700/50`}>
-                        <span className={`text-[10px] font-bold uppercase tracking-widest ${bill.isPaid ? 'text-green-400' : 'text-sky-400'}`}>{getMonthName(bill.billDate)}</span>
-                        <span className={`text-xl font-bold leading-none mt-0.5 ${bill.isPaid ? 'text-green-200' : 'text-white'}`}>{getDay(bill.billDate)}</span>
-                    </div>
-                    
-                    {/* Content */}
-                    <div className="p-2 text-center">
-                        <p className={`text-sm font-bold truncate ${bill.isPaid ? 'text-green-400' : 'text-gray-200'}`} title={`₹${bill.amount.toLocaleString('en-IN')}`}>
-                            ₹{bill.amount > 10000 ? (bill.amount/1000).toFixed(1) + 'k' : bill.amount}
-                        </p>
-                         <div className={`text-[9px] font-bold uppercase mt-1 inline-block px-1.5 py-0.5 rounded ${bill.isPaid ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                            {bill.isPaid ? 'PAID' : 'UNPAID'}
-                        </div>
-                    </div>
-
-                    {/* Hover Actions Overlay */}
-                    <div className="absolute inset-0 bg-slate-900/90 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2 backdrop-blur-[1px]">
-                         <div className="flex items-center gap-2 mb-1">
-                            <label className="text-[10px] text-gray-300 cursor-pointer flex items-center gap-1">
-                                <input 
-                                    type="checkbox" 
-                                    checked={bill.isPaid}
-                                    onChange={(e) => onUpdateBillPaidStatus(bill, e.target.checked)}
-                                    className="rounded bg-slate-700 border-slate-500 text-green-500 focus:ring-0 w-3 h-3"
-                                />
-                                {bill.isPaid ? 'Paid' : 'Pay?'}
-                            </label>
-                         </div>
-                         <div className="flex gap-2">
-                            <button onClick={() => onEditBill(bill)} className="p-1.5 bg-slate-700 hover:bg-yellow-600/20 text-yellow-400 rounded-full" title="Edit">
-                                <EditIcon className="w-3 h-3" />
-                            </button>
-                            <button onClick={() => onDeleteBill(bill.id)} className="p-1.5 bg-slate-700 hover:bg-red-600/20 text-red-400 rounded-full" title="Delete">
-                                <TrashIcon className="w-3 h-3" />
-                            </button>
-                         </div>
-                    </div>
-                 </div>
-              ))}
-            </div>
-          )}
-      </div>
-    </li>
+    </div>
   );
 };

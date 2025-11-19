@@ -84,8 +84,8 @@ export const CreditCardsPage: React.FC<CreditCardsPageProps> = ({
   }, [creditCardBills]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100">
-      <header className="sticky top-0 z-30 bg-slate-800/95 backdrop-blur-md border-b border-slate-700 py-2 sm:py-3">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 flex flex-col">
+      <header className="sticky top-0 z-40 bg-slate-800/95 backdrop-blur-md border-b border-slate-700 py-2 sm:py-3">
         <div className="flex items-center justify-between h-full px-2 sm:px-4 lg:px-6">
           <div className="flex-none">
             <button onClick={onBack} className="flex items-center space-x-1 text-sky-400 hover:text-sky-300 p-2 rounded-md hover:bg-slate-700">
@@ -103,28 +103,39 @@ export const CreditCardsPage: React.FC<CreditCardsPageProps> = ({
         </div>
       </header>
       
-      <main className="p-3 sm:p-4 lg:p-6">
+      <main className="flex-grow p-3 sm:p-4 lg:p-6 relative">
         {creditCards.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-lg text-gray-400">No credit cards added yet.</p>
             <p className="text-sm text-gray-500 mt-2">Click "Add Card" to get started.</p>
           </div>
         ) : (
-          <ul className="space-y-4 max-w-4xl mx-auto">
-            {creditCards.map(card => (
-              <CreditCardItem
-                key={card.id}
-                card={card}
-                bills={(billsByCardId[card.id] || []).sort((a,b) => new Date(b.billDate).getTime() - new Date(a.billDate).getTime())}
-                onAddBill={handleOpenNewBillForm}
-                onEditBill={handleOpenEditBillForm}
-                onDeleteBill={onDeleteBill}
-                onUpdateBillPaidStatus={onUpdateBillPaidStatus}
-                onEditCard={handleOpenEditCardForm}
-                onDeleteCard={onDeleteCard}
-              />
+          <div className="max-w-md sm:max-w-lg mx-auto pb-32">
+            {creditCards.map((card, index) => (
+              <div 
+                key={card.id} 
+                className="sticky transition-all duration-300"
+                style={{ 
+                  // Start sticking 80px from top, increment by 50px for each card to create the stack visual
+                  top: `${80 + index * 50}px`, 
+                  zIndex: index + 1,
+                  // Add margin bottom to allow scrolling past the last item comfortably
+                  marginBottom: '20px' 
+                }}
+              >
+                <CreditCardItem
+                  card={card}
+                  bills={(billsByCardId[card.id] || []).sort((a,b) => new Date(b.billDate).getTime() - new Date(a.billDate).getTime())}
+                  onAddBill={handleOpenNewBillForm}
+                  onEditBill={handleOpenEditBillForm}
+                  onDeleteBill={onDeleteBill}
+                  onUpdateBillPaidStatus={onUpdateBillPaidStatus}
+                  onEditCard={handleOpenEditCardForm}
+                  onDeleteCard={onDeleteCard}
+                />
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </main>
 
