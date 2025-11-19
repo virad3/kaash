@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { CreditCard, CreditCardBill } from '../types';
 import { TrashIcon, EditIcon, PaymentIcon } from './icons';
@@ -22,7 +23,6 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
     const cardAdded = new Date(cardAddedDate + 'T00:00:00Z');
     
     if (!cardAddedDate || isNaN(cardAdded.getTime())) {
-      console.warn(`Invalid 'cardAddedDate' (${cardAddedDate}) for card: ${card.cardName}`);
       return { 
         currentYearSpend: 0, 
         yearStartDate: new Date(), 
@@ -77,6 +77,17 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
     return bills.reduce((sum, bill) => sum + bill.amount, 0);
   }, [bills]);
 
+  // Date Helpers
+  const getMonthName = (dateStr: string) => {
+    const date = new Date(dateStr + 'T00:00:00Z');
+    return date.toLocaleString('default', { month: 'short', timeZone: 'UTC' });
+  };
+
+  const getDay = (dateStr: string) => {
+    const date = new Date(dateStr + 'T00:00:00Z');
+    return date.getUTCDate();
+  };
+
   return (
     <li className="p-4 bg-slate-700/50 rounded-lg shadow-md space-y-3">
       <div className="flex items-start justify-between">
@@ -95,7 +106,7 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
           <div>
             <div className="flex justify-between items-baseline text-xs mb-1">
               <span className="text-gray-300">Annual Fee Waiver Progress</span>
-              <span className="font-medium text-gray-200">₹{currentYearSpend.toFixed(0)} / ₹{annualFeeWaiverSpend.toFixed(0)}</span>
+              <span className="font-medium text-gray-200">₹{currentYearSpend.toLocaleString('en-IN')} / ₹{annualFeeWaiverSpend.toLocaleString('en-IN')}</span>
             </div>
             <div className="h-2.5 w-full rounded-full bg-slate-600">
               <div
@@ -105,12 +116,12 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
             </div>
             <p className="text-xs text-center mt-1.5 text-gray-400">
               {progressPercent >= 100 ? 
-                `Goal met! ₹${annualFee} fee should be waived.` :
-                `Spend ₹${remainingSpend.toFixed(2)} more to waive the ₹${annualFee} fee. You have ${monthsRemaining} ${monthsRemaining === 1 ? 'month' : 'months'} left in the tracking period.`
+                `Goal met! ₹${annualFee.toLocaleString('en-IN')} fee should be waived.` :
+                `Spend ₹${remainingSpend.toLocaleString('en-IN')} more to waive the ₹${annualFee.toLocaleString('en-IN')} fee. You have ${monthsRemaining} ${monthsRemaining === 1 ? 'month' : 'months'} left in the tracking period.`
               }
             </p>
             <p className="text-[10px] text-center text-gray-500">
-              Tracking period: {yearStartDate.toLocaleDateString('en-CA')} to {yearEndDate.toLocaleDateString('en-CA')}
+              Tracking period: {yearStartDate.toLocaleDateString('en-IN')} to {yearEndDate.toLocaleDateString('en-IN')}
             </p>
           </div>
         ) : (
@@ -122,7 +133,7 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
         <div className="text-sm text-center p-2 rounded-md bg-slate-800 border border-slate-600">
           <span className="text-gray-400">Total spend recorded on this card: </span>
           <span className="font-semibold text-gray-200">
-              ₹{totalSpendSoFar.toFixed(2)}
+              ₹{totalSpendSoFar.toLocaleString('en-IN')}
           </span>
         </div>
       )}
@@ -137,32 +148,48 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
       </div>
 
       {isBillsVisible && (
-        <div className="pt-3 mt-2 border-t border-slate-600/50 space-y-2">
+        <div className="pt-3 mt-2 border-t border-slate-600/50">
           {bills.length === 0 ? <p className="text-xs text-gray-400 text-center">No bills recorded for this card yet.</p> : (
-            bills.map(bill => (
-              <div key={bill.id} className="flex items-center justify-between p-2 bg-slate-800 rounded">
-                <div className="flex items-center space-x-3">
-                  <input 
-                    type="checkbox" 
-                    checked={bill.isPaid}
-                    onChange={(e) => onUpdateBillPaidStatus(bill, e.target.checked)}
-                    className="h-4 w-4 rounded bg-slate-700 border-slate-500 text-green-500 focus:ring-green-500 accent-green-500"
-                    title={bill.isPaid ? 'Mark as Unpaid' : 'Mark as Paid'}
-                  />
-                  <div>
-                    <p className={`text-sm ${bill.isPaid ? 'text-gray-500 line-through' : 'text-gray-200'}`}>
-                      ₹{bill.amount.toFixed(2)}
-                      <span className="text-xs text-gray-400 ml-2">(Due: {new Date(bill.paymentDueDate + 'T00:00:00Z').toLocaleDateString('en-CA')})</span>
-                    </p>
-                     {bill.notes && <p className="text-xs text-gray-400">{bill.notes}</p>}
-                  </div>
-                </div>
-                <div className="flex items-center space-x-1">
-                   <button onClick={() => onEditBill(bill)} className="p-1 text-yellow-500 hover:bg-slate-700 rounded-full"><EditIcon className="w-4 h-4" /></button>
-                   <button onClick={() => onDeleteBill(bill.id)} className="p-1 text-red-500 hover:bg-slate-700 rounded-full"><TrashIcon className="w-4 h-4" /></button>
-                </div>
-              </div>
-            ))
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {bills.map(bill => (
+                 <div key={bill.id} className="bg-slate-800 rounded-lg border border-slate-600 flex overflow-hidden shadow-sm hover:border-slate-500 transition-colors relative group">
+                    <div className="bg-slate-900/60 w-14 flex flex-col items-center justify-center border-r border-slate-600/60 p-1.5 flex-shrink-0">
+                        <span className="text-[10px] font-bold text-sky-400 uppercase tracking-wider">{getMonthName(bill.billDate)}</span>
+                        <span className="text-lg font-bold text-gray-200 leading-none mt-0.5">{getDay(bill.billDate)}</span>
+                    </div>
+                    
+                    <div className="flex-1 p-2 flex flex-col justify-between min-w-0">
+                        <div className="flex justify-between items-start w-full">
+                             <div className="min-w-0 flex-1 mr-1">
+                                <p className={`text-sm font-bold truncate ${bill.isPaid ? 'text-gray-500 line-through' : 'text-gray-100'}`} title={`₹${bill.amount.toLocaleString('en-IN')}`}>
+                                    ₹{bill.amount.toLocaleString('en-IN')}
+                                </p>
+                                {bill.notes && <p className="text-[10px] text-gray-500 truncate">{bill.notes}</p>}
+                             </div>
+                             <input 
+                                type="checkbox" 
+                                checked={bill.isPaid}
+                                onChange={(e) => onUpdateBillPaidStatus(bill, e.target.checked)}
+                                className="h-3.5 w-3.5 rounded bg-slate-700 border-slate-500 text-green-500 focus:ring-green-500 accent-green-500 cursor-pointer flex-shrink-0 mt-0.5"
+                                title={bill.isPaid ? 'Mark as Unpaid' : 'Mark as Paid'}
+                              />
+                        </div>
+                        
+                        <div className="flex justify-between items-end mt-1">
+                             <p className="text-[9px] text-gray-600 truncate max-w-[60%]">Due: {new Date(bill.paymentDueDate).toLocaleDateString('en-IN', {day:'numeric', month:'short'})}</p>
+                             <div className="flex space-x-1">
+                                <button onClick={() => onEditBill(bill)} className="text-yellow-500 hover:text-yellow-400 p-0.5 rounded hover:bg-slate-700 transition-colors" title="Edit Bill">
+                                    <EditIcon className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => onDeleteBill(bill.id)} className="text-red-500 hover:text-red-400 p-0.5 rounded hover:bg-slate-700 transition-colors" title="Delete Bill">
+                                    <TrashIcon className="w-3.5 h-3.5" />
+                                </button>
+                             </div>
+                        </div>
+                    </div>
+                 </div>
+              ))}
+            </div>
           )}
         </div>
       )}
