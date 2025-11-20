@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+
+import React, { useMemo } from 'react';
 import { CreditCard, CreditCardBill } from '../types';
 import { TrashIcon, EditIcon, PlusIcon } from './icons';
 
@@ -11,6 +12,8 @@ interface CreditCardItemProps {
   onUpdateBillPaidStatus: (bill: CreditCardBill, isPaid: boolean) => void;
   onEditCard: (card: CreditCard) => void;
   onDeleteCard: (cardId: string) => void;
+  isExpanded?: boolean;
+  onCardClick?: () => void;
 }
 
 // Helper to determine card background gradient based on bank name
@@ -29,10 +32,18 @@ const getCardGradient = (bankName: string) => {
   return 'bg-gradient-to-br from-gray-800 via-gray-700 to-gray-900';
 };
 
-export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onAddBill, onEditBill, onDeleteBill, onUpdateBillPaidStatus, onEditCard, onDeleteCard }) => {
-  // State to track if the card is expanded (showing actions and bills)
-  const [isExpanded, setIsExpanded] = useState(false);
-
+export const CreditCardItem: React.FC<CreditCardItemProps> = ({ 
+  card, 
+  bills, 
+  onAddBill, 
+  onEditBill, 
+  onDeleteBill, 
+  onUpdateBillPaidStatus, 
+  onEditCard, 
+  onDeleteCard,
+  isExpanded = false,
+  onCardClick
+}) => {
   const { annualFeeWaiverSpend, cardAddedDate } = card;
 
   const { currentYearSpend, isDateValid, monthsRemaining } = useMemo(() => {
@@ -107,8 +118,8 @@ export const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, bills, onA
     <div className={`rounded-2xl transition-all duration-500 ease-in-out ${isExpanded ? 'mb-8' : 'mb-0'}`}>
       {/* Card Visual - Clickable Area */}
       <div 
-        onClick={() => setIsExpanded(!isExpanded)}
-        className={`relative w-full aspect-[1.586/1] rounded-2xl shadow-2xl overflow-hidden text-white cursor-pointer z-10 ${getCardGradient(card.bankName)}`}
+        onClick={() => onCardClick && onCardClick()}
+        className={`relative w-full aspect-[1.586/1] rounded-2xl shadow-2xl overflow-hidden text-white z-10 ${getCardGradient(card.bankName)} cursor-pointer`}
       >
         
         {/* Glossy Effect Overlay */}
