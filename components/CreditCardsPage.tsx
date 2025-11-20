@@ -144,7 +144,7 @@ export const CreditCardsPage: React.FC<CreditCardsPageProps> = ({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 flex flex-col">
-      <header className="sticky top-0 z-40 bg-slate-800/95 backdrop-blur-md border-b border-slate-700 py-2 sm:py-3">
+      <header className="sticky top-0 z-30 bg-slate-800/95 backdrop-blur-md border-b border-slate-700 py-2 sm:py-3">
         <div className="flex items-center justify-between h-full px-2 sm:px-4 lg:px-6">
           <div className="flex-none">
             <button onClick={handleBack} className="flex items-center space-x-1 text-sky-400 hover:text-sky-300 p-2 rounded-md hover:bg-slate-700">
