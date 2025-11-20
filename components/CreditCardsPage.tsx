@@ -36,6 +36,7 @@ export const CreditCardsPage: React.FC<CreditCardsPageProps> = ({
 
   const [focusedCardId, setFocusedCardId] = useState<string | null>(null);
   const scrollPositionRef = useRef<number>(0);
+  const [selectedMonthKey, setSelectedMonthKey] = useState<string>('');
 
   // Handle scroll restoration and top alignment for detail view
   useLayoutEffect(() => {
@@ -136,6 +137,11 @@ export const CreditCardsPage: React.FC<CreditCardsPageProps> = ({
       .sort((a, b) => b.key.localeCompare(a.key)); // Descending by date
   }, [creditCardBills]);
 
+  const activeSummary = useMemo(() => {
+    if (monthlySummaries.length === 0) return null;
+    return monthlySummaries.find(s => s.key === selectedMonthKey) || monthlySummaries[0];
+  }, [monthlySummaries, selectedMonthKey]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 flex flex-col">
       <header className="sticky top-0 z-40 bg-slate-800/95 backdrop-blur-md border-b border-slate-700 py-2 sm:py-3">
@@ -195,17 +201,30 @@ export const CreditCardsPage: React.FC<CreditCardsPageProps> = ({
             <div className="max-w-md sm:max-w-lg mx-auto pb-32 min-h-[50vh]">
               
               {/* Monthly Summary Section */}
-              {monthlySummaries.length > 0 && (
-                <div className="mb-8 bg-slate-800/50 rounded-xl border border-slate-700 p-4 shadow-lg backdrop-blur-sm">
-                  <h2 className="text-lg font-semibold text-sky-400 mb-3 border-b border-slate-700 pb-2">Total Monthly Bills</h2>
-                  <div className="space-y-3 max-h-40 overflow-y-auto custom-scrollbar pr-1">
-                    {monthlySummaries.map(summary => (
-                      <div key={summary.key} className="flex justify-between items-center text-sm">
-                        <span className="text-gray-300 font-medium">{summary.displayName}</span>
-                        <span className="text-gray-100 font-bold">₹{summary.total.toLocaleString('en-IN')}</span>
+              {activeSummary && (
+                <div className="mb-8 bg-slate-800/50 rounded-xl border border-slate-700 p-5 shadow-lg backdrop-blur-sm flex flex-col items-center justify-center transition-all">
+                   <div className="flex items-center gap-3 mb-1">
+                      <span className="text-gray-400 text-sm font-medium">Total Bills for</span>
+                      <div className="relative">
+                        <select
+                          value={activeSummary.key}
+                          onChange={(e) => setSelectedMonthKey(e.target.value)}
+                          className="appearance-none bg-slate-900/80 hover:bg-slate-900 border border-slate-600 hover:border-sky-500 text-sky-400 text-sm font-bold rounded-lg py-1.5 pl-3 pr-8 focus:outline-none focus:ring-2 focus:ring-sky-500/50 transition-colors cursor-pointer"
+                        >
+                          {monthlySummaries.map(summary => (
+                            <option key={summary.key} value={summary.key}>{summary.displayName}</option>
+                          ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-sky-400">
+                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                   </div>
+                   <p className="text-3xl sm:text-4xl font-bold text-white mt-2 tracking-tight drop-shadow-sm">
+                     ₹{activeSummary.total.toLocaleString('en-IN')}
+                   </p>
                 </div>
               )}
 
@@ -269,4 +288,3 @@ export const CreditCardsPage: React.FC<CreditCardsPageProps> = ({
     </div>
   );
 };
-    
