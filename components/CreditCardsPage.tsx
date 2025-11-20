@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react';
 import { CreditCard, CreditCardBill } from '../types';
 import { BackIcon, PlusIcon } from './icons';
 import { CreditCardItem } from './CreditCardItem';
@@ -35,6 +35,18 @@ export const CreditCardsPage: React.FC<CreditCardsPageProps> = ({
   const [activeCardForBill, setActiveCardForBill] = useState<CreditCard | null>(null);
 
   const [focusedCardId, setFocusedCardId] = useState<string | null>(null);
+  const scrollPositionRef = useRef<number>(0);
+
+  // Handle scroll restoration and top alignment for detail view
+  useLayoutEffect(() => {
+    if (focusedCardId) {
+      // Entering detail view: Scroll to top so full card is visible
+      window.scrollTo(0, 0);
+    } else {
+      // Returning to list view: Restore previous scroll position
+      window.scrollTo(0, scrollPositionRef.current);
+    }
+  }, [focusedCardId]);
 
   // If the focused card is deleted, reset the view to the list
   useEffect(() => {
@@ -179,7 +191,10 @@ export const CreditCardsPage: React.FC<CreditCardsPageProps> = ({
                     onEditCard={handleOpenEditCardForm}
                     onDeleteCard={onDeleteCard}
                     isExpanded={false}
-                    onCardClick={() => setFocusedCardId(card.id)}
+                    onCardClick={() => {
+                      scrollPositionRef.current = window.scrollY;
+                      setFocusedCardId(card.id);
+                    }}
                   />
                 </div>
               ))}
