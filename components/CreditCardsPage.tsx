@@ -113,6 +113,29 @@ export const CreditCardsPage: React.FC<CreditCardsPageProps> = ({
     }, {} as Record<string, CreditCardBill[]>);
   }, [creditCardBills]);
 
+  const monthlySummaries = useMemo(() => {
+    const totals: Record<string, number> = {};
+    creditCardBills.forEach(bill => {
+      const date = new Date(bill.billDate);
+      // Format YYYY-MM for sorting key
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      totals[key] = (totals[key] || 0) + bill.amount;
+    });
+
+    return Object.entries(totals)
+      .map(([key, total]) => {
+        const [year, month] = key.split('-').map(Number);
+        // Construct date for display name
+        const date = new Date(year, month - 1);
+        return {
+          key,
+          displayName: date.toLocaleString('default', { month: 'long', year: 'numeric' }),
+          total
+        };
+      })
+      .sort((a, b) => b.key.localeCompare(a.key)); // Descending by date
+  }, [creditCardBills]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 flex flex-col">
       <header className="sticky top-0 z-40 bg-slate-800/95 backdrop-blur-md border-b border-slate-700 py-2 sm:py-3">
@@ -170,6 +193,22 @@ export const CreditCardsPage: React.FC<CreditCardsPageProps> = ({
           ) : (
             // Stack View
             <div className="max-w-md sm:max-w-lg mx-auto pb-32 min-h-[50vh]">
+              
+              {/* Monthly Summary Section */}
+              {monthlySummaries.length > 0 && (
+                <div className="mb-8 bg-slate-800/50 rounded-xl border border-slate-700 p-4 shadow-lg backdrop-blur-sm">
+                  <h2 className="text-lg font-semibold text-sky-400 mb-3 border-b border-slate-700 pb-2">Total Monthly Bills</h2>
+                  <div className="space-y-3 max-h-40 overflow-y-auto custom-scrollbar pr-1">
+                    {monthlySummaries.map(summary => (
+                      <div key={summary.key} className="flex justify-between items-center text-sm">
+                        <span className="text-gray-300 font-medium">{summary.displayName}</span>
+                        <span className="text-gray-100 font-bold">₹{summary.total.toLocaleString('en-IN')}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {creditCards.map((card, index) => (
                 <div 
                   key={card.id} 
@@ -230,3 +269,4 @@ export const CreditCardsPage: React.FC<CreditCardsPageProps> = ({
     </div>
   );
 };
+    
