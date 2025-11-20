@@ -150,6 +150,7 @@ export const CreditCardsPage: React.FC<CreditCardsPageProps> = ({
                     onEditCard={handleOpenEditCardForm}
                     onDeleteCard={onDeleteCard}
                     isExpanded={true}
+                    onCardClick={() => setFocusedCardId(null)}
                   />
                 );
               })()}
