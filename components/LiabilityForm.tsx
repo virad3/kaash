@@ -55,7 +55,30 @@ export const LiabilityForm: React.FC<LiabilityFormProps> = ({
     const r = parseFloat(interestRate);
     const t = parseInt(loanTermInMonths, 10);
 
-    if (p > 0 && r >= 0 && t > 0 && !existingLiability) { 
+    // If editing, check if values differ from existing to decide on recalculation
+    if (existingLiability) {
+      const existingP = existingLiability.initialAmount;
+      const existingR = existingLiability.interestRate ?? NaN;
+      const existingT = existingLiability.loanTermInMonths ?? NaN;
+
+      const isPSame = Math.abs(p - existingP) < 0.01;
+      
+      const rVal = isNaN(r) ? NaN : r;
+      const isRSame = (isNaN(existingR) && isNaN(rVal)) || Math.abs(rVal - existingR) < 0.01;
+      
+      const tVal = isNaN(t) ? NaN : t;
+      const isTSame = (isNaN(existingT) && isNaN(tVal)) || tVal === existingT;
+
+      // If all relevant fields match the existing liability, do not overwrite the existing EMI.
+      // This prevents the EMI from being reset on form load if the user had a manual value that matches calculation,
+      // or if calculation differs slightly from stored value but inputs haven't changed.
+      // But importantly, it allows the user to see the stored EMI first.
+      if (isPSame && isRSame && isTSame) {
+        return;
+      }
+    }
+
+    if (p > 0 && r >= 0 && t > 0) { 
       const calculated = calculateEMI(p, r, t);
       if (calculated > 0) {
         setEmiAmount(calculated.toFixed(2));
@@ -113,10 +136,9 @@ export const LiabilityForm: React.FC<LiabilityFormProps> = ({
 
 
   useEffect(() => {
-    if (!existingLiability) {
-        autoCalculateEMI();
-    }
-  }, [initialAmount, interestRate, loanTermInMonths, existingLiability, autoCalculateEMI]);
+    // Run auto-calculation when inputs change, regardless of new or existing liability
+    autoCalculateEMI();
+  }, [initialAmount, interestRate, loanTermInMonths, autoCalculateEMI]);
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -241,9 +263,7 @@ export const LiabilityForm: React.FC<LiabilityFormProps> = ({
             min="0.01"
             step="0.01"
             required
-            readOnly={!!existingLiability} 
           />
-          {existingLiability && <p className="text-xs text-gray-400 mt-1">Initial amount cannot be edited.</p>}
         </div>
         
         <div>
@@ -286,7 +306,7 @@ export const LiabilityForm: React.FC<LiabilityFormProps> = ({
             min="0.01"
             step="0.01"
           />
-          <p className="text-xs text-gray-400 mt-1">Automatically calculated if P, R, T are provided for new liabilities. Can be overridden.</p>
+          <p className="text-xs text-gray-400 mt-1">Automatically calculated if P, R, T are provided. Can be overridden.</p>
         </div>
 
         <div>
