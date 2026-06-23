@@ -12,6 +12,7 @@ interface LiabilityDetailsPageProps {
   onEditLiability: (liability: Liability) => void;
   onDeleteLiability: (id: string) => void;
   onRecordPayment: (liability: Liability) => void;
+  onUpdateRate: (liability: Liability) => void;
   onViewEMIs?: (liabilityId: string) => void; 
   onOpenNewLiabilityForm: () => void;
 }
@@ -23,6 +24,7 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
   onEditLiability, 
   onDeleteLiability, 
   onRecordPayment, 
+  onUpdateRate,
   onViewEMIs,
   onOpenNewLiabilityForm
 }) => {
@@ -159,6 +161,7 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
                   onDelete={onDeleteLiability}
                   onEdit={onEditLiability}
                   onRecordPayment={onRecordPayment}
+                  onUpdateRate={onUpdateRate}
                   onViewEMIs={onViewEMIs}
                 />
             )}

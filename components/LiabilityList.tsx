@@ -8,10 +8,11 @@ interface LiabilityListProps {
   onDelete: (id: string) => void;
   onEdit: (liability: Liability) => void;
   onRecordPayment: (liability: Liability) => void;
+  onUpdateRate: (liability: Liability) => void;
   onViewEMIs?: (liabilityId: string) => void; 
 }
 
-export const LiabilityList: React.FC<LiabilityListProps> = ({ liabilities, allTransactions, onDelete, onEdit, onRecordPayment, onViewEMIs }) => {
+export const LiabilityList: React.FC<LiabilityListProps> = ({ liabilities, allTransactions, onDelete, onEdit, onRecordPayment, onUpdateRate, onViewEMIs }) => {
   const totalOutstandingLiabilities = liabilities.reduce((sum, l) => sum + (l.initialAmount - l.amountRepaid), 0);
 
   // Sort by next due date, soonest first
@@ -43,6 +44,7 @@ export const LiabilityList: React.FC<LiabilityListProps> = ({ liabilities, allTr
               onDelete={onDelete}
               onEdit={onEdit}
               onRecordPayment={onRecordPayment}
+              onUpdateRate={onUpdateRate}
               onViewEMIs={onViewEMIs} 
             />
           ))}

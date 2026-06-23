@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { BackIcon, CoinsIcon, InfoIcon } from './icons'; 
 import { Liability, AmortizationResult as SingleLoanAmortizationResult, MultiLoanAmortizationResult, IndividualLoanAmortizationResult } from '../types';
-import { calculateLoanAmortization, formatMonthsToYearsMonthsString, formatDateForDisplay, calculateMultiLoanWeightedPrepaymentAmortization, formatTimeDifferenceString } from '../utils';
+import { calculateLoanAmortization, formatMonthsToYearsMonthsString, formatDateForDisplay, calculateMultiLoanWeightedPrepaymentAmortization, formatTimeDifferenceString, getEffectiveInterestRate } from '../utils';
 
 interface EarlyLoanClosurePageProps {
   liabilities: Liability[];
@@ -93,9 +93,10 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
 
       selectedLiabilitiesDetails.forEach(l => {
         const currentPrincipal = l.initialAmount - l.amountRepaid;
+        const effRate = getEffectiveInterestRate(l, l.nextDueDate);
         const originalScenarioSingle: SingleLoanAmortizationResult = calculateLoanAmortization(
           currentPrincipal,
-          l.interestRate!,
+          effRate,
           l.emiAmount!,
           0,
           new Date(l.nextDueDate + 'T00:00:00Z') 
@@ -126,7 +127,7 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
         id: l.id,
         name: l.name || l.category,
         currentPrincipal: l.initialAmount - l.amountRepaid,
-        annualInterestRate: l.interestRate!,
+        annualInterestRate: getEffectiveInterestRate(l, l.nextDueDate),
         emiAmount: l.emiAmount!,
         nextDueDate: l.nextDueDate, 
       }));

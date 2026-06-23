@@ -8,6 +8,7 @@ import { LiabilityForm } from './components/LiabilityForm';
 // LiabilityList component is no longer directly used in dashboard's renderActiveView
 // import { LiabilityList } from './components/LiabilityList'; 
 import { RecordLiabilityPaymentForm } from './components/RecordLiabilityPaymentForm';
+import { UpdateInterestRateForm } from './components/UpdateInterestRateForm';
 import { AuthPage } from './components/AuthPage';
 import { IncomeDetailsPage } from './components/IncomeDetailsPage';
 import { ExpenseDetailsPage } from './components/ExpenseDetailsPage'; 
@@ -23,15 +24,19 @@ import * as storageService from './services/storageService';
 import * as authService from './services/authService';
 import { KaashLogoIcon, PlusIcon, BellIcon, PiggyBankIcon, UserIcon, LogoutIcon, MenuIcon, EditIcon as ProfileEditIcon, AddIncomeIcon, AddExpenseIcon, AddLiabilityIcon } from './components/icons'; 
 import { ExpenseCategory, SavingCategory } from './types'; 
-import { calculateLoanPaymentDetails } from './utils'; 
+import { calculateLoanPaymentDetails, getEffectiveInterestRate } from './utils'; 
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, SAVING_CATEGORIES, LIABILITY_CATEGORIES, APP_NAME } from './constants';
 import { LoadingSpinner } from './components/LoadingSpinner';
+import { isConfigPlaceholder } from './firebaseConfig';
 import { ConfigurationErrorPage } from './components/ConfigurationErrorPage';
 
 
 const App: React.FC = () => {
   // Immediately check for placeholder configuration and render an error page if it's found.
   // This prevents the app from running in a broken state where data cannot be saved.
+  if (isConfigPlaceholder) {
+    return <ConfigurationErrorPage />;
+  }
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -50,6 +55,7 @@ const App: React.FC = () => {
   const [showLiabilityForm, setShowLiabilityForm] = useState<boolean>(false);
   const [editingLiability, setEditingLiability] = useState<Liability | null>(null);
   const [payingLiability, setPayingLiability] = useState<Liability | null>(null);
+  const [updatingRateLiability, setUpdatingRateLiability] = useState<Liability | null>(null);
   const [selectedLiabilityForEMIs, setSelectedLiabilityForEMIs] = useState<Liability | null>(null); 
 
   const [upcomingPaymentsDashboard, setUpcomingPaymentsDashboard] = useState<Liability[]>([]); 
@@ -96,7 +102,7 @@ const App: React.FC = () => {
 
   const closeModal = useCallback(() => {
     setShowTransactionModal(false); setCurrentTransactionType(null); setEditingTransaction(null);
-    setShowLiabilityForm(false); setEditingLiability(null); setPayingLiability(null);
+    setShowLiabilityForm(false); setEditingLiability(null); setPayingLiability(null); setUpdatingRateLiability(null);
     setShowEditProfileModal(false);
     //setIsNotificationDropdownOpen(false); // Notification dropdown is handled by its own toggle and click-outside
   }, []);
@@ -448,13 +454,22 @@ const App: React.FC = () => {
 
         if (typeof liability.interestRate === 'number' && liability.interestRate > 0) {
             for (const tx of emiTransactionsForLiability) {
+                const effRate = getEffectiveInterestRate(liability, tx.date);
                 if (tx.id === editingTransaction.id) { 
-                    const paymentDetails = calculateLoanPaymentDetails(outstandingPrincipalBeforeOldEmi, liability.interestRate, oldEmiAmount);
-                    oldEmiPrincipalComponent = paymentDetails.principalPaid;
+                    if (tx.isPartPayment) {
+                        oldEmiPrincipalComponent = oldEmiAmount;
+                    } else {
+                        const paymentDetails = calculateLoanPaymentDetails(outstandingPrincipalBeforeOldEmi, effRate, oldEmiAmount);
+                        oldEmiPrincipalComponent = paymentDetails.principalPaid;
+                    }
                     break;
                 }
-                const paymentDetails = calculateLoanPaymentDetails(outstandingPrincipalBeforeOldEmi, liability.interestRate, tx.amount);
-                outstandingPrincipalBeforeOldEmi -= paymentDetails.principalPaid;
+                if (tx.isPartPayment) {
+                    outstandingPrincipalBeforeOldEmi -= tx.amount;
+                } else {
+                    const paymentDetails = calculateLoanPaymentDetails(outstandingPrincipalBeforeOldEmi, effRate, tx.amount);
+                    outstandingPrincipalBeforeOldEmi -= paymentDetails.principalPaid;
+                }
                 outstandingPrincipalBeforeOldEmi = Math.max(0, outstandingPrincipalBeforeOldEmi);
             }
         } else { 
@@ -463,8 +478,13 @@ const App: React.FC = () => {
 
         let newEmiPrincipalComponent = newEmiAmount;
         if (typeof liability.interestRate === 'number' && liability.interestRate > 0) {
-            const paymentDetailsNew = calculateLoanPaymentDetails(outstandingPrincipalBeforeOldEmi, liability.interestRate, newEmiAmount);
-            newEmiPrincipalComponent = paymentDetailsNew.principalPaid;
+            if (editingTransaction.isPartPayment) {
+                newEmiPrincipalComponent = newEmiAmount;
+            } else {
+                const effRateNew = getEffectiveInterestRate(liability, payload.date);
+                const paymentDetailsNew = calculateLoanPaymentDetails(outstandingPrincipalBeforeOldEmi, effRateNew, newEmiAmount);
+                newEmiPrincipalComponent = paymentDetailsNew.principalPaid;
+            }
         } else {
              newEmiPrincipalComponent = newEmiAmount;
         }
@@ -561,13 +581,22 @@ const App: React.FC = () => {
           
           let outstandingPrincipalBeforeTx = liability.initialAmount;
           for (const tx of emiTransactionsForLiability) {
+            const effRate = getEffectiveInterestRate(liability, tx.date);
             if (tx.id === transactionToDelete.id) { 
-              const paymentDetails = calculateLoanPaymentDetails(outstandingPrincipalBeforeTx, liability.interestRate, tx.amount);
-              principalComponentOfDeletedEMI = paymentDetails.principalPaid;
+              if (tx.isPartPayment) {
+                  principalComponentOfDeletedEMI = tx.amount;
+              } else {
+                  const paymentDetails = calculateLoanPaymentDetails(outstandingPrincipalBeforeTx, effRate, tx.amount);
+                  principalComponentOfDeletedEMI = paymentDetails.principalPaid;
+              }
               break; 
             }
-            const paymentDetails = calculateLoanPaymentDetails(outstandingPrincipalBeforeTx, liability.interestRate, tx.amount);
-            outstandingPrincipalBeforeTx -= paymentDetails.principalPaid;
+            if (tx.isPartPayment) {
+                outstandingPrincipalBeforeTx -= tx.amount;
+            } else {
+                const paymentDetails = calculateLoanPaymentDetails(outstandingPrincipalBeforeTx, effRate, tx.amount);
+                outstandingPrincipalBeforeTx -= paymentDetails.principalPaid;
+            }
             outstandingPrincipalBeforeTx = Math.max(0, outstandingPrincipalBeforeTx); 
           }
         } else { 
@@ -662,7 +691,7 @@ const App: React.FC = () => {
     }
   }, [currentUser]);
 
-  const handleRecordLiabilityPayment = useCallback(async (liabilityId: string, paymentAmount: number, paymentDate: string, newNextDueDate: string, expenseNotes?: string) => {
+  const handleRecordLiabilityPayment = useCallback(async (liabilityId: string, paymentAmount: number, paymentDate: string, newNextDueDate: string, expenseNotes: string, isPartPayment: boolean) => {
     if (!currentUser?.uid) return;
     const liability = liabilities.find(l => l.id === liabilityId);
     if (!liability) {
@@ -672,21 +701,27 @@ const App: React.FC = () => {
     
     let principalPaidForThisPayment = paymentAmount; 
 
-    if (typeof liability.interestRate === 'number' && liability.interestRate > 0) {
-        const outstandingPrincipalBeforePayment = liability.initialAmount - liability.amountRepaid;
-        if (outstandingPrincipalBeforePayment > 0) { 
-            const paymentDetails = calculateLoanPaymentDetails(
-                outstandingPrincipalBeforePayment,
-                liability.interestRate,
-                paymentAmount
-            );
-            principalPaidForThisPayment = paymentDetails.principalPaid;
-        } else {
-             principalPaidForThisPayment = 0; 
+    if (!isPartPayment) {
+        if (typeof liability.interestRate === 'number' && liability.interestRate > 0) {
+            const outstandingPrincipalBeforePayment = liability.initialAmount - liability.amountRepaid;
+            if (outstandingPrincipalBeforePayment > 0) { 
+                const effRate = getEffectiveInterestRate(liability, paymentDate);
+                const paymentDetails = calculateLoanPaymentDetails(
+                    outstandingPrincipalBeforePayment,
+                    effRate,
+                    paymentAmount
+                );
+                principalPaidForThisPayment = paymentDetails.principalPaid;
+            } else {
+                 principalPaidForThisPayment = 0; 
+            }
+        } else { 
+           const outstandingPrincipalBeforePayment = liability.initialAmount - liability.amountRepaid;
+           principalPaidForThisPayment = Math.min(paymentAmount, outstandingPrincipalBeforePayment);
         }
-    } else { 
-       const outstandingPrincipalBeforePayment = liability.initialAmount - liability.amountRepaid;
-       principalPaidForThisPayment = Math.min(paymentAmount, outstandingPrincipalBeforePayment);
+    } else {
+        const outstandingPrincipalBeforePayment = liability.initialAmount - liability.amountRepaid;
+        principalPaidForThisPayment = Math.min(paymentAmount, outstandingPrincipalBeforePayment);
     }
     principalPaidForThisPayment = Math.max(0, principalPaidForThisPayment); 
 
@@ -700,19 +735,43 @@ const App: React.FC = () => {
     try {
         await storageService.updateLiability(currentUser.uid, liabilityId, updatedLiabilityData);
         
-        const expenseDescription = expenseNotes || `Payment for ${liability.name || liability.category}`;
+        const expenseDescription = expenseNotes || (isPartPayment ? `Part Payment for ${liability.name || liability.category}` : `Payment for ${liability.name || liability.category}`);
         const expenseTxData: Omit<Transaction, 'id' | 'createdAt' | 'userId'> = { 
             type: TransactionType.EXPENSE,
             description: expenseDescription,
             amount: paymentAmount, date: paymentDate,
             category: ExpenseCategory.LIABILITY_PAYMENT, 
             relatedLiabilityId: liabilityId,
+            isPartPayment: isPartPayment,
         };
         await storageService.addTransaction(currentUser.uid, expenseTxData);
         setPayingLiability(null); 
     } catch (error: any) { 
         console.error("Error recording liability payment or expense transaction:", error); 
         alert(`Failed to record payment. Error: ${error.message}`); 
+    }
+  }, [liabilities, currentUser]);
+
+  const handleUpdateLiabilityInterestRate = useCallback(async (liabilityId: string, newRate: number, effectiveDate: string) => {
+    if (!currentUser?.uid) return;
+    const liability = liabilities.find(l => l.id === liabilityId);
+    if (!liability) return;
+
+    const currentChanges = liability.interestRateChanges || [];
+    // Ensure we don't duplicate the same date
+    const updatedChanges = currentChanges.filter(c => c.date !== effectiveDate);
+    updatedChanges.push({ date: effectiveDate, rate: newRate });
+    updatedChanges.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    try {
+        await storageService.updateLiability(currentUser.uid, liabilityId, { 
+            interestRate: newRate,
+            interestRateChanges: updatedChanges 
+        });
+        setUpdatingRateLiability(null);
+    } catch (error: any) {
+        console.error("Error updating interest rate:", error);
+        alert(`Failed to update interest rate. Error: ${error.message}`);
     }
   }, [liabilities, currentUser]);
 
@@ -967,6 +1026,7 @@ const App: React.FC = () => {
                   onEditLiability={handleOpenEditLiabilityForm} 
                   onDeleteLiability={handleDeleteLiability}
                   onRecordPayment={setPayingLiability}
+                  onUpdateRate={setUpdatingRateLiability}
                   onViewEMIs={(liabilityId) => {
                     const l = liabilities.find(lib => lib.id === liabilityId);
                     if (l) navigateToLiabilityEMIDetail(l);
@@ -1221,8 +1281,22 @@ const App: React.FC = () => {
           <div className="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg border border-slate-700">
             <RecordLiabilityPaymentForm
               liability={payingLiability}
-              onSubmit={(paymentAmount, paymentDate, newNextDueDate, notes) => 
-                handleRecordLiabilityPayment(payingLiability.id, paymentAmount, paymentDate, newNextDueDate, notes)
+              onSubmit={(paymentAmount, paymentDate, newNextDueDate, notes, isPartPayment) => 
+                handleRecordLiabilityPayment(payingLiability.id, paymentAmount, paymentDate, newNextDueDate, notes, isPartPayment)
+              }
+              onCancel={closeModal}
+            />
+          </div>
+        </div>
+      )}
+      
+      {updatingRateLiability && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg border border-slate-700">
+            <UpdateInterestRateForm
+              liability={updatingRateLiability}
+              onSubmit={(newRate, effectiveDate) => 
+                handleUpdateLiabilityInterestRate(updatingRateLiability.id, newRate, effectiveDate)
               }
               onCancel={closeModal}
             />

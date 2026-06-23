@@ -13,6 +13,8 @@ import { auth } from '../firebaseConfig';
 import { User } from '../types'; // Your app's User type
 
 const googleProvider = new GoogleAuthProvider();
+// Add Gmail scope to read emails for bill scanning
+googleProvider.addScope('https://www.googleapis.com/auth/gmail.readonly');
 
 export const registerUserWithEmail = async (name: string, email: string, password?: string): Promise<User> => {
   if (!password) throw new Error("Password is required for email registration.");
@@ -46,6 +48,13 @@ export const loginUserWithEmail = async (email: string, password?: string): Prom
 
 export const loginWithGoogle = async (): Promise<User> => {
   const result = await signInWithPopup(auth, googleProvider);
+  
+  // Save the access token for Gmail API usage
+  const credential = GoogleAuthProvider.credentialFromResult(result);
+  if (credential?.accessToken) {
+    sessionStorage.setItem('googleAccessToken', credential.accessToken);
+  }
+
   if (result.user) {
     return {
       uid: result.user.uid,
@@ -58,6 +67,7 @@ export const loginWithGoogle = async (): Promise<User> => {
 };
 
 export const logoutUser = async (): Promise<void> => {
+  sessionStorage.removeItem('googleAccessToken');
   await signOut(auth);
 };
 

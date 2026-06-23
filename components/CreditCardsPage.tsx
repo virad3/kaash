@@ -1,10 +1,11 @@
 
 import React, { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react';
 import { CreditCard, CreditCardBill } from '../types';
-import { BackIcon, PlusIcon } from './icons';
+import { BackIcon, PlusIcon, MagicIcon } from './icons';
 import { CreditCardItem } from './CreditCardItem';
 import { AddCreditCardForm } from './AddCreditCardForm';
 import { AddCreditCardBillForm } from './AddCreditCardBillForm';
+import { BillScanner } from './BillScanner';
 
 interface CreditCardsPageProps {
   creditCards: CreditCard[];
@@ -33,6 +34,8 @@ export const CreditCardsPage: React.FC<CreditCardsPageProps> = ({
   const [showBillForm, setShowBillForm] = useState(false);
   const [editingBill, setEditingBill] = useState<CreditCardBill | null>(null);
   const [activeCardForBill, setActiveCardForBill] = useState<CreditCard | null>(null);
+
+  const [showScanner, setShowScanner] = useState(false);
 
   const [focusedCardId, setFocusedCardId] = useState<string | null>(null);
   const scrollPositionRef = useRef<number>(0);
@@ -155,12 +158,22 @@ export const CreditCardsPage: React.FC<CreditCardsPageProps> = ({
           <h1 className="text-lg sm:text-xl font-semibold text-indigo-400 truncate">
             {focusedCardId ? 'Card Details' : 'My Credit Cards'}
           </h1>
-          <div className="flex-none">
+          <div className="flex-none flex items-center space-x-2">
             {!focusedCardId && (
-              <button onClick={handleOpenNewCardForm} className="flex items-center space-x-1 bg-indigo-600 text-white px-3 py-2 rounded-md hover:bg-indigo-700 text-sm">
-                <PlusIcon className="h-5 w-5" />
-                <span className="hidden sm:inline">Add Card</span>
-              </button>
+              <>
+                 <button 
+                  onClick={() => setShowScanner(true)}
+                  className="flex items-center space-x-1 bg-slate-700 text-indigo-300 px-3 py-2 rounded-md hover:bg-slate-600 hover:text-white text-sm border border-indigo-500/30"
+                  title="Scan Bills from Gmail/Text"
+                 >
+                    <MagicIcon className="h-5 w-5" />
+                    <span className="hidden sm:inline">Scan Bills</span>
+                 </button>
+                 <button onClick={handleOpenNewCardForm} className="flex items-center space-x-1 bg-indigo-600 text-white px-3 py-2 rounded-md hover:bg-indigo-700 text-sm">
+                    <PlusIcon className="h-5 w-5" />
+                    <span className="hidden sm:inline">Add Card</span>
+                 </button>
+              </>
             )}
           </div>
         </div>
@@ -284,6 +297,14 @@ export const CreditCardsPage: React.FC<CreditCardsPageProps> = ({
             />
           </div>
         </div>
+      )}
+      
+      {showScanner && (
+         <BillScanner 
+            creditCards={creditCards}
+            onAddBill={onAddOrEditBill}
+            onClose={() => setShowScanner(false)}
+         />
       )}
     </div>
   );

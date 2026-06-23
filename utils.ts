@@ -1,4 +1,20 @@
 
+import { Liability } from './types';
+
+export const getEffectiveInterestRate = (liability: Liability, dateString: string): number => {
+  if (liability.interestRateChanges && liability.interestRateChanges.length > 0) {
+    // Sort changes by date descending
+    const sortedChanges = [...liability.interestRateChanges].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const txDate = new Date(dateString + 'T00:00:00Z').getTime();
+    for (const change of sortedChanges) {
+      if (new Date(change.date + 'T00:00:00Z').getTime() <= txDate) {
+        return change.rate;
+      }
+    }
+  }
+  return liability.interestRate || 0;
+};
+
 /**
  * Calculates the Equated Monthly Installment (EMI).
  * @param principal The principal loan amount.

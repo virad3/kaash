@@ -52,6 +52,11 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, o
               {category}
             </span>
           ) : null}
+          {transaction.isPartPayment && (
+            <span className={`ml-1.5 sm:ml-2 inline-block bg-orange-500/20 text-orange-300 px-1.5 py-0.5 rounded-full text-[0.65rem] sm:text-xs font-semibold`}>
+              Part Payment
+            </span>
+          )}
         </p>
       </div>
       <div className="flex items-center ml-2 sm:ml-4 space-x-1 sm:space-x-2">

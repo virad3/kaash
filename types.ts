@@ -62,8 +62,14 @@ export interface Transaction {
   date: string; 
   category: string; // Made mandatory
   relatedLiabilityId?: string;
+  isPartPayment?: boolean; // New flag for part payments
   createdAt?: any; 
   userId?: string; 
+}
+
+export interface InterestRateChange {
+  date: string;
+  rate: number;
 }
 
 export interface Liability {
@@ -75,6 +81,7 @@ export interface Liability {
   emiAmount?: number;
   nextDueDate: string; 
   interestRate?: number; // Annual interest rate percentage
+  interestRateChanges?: InterestRateChange[]; // History of interest rate changes
   loanTermInMonths?: number; // Optional: total loan term
   notes?: string;
   createdAt: any; 

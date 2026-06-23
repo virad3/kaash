@@ -4,13 +4,14 @@ import { Liability } from '../types';
 
 interface RecordLiabilityPaymentFormProps {
   liability: Liability;
-  onSubmit: (paymentAmount: number, paymentDate: string, newNextDueDate: string, notes?: string) => void;
+  onSubmit: (paymentAmount: number, paymentDate: string, newNextDueDate: string, notes: string, isPartPayment: boolean) => void;
   onCancel: () => void;
 }
 
 export const RecordLiabilityPaymentForm: React.FC<RecordLiabilityPaymentFormProps> = ({ liability, onSubmit, onCancel }) => {
   const [paymentAmount, setPaymentAmount] = useState(liability.emiAmount?.toString() || '');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isPartPayment, setIsPartPayment] = useState(false);
   
   const calculateNextMonthDate = (isoDate: string): string => {
     const currentDate = new Date(isoDate + 'T00:00:00Z'); // Ensure parsing as UTC then local adjustments
@@ -23,10 +24,26 @@ export const RecordLiabilityPaymentForm: React.FC<RecordLiabilityPaymentFormProp
 
   useEffect(() => {
     // Re-calculate if the liability prop changes (e.g., if the modal is reused without remounting)
-    setPaymentAmount(liability.emiAmount?.toString() || '');
-    setNewNextDueDate(calculateNextMonthDate(liability.nextDueDate));
+    if (!isPartPayment) {
+      setPaymentAmount(liability.emiAmount?.toString() || '');
+      setNewNextDueDate(calculateNextMonthDate(liability.nextDueDate));
+    }
     setNotes(`Payment for ${liability.name || liability.category}`);
-  }, [liability]);
+  }, [liability, isPartPayment]);
+
+  const handlePartPaymentToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+    setIsPartPayment(checked);
+    if (checked) {
+      setNewNextDueDate(liability.nextDueDate); // Part payment doesn't advance due date
+      setNotes(`Part Payment for ${liability.name || liability.category}`);
+      setPaymentAmount(''); // Usually part payment amount is different
+    } else {
+      setNewNextDueDate(calculateNextMonthDate(liability.nextDueDate));
+      setNotes(`Payment for ${liability.name || liability.category}`);
+      setPaymentAmount(liability.emiAmount?.toString() || '');
+    }
+  };
 
   const todayDateString = new Date().toISOString().split('T')[0];
 
@@ -36,13 +53,24 @@ export const RecordLiabilityPaymentForm: React.FC<RecordLiabilityPaymentFormProp
       alert('Please fill in all payment details correctly. Amount must be greater than zero.');
       return;
     }
-    onSubmit(parseFloat(paymentAmount), paymentDate, newNextDueDate, notes.trim());
+    onSubmit(parseFloat(paymentAmount), paymentDate, newNextDueDate, notes.trim(), isPartPayment);
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 p-2 text-gray-100">
       <h2 className="text-xl font-semibold text-center text-sky-400">Record Payment for {liability.name || liability.category}</h2>
       
+      <div className="flex items-center space-x-2">
+        <input
+          type="checkbox"
+          id="isPartPayment"
+          checked={isPartPayment}
+          onChange={handlePartPaymentToggle}
+          className="w-4 h-4 text-sky-500 bg-slate-700 border-slate-600 rounded focus:ring-sky-500 focus:ring-2"
+        />
+        <label htmlFor="isPartPayment" className="text-sm font-medium text-gray-300">This is a Part Payment (Prepayment to principal)</label>
+      </div>
+
       <div>
         <label htmlFor="paymentAmount" className="block text-sm font-medium text-gray-300 mb-1">Payment Amount (₹)</label>
         <input

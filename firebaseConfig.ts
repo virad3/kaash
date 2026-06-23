@@ -2,8 +2,8 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-import "firebase/auth";
-import "firebase/firestore";
+
+
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!   CRITICAL ACTION REQUIRED   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -70,6 +70,18 @@ const firebaseConfig = {
 
 // This flag will be used by the main App component to render an error screen
 // if the developer hasn't replaced the placeholder config.
+export const isConfigPlaceholder = firebaseConfig.projectId === "REPLACE_THIS_WITH_YOUR_PROJECT_ID";
+
+
+// Log a warning if the project ID looks like the default placeholder
+if (isConfigPlaceholder) {
+  console.warn(
+    "%cIMPORTANT: Firebase configuration in 'firebaseConfig.ts' IS A PLACEHOLDER. " +
+    "Please replace it with your actual Firebase project credentials to connect to Firestore. " +
+    "Also, ensure you have set the Firestore Security Rules as described in the comments in this file.",
+    "color: red; font-size: 14px; font-weight: bold;"
+  );
+}
 
 
 // Initialize Firebase

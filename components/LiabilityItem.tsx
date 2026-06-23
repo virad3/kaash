@@ -1,8 +1,7 @@
 import React from 'react';
 import { Liability, Transaction, TransactionType } from '../types'; // Added Transaction, TransactionType
 import { TrashIcon, EditIcon, PaymentIcon } from './icons'; 
-// calculateRemainingLoanTerm is no longer used here for display
-// import { calculateRemainingLoanTerm } from '../utils'; 
+import { calculateLoanAmortization, formatMonthsToYearsMonthsString, getEffectiveInterestRate } from '../utils'; // Added calculateLoanAmortization, formatMonthsToYearsMonthsString, getEffectiveInterestRate
 
 interface LiabilityItemProps {
   liability: Liability;
@@ -10,10 +9,11 @@ interface LiabilityItemProps {
   onDelete: (id: string) => void;
   onEdit: (liability: Liability) => void;
   onRecordPayment: (liability: Liability) => void;
+  onUpdateRate: (liability: Liability) => void;
   onViewEMIs?: (liabilityId: string) => void; 
 }
 
-export const LiabilityItem: React.FC<LiabilityItemProps> = ({ liability, allTransactions, onDelete, onEdit, onRecordPayment, onViewEMIs }) => {
+export const LiabilityItem: React.FC<LiabilityItemProps> = ({ liability, allTransactions, onDelete, onEdit, onRecordPayment, onUpdateRate, onViewEMIs }) => {
   const { id, name, initialAmount, amountRepaid, category, emiAmount, nextDueDate, interestRate, loanTermInMonths, notes } = liability;
   const remainingAmount = initialAmount - amountRepaid; 
   const formattedNextDueDate = new Date(nextDueDate + 'T00:00:00Z').toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
@@ -40,6 +40,8 @@ export const LiabilityItem: React.FC<LiabilityItemProps> = ({ liability, allTran
     remainingTermDisplay = `${Math.max(0, calculatedRemainingMonths)} mths`;
   }
 
+
+  const effectiveRate = getEffectiveInterestRate(liability, new Date().toISOString().split('T')[0]);
 
   return (
     <li className="p-3 sm:p-4 bg-slate-700/50 rounded-lg shadow hover:bg-slate-700 transition-colors duration-150 group">
@@ -83,10 +85,10 @@ export const LiabilityItem: React.FC<LiabilityItemProps> = ({ liability, allTran
                 <span className="text-gray-300">₹{emiAmount.toFixed(2)}</span>
               </div>
             )}
-            {interestRate !== undefined && ( 
+            {effectiveRate !== undefined && effectiveRate > 0 && ( 
                <div>
-                <span className="text-gray-400">Interest: </span>
-                <span className="text-gray-300">{interestRate.toFixed(2)}%</span>
+                <span className="text-gray-400">Interest Rate: </span>
+                <span className="text-gray-300">{effectiveRate.toFixed(2)}%</span>
               </div>
             )}
              <div>
@@ -135,6 +137,17 @@ export const LiabilityItem: React.FC<LiabilityItemProps> = ({ liability, allTran
             disabled={remainingAmount <= 0}
           >
             <PaymentIcon className="h-5 w-5" />
+          </button>
+          <button
+            onClick={() => onUpdateRate(liability)}
+            className="text-blue-400 hover:text-blue-300 p-1.5 sm:p-2 rounded-full hover:bg-blue-500/20 transition-colors w-full flex justify-center items-center"
+            aria-label="Update Interest Rate"
+            title="Update Interest Rate"
+            disabled={remainingAmount <= 0}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+            </svg>
           </button>
           <button
             onClick={() => onEdit(liability)}
