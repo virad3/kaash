@@ -20,9 +20,10 @@ import { EditProfileModal } from './components/EditProfileModal';
 import { MonthlySummaryChart } from './components/MonthlySummaryChart';
 import { EarlyLoanClosurePage } from './components/EarlyLoanClosurePage'; 
 import { CreditCardsPage } from './components/CreditCardsPage';
+import { ReceiptScanner } from './components/ReceiptScanner';
 import * as storageService from './services/storageService';
 import * as authService from './services/authService';
-import { KaashLogoIcon, PlusIcon, BellIcon, PiggyBankIcon, UserIcon, LogoutIcon, MenuIcon, EditIcon as ProfileEditIcon, AddIncomeIcon, AddExpenseIcon, AddLiabilityIcon } from './components/icons'; 
+import { KaashLogoIcon, PlusIcon, BellIcon, PiggyBankIcon, UserIcon, LogoutIcon, MenuIcon, EditIcon as ProfileEditIcon, AddIncomeIcon, AddExpenseIcon, AddLiabilityIcon, MagicIcon } from './components/icons'; 
 import { ExpenseCategory, SavingCategory } from './types'; 
 import { calculateLoanPaymentDetails, getEffectiveInterestRate } from './utils'; 
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, SAVING_CATEGORIES, LIABILITY_CATEGORIES, APP_NAME } from './constants';
@@ -51,6 +52,8 @@ const App: React.FC = () => {
   const [showTransactionModal, setShowTransactionModal] = useState<boolean>(false);
   const [currentTransactionType, setCurrentTransactionType] = useState<TransactionType | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [initialTransactionData, setInitialTransactionData] = useState<{ description?: string, amount?: number, date?: string, category?: string } | null>(null);
+  const [showReceiptScanner, setShowReceiptScanner] = useState<boolean>(false);
   
   const [showLiabilityForm, setShowLiabilityForm] = useState<boolean>(false);
   const [editingLiability, setEditingLiability] = useState<Liability | null>(null);
@@ -101,9 +104,10 @@ const App: React.FC = () => {
 
 
   const closeModal = useCallback(() => {
-    setShowTransactionModal(false); setCurrentTransactionType(null); setEditingTransaction(null);
+    setShowTransactionModal(false); setCurrentTransactionType(null); setEditingTransaction(null); setInitialTransactionData(null);
     setShowLiabilityForm(false); setEditingLiability(null); setPayingLiability(null); setUpdatingRateLiability(null);
     setShowEditProfileModal(false);
+    setShowReceiptScanner(false);
     //setIsNotificationDropdownOpen(false); // Notification dropdown is handled by its own toggle and click-outside
   }, []);
 
@@ -378,7 +382,17 @@ const App: React.FC = () => {
   const handleOpenNewTransactionForm = useCallback((type: TransactionType) => { 
     setCurrentTransactionType(type); 
     setEditingTransaction(null); 
+    setInitialTransactionData(null);
     setShowTransactionModal(true); 
+    setIsNotificationDropdownOpen(false);
+  }, []);
+
+  const handleScanReceiptComplete = useCallback((data: { description?: string, amount?: number, date?: string, category?: string }) => {
+    setCurrentTransactionType(TransactionType.EXPENSE);
+    setEditingTransaction(null);
+    setInitialTransactionData(data);
+    setShowReceiptScanner(false);
+    setShowTransactionModal(true);
     setIsNotificationDropdownOpen(false);
   }, []);
 
@@ -1210,6 +1224,7 @@ const App: React.FC = () => {
         onOpenExpenseForm={() => handleOpenNewTransactionForm(TransactionType.EXPENSE)}
         onOpenSavingForm={() => handleOpenNewTransactionForm(TransactionType.SAVING)}
         onOpenLiabilityForm={handleOpenNewLiabilityForm}
+        onOpenReceiptScanner={() => setShowReceiptScanner(true)}
         onNavigateToEarlyLoanClosure={navigateToEarlyLoanClosure}
         onNavigateToCreditCards={navigateToCreditCards}
       />
@@ -1223,11 +1238,12 @@ const App: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
           <div className="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg border border-slate-700">
             <TransactionForm
-              key={forceFormCategoryResetKey + (editingTransaction?.id || 'new')} // Reset form when category lists change
+              key={forceFormCategoryResetKey + (editingTransaction?.id || 'new') + (initialTransactionData ? 'prefilled' : '')} // Reset form when category lists change
               type={currentTransactionType}
               onSubmit={handleTransactionFormSubmit}
               onCancel={closeModal}
               existingTransaction={editingTransaction}
+              initialData={initialTransactionData}
               predefinedCategories={
                 currentTransactionType === TransactionType.INCOME ? INCOME_CATEGORIES :
                 currentTransactionType === TransactionType.EXPENSE ? EXPENSE_CATEGORIES :
@@ -1308,6 +1324,12 @@ const App: React.FC = () => {
           user={currentUser}
           onUpdateProfile={handleProfileUpdate}
           onCancel={handleCloseEditProfileModal}
+        />
+      )}
+      {showReceiptScanner && (
+        <ReceiptScanner
+          onAddExpense={handleScanReceiptComplete}
+          onClose={closeModal}
         />
       )}
     </div>

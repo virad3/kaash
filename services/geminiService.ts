@@ -6,6 +6,13 @@ const apiKey = process.env.API_KEY || '';
 
 const ai = new GoogleGenAI({ apiKey });
 
+export interface ExtractedExpense {
+  amount: number;
+  description: string;
+  category: string;
+  date: string;
+}
+
 export interface ExtractedBill {
   bankName: string;
   amount: number;
@@ -62,5 +69,47 @@ export const extractBillDetails = async (text: string): Promise<ExtractedBill[]>
   } catch (error) {
     console.error("Gemini extraction error:", error);
     return [];
+  }
+};
+
+export const extractExpenseFromReceipt = async (base64Image: string, mimeType: string): Promise<ExtractedExpense | null> => {
+  if (!apiKey) {
+    console.error("Gemini API Key is missing.");
+    return null;
+  }
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: [
+        {
+          inlineData: {
+            data: base64Image,
+            mimeType: mimeType
+          }
+        },
+        "Analyze this receipt or bill. Extract the total amount paid, a short description (merchant name or items), a suggested expense category (e.g. Food, Groceries, Utilities, Shopping, Travel, Entertainment, Health, Other), and the date of the transaction. Return a JSON object with amount (number), description (string), category (string), and date (YYYY-MM-DD string)."
+      ],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            amount: { type: Type.NUMBER },
+            description: { type: Type.STRING },
+            category: { type: Type.STRING },
+            date: { type: Type.STRING, description: "Format YYYY-MM-DD" },
+          },
+          required: ["amount", "description", "category", "date"]
+        }
+      }
+    });
+
+    const jsonText = response.text || "{}";
+    const result = JSON.parse(jsonText);
+    return result as ExtractedExpense;
+  } catch (error) {
+    console.error("Gemini expense extraction error:", error);
+    return null;
   }
 };

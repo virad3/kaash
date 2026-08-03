@@ -16,6 +16,7 @@ interface TransactionFormProps {
   }) => Promise<void>;
   onCancel: () => void;
   existingTransaction?: Transaction | null;
+  initialData?: { description?: string, amount?: number, date?: string, category?: string } | null;
   
   predefinedCategories: string[]; // Generic predefined categories for the current type
   currentUserDefinedCategories: string[]; // User-defined categories for the current type
@@ -31,6 +32,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   onSubmit, 
   onCancel, 
   existingTransaction, 
+  initialData,
   predefinedCategories,
   currentUserDefinedCategories,
   onUserAddCategory, 
@@ -73,6 +75,22 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         setSelectedCategory(''); // No categories available
       }
 
+    } else if (initialData) {
+      setDescription(initialData.description || '');
+      setAmount(initialData.amount ? initialData.amount.toString() : '');
+      setDate(initialData.date ? initialData.date.split('T')[0] : new Date().toISOString().split('T')[0]);
+      
+      if (initialData.category && allAvailableMergedCategories.includes(initialData.category)) {
+        setSelectedCategory(initialData.category);
+      } else if (currentUserDefinedCategories.length > 0) {
+        setSelectedCategory(currentUserDefinedCategories[0]);
+      } else if (predefinedCategories.length > 0) {
+        setSelectedCategory(predefinedCategories[0]);
+      } else if (allAvailableMergedCategories.length > 0) {
+        setSelectedCategory(allAvailableMergedCategories[0]);
+      } else {
+        setSelectedCategory('');
+      }
     } else { // New transaction
       setDescription('');
       setAmount('');
@@ -88,7 +106,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         setSelectedCategory('');
       }
     }
-  }, [existingTransaction, type, predefinedCategories, currentUserDefinedCategories, allAvailableMergedCategories]);
+  }, [existingTransaction, initialData, type, predefinedCategories, currentUserDefinedCategories, allAvailableMergedCategories]);
 
   // Effect to reset selectedCategory if it becomes invalid (e.g., deleted)
    useEffect(() => {

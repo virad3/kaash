@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { KaashLogoIcon, AddIncomeIcon, AddExpenseIcon, PiggyBankIcon, AddLiabilityIcon, EarlyLoanClosureIcon, CreditCardIcon } from './icons'; 
+import { KaashLogoIcon, AddIncomeIcon, AddExpenseIcon, PiggyBankIcon, AddLiabilityIcon, EarlyLoanClosureIcon, CreditCardIcon, MagicIcon } from './icons'; 
 import { TransactionType } from '../types';
 
 interface SideMenuProps {
@@ -10,6 +10,7 @@ interface SideMenuProps {
   onOpenExpenseForm: () => void;
   onOpenSavingForm: () => void;
   onOpenLiabilityForm: () => void;
+  onOpenReceiptScanner: () => void;
   onNavigateToEarlyLoanClosure: () => void;
   onNavigateToCreditCards: () => void;
 }
@@ -21,6 +22,7 @@ export const SideMenu: React.FC<SideMenuProps> = ({
   onOpenExpenseForm,
   onOpenSavingForm,
   onOpenLiabilityForm,
+  onOpenReceiptScanner,
   onNavigateToEarlyLoanClosure,
   onNavigateToCreditCards
 }) => {
@@ -123,6 +125,12 @@ export const SideMenu: React.FC<SideMenuProps> = ({
                   className="w-full text-left p-2.5 text-sm text-gray-300 hover:bg-slate-600 hover:text-orange-400 rounded-md transition-colors flex items-center"
                 >
                   <AddLiabilityIcon className="w-4 h-4 mr-2.5 text-orange-500" /> Add Liability
+                </button>
+                <button
+                  onClick={() => handleActionClick(onOpenReceiptScanner)}
+                  className="w-full text-left p-2.5 text-sm text-indigo-300 hover:bg-slate-600 hover:text-indigo-400 rounded-md transition-colors flex items-center"
+                >
+                  <MagicIcon className="w-4 h-4 mr-2.5 text-indigo-400" /> Scan Receipt
                 </button>
               </div>
             )}
