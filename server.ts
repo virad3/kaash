@@ -3,15 +3,6 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
-    }
-  }
-});
-
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -22,12 +13,26 @@ async function startServer() {
   // API Route for Gemini receipt extraction
   app.post("/api/gemini/extract-expense", async (req, res) => {
     try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("Missing API Key");
+      }
+      
+      const dynamicAi = new GoogleGenAI({
+        apiKey: apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+      
       const { base64Image, mimeType } = req.body;
       if (!base64Image || !mimeType) {
         return res.status(400).json({ error: "Missing image data" });
       }
 
-      const response = await ai.models.generateContent({
+      const response = await dynamicAi.models.generateContent({
         model: 'gemini-3.6-flash',
         contents: {
           parts: [
@@ -69,12 +74,26 @@ async function startServer() {
   // API Route for Gemini bill extraction (text)
   app.post("/api/gemini/extract-bill", async (req, res) => {
     try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("Missing API Key");
+      }
+      
+      const dynamicAi = new GoogleGenAI({
+        apiKey: apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+      
       const { text } = req.body;
       if (!text) {
         return res.status(400).json({ error: "Missing text" });
       }
 
-      const response = await ai.models.generateContent({
+      const response = await dynamicAi.models.generateContent({
         model: 'gemini-3.6-flash',
         contents: `Analyze the following text (which may contain email snippets, SMS messages, or OCR text) and extract credit card bill details.
       

@@ -1,16 +1,10 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { KaashLogoIcon, AddIncomeIcon, AddExpenseIcon, PiggyBankIcon, AddLiabilityIcon, EarlyLoanClosureIcon, CreditCardIcon, MagicIcon } from './icons'; 
-import { TransactionType } from '../types';
+import React, { useEffect, useRef } from 'react';
+import { KaashLogoIcon, EarlyLoanClosureIcon, CreditCardIcon } from './icons'; 
 
 interface SideMenuProps {
   isOpen: boolean;
   onClose: () => void;
-  onOpenIncomeForm: () => void;
-  onOpenExpenseForm: () => void;
-  onOpenSavingForm: () => void;
-  onOpenLiabilityForm: () => void;
-  onOpenReceiptScanner: () => void;
   onNavigateToEarlyLoanClosure: () => void;
   onNavigateToCreditCards: () => void;
 }
@@ -18,15 +12,9 @@ interface SideMenuProps {
 export const SideMenu: React.FC<SideMenuProps> = ({ 
   isOpen, 
   onClose,
-  onOpenIncomeForm,
-  onOpenExpenseForm,
-  onOpenSavingForm,
-  onOpenLiabilityForm,
-  onOpenReceiptScanner,
   onNavigateToEarlyLoanClosure,
   onNavigateToCreditCards
 }) => {
-  const [isRecordSubmenuOpen, setIsRecordSubmenuOpen] = useState(true);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -85,58 +73,7 @@ export const SideMenu: React.FC<SideMenuProps> = ({
 
         {/* Menu Items */}
         <nav className="flex-grow p-4 space-y-1 overflow-y-auto">
-          {/* Record Transaction Section */}
-          <div>
-            <button
-              onClick={() => setIsRecordSubmenuOpen(!isRecordSubmenuOpen)}
-              className="w-full flex items-center justify-between p-3 text-left text-gray-200 hover:bg-slate-700 rounded-md transition-colors focus:outline-none focus:bg-slate-700"
-              aria-expanded={isRecordSubmenuOpen}
-            >
-              <span className="font-medium">Record Transaction</span>
-              <svg 
-                className={`w-5 h-5 transform transition-transform duration-200 ${isRecordSubmenuOpen ? 'rotate-180' : ''}`} 
-                xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
-              >
-                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </button>
-            {isRecordSubmenuOpen && (
-              <div className="pl-4 mt-1 space-y-0.5 border-l-2 border-slate-700 ml-3">
-                <button
-                  onClick={() => handleActionClick(onOpenIncomeForm)}
-                  className="w-full text-left p-2.5 text-sm text-gray-300 hover:bg-slate-600 hover:text-green-400 rounded-md transition-colors flex items-center"
-                >
-                  <AddIncomeIcon className="w-4 h-4 mr-2.5 text-green-500" /> Add Income
-                </button>
-                <button
-                  onClick={() => handleActionClick(onOpenExpenseForm)}
-                  className="w-full text-left p-2.5 text-sm text-gray-300 hover:bg-slate-600 hover:text-red-400 rounded-md transition-colors flex items-center"
-                >
-                  <AddExpenseIcon className="w-4 h-4 mr-2.5 text-red-500" /> Add Expense
-                </button>
-                <button
-                  onClick={() => handleActionClick(onOpenSavingForm)}
-                  className="w-full text-left p-2.5 text-sm text-gray-300 hover:bg-slate-600 hover:text-teal-400 rounded-md transition-colors flex items-center"
-                >
-                  <PiggyBankIcon className="w-4 h-4 mr-2.5 text-teal-500" /> Add Saving
-                </button>
-                <button
-                  onClick={() => handleActionClick(onOpenLiabilityForm)}
-                  className="w-full text-left p-2.5 text-sm text-gray-300 hover:bg-slate-600 hover:text-orange-400 rounded-md transition-colors flex items-center"
-                >
-                  <AddLiabilityIcon className="w-4 h-4 mr-2.5 text-orange-500" /> Add Liability
-                </button>
-                <button
-                  onClick={() => handleActionClick(onOpenReceiptScanner)}
-                  className="w-full text-left p-2.5 text-sm text-indigo-300 hover:bg-slate-600 hover:text-indigo-400 rounded-md transition-colors flex items-center"
-                >
-                  <MagicIcon className="w-4 h-4 mr-2.5 text-indigo-400" /> Scan Receipt
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Other Menu Items */}
+          {/* Main Menu Items */}
           <button
             onClick={() => handleActionClick(onNavigateToCreditCards)}
             className="w-full flex items-center p-3 text-left text-gray-200 hover:bg-slate-700 rounded-md transition-colors focus:outline-none focus:bg-slate-700"
@@ -152,9 +89,6 @@ export const SideMenu: React.FC<SideMenuProps> = ({
             <EarlyLoanClosureIcon className="w-5 h-5 mr-3 text-sky-400" />
             <span className="font-medium">Early Loan Closure</span>
           </button>
-
-          {/* Add more menu items here as needed */}
-
         </nav>
         
         {/* Menu Footer */}

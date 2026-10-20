@@ -29,9 +29,9 @@ export const extractBillDetails = async (text: string): Promise<ExtractedBill[]>
     }
     
     return await response.json() as ExtractedBill[];
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini extraction error:", error);
-    return [];
+    throw new Error(error.message || "Failed to extract bill details");
   }
 };
 
@@ -49,8 +49,8 @@ export const extractExpenseFromReceipt = async (base64Image: string, mimeType: s
     }
     
     return await response.json() as ExtractedExpense;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini expense extraction error:", error);
-    return null;
+    throw new Error(error.message || "Failed to extract expense details");
   }
 };

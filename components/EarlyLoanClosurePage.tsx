@@ -1,12 +1,13 @@
 
 import React, { useState, useMemo } from 'react';
-import { BackIcon, CoinsIcon, InfoIcon } from './icons'; 
+import { CoinsIcon, InfoIcon } from './icons';
+import { PageNavigationDropdown } from './PageNavigationDropdown'; 
 import { Liability, AmortizationResult as SingleLoanAmortizationResult, MultiLoanAmortizationResult, IndividualLoanAmortizationResult } from '../types';
 import { calculateLoanAmortization, formatMonthsToYearsMonthsString, formatDateForDisplay, calculateMultiLoanWeightedPrepaymentAmortization, formatTimeDifferenceString, getEffectiveInterestRate } from '../utils';
 
 interface EarlyLoanClosurePageProps {
   liabilities: Liability[];
-  onBack: () => void;
+  onNavigate: (view: import("../types").View) => void;
 }
 
 // Extended interface for individual results within the DisplayResults
@@ -31,7 +32,7 @@ interface DisplayResults extends MultiLoanAmortizationResult {
 }
 
 
-export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liabilities, onBack }) => {
+export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liabilities, onNavigate }) => {
   const [selectedLiabilityIds, setSelectedLiabilityIds] = useState<string[]>([]);
   const [additionalPayment, setAdditionalPayment] = useState<string>('');
   const [enableSnowball, setEnableSnowball] = useState<boolean>(true); // New state for snowball toggle
@@ -230,14 +231,7 @@ export const EarlyLoanClosurePage: React.FC<EarlyLoanClosurePageProps> = ({ liab
         <header className="sticky top-0 z-30 bg-slate-800/95 backdrop-blur-md border-b border-slate-700 py-2 sm:py-3">
             <div className="flex items-center justify-between h-full px-2 sm:px-4 lg:px-6">
                 <div className="flex-none">
-                    <button
-                        onClick={onBack}
-                        className="flex items-center space-x-1 text-sky-400 hover:text-sky-300 p-1.5 sm:p-2 rounded-md hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-800"
-                        aria-label="Back to Dashboard"
-                    >
-                        <BackIcon className="h-5 w-5" />
-                        <span className="text-xs sm:text-sm font-medium hidden sm:inline">Back</span>
-                    </button>
+                    <PageNavigationDropdown currentView="earlyLoanClosure" onNavigate={onNavigate} />
                 </div>
                 <div className="flex-grow text-center px-2">
                     <h1 className="text-md sm:text-lg lg:text-xl font-semibold text-sky-400 truncate">

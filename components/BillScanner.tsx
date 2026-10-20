@@ -99,7 +99,11 @@ export const BillScanner: React.FC<BillScannerProps> = ({ creditCards, onAddBill
 
     } catch (error: any) {
         console.error(error);
-        setStatusMessage(`Error: ${error.message}`);
+        let errorMsg = error.message;
+        if (errorMsg && (errorMsg.includes('API key not valid') || errorMsg.includes('API_KEY_INVALID') || errorMsg.includes('Missing API Key'))) {
+            errorMsg = 'Invalid Gemini API Key. Please update it in the Settings > Secrets panel.';
+        }
+        setStatusMessage(`Error: ${errorMsg}`);
     } finally {
         setIsScanning(false);
     }
@@ -115,8 +119,12 @@ export const BillScanner: React.FC<BillScannerProps> = ({ creditCards, onAddBill
         const bills = await extractBillDetails(text);
         setScannedBills(bills);
         setStatusMessage(bills.length > 0 ? "Scan complete!" : "No bills found in text.");
-      } catch (error) {
-        setStatusMessage("Error analyzing text.");
+      } catch (error: any) {
+        let errorMsg = error?.message || "Error analyzing text.";
+        if (errorMsg.includes('API key not valid') || errorMsg.includes('API_KEY_INVALID') || errorMsg.includes('Missing API Key')) {
+            errorMsg = 'Invalid Gemini API Key. Please update it in the Settings > Secrets panel.';
+        }
+        setStatusMessage(`Error: ${errorMsg}`);
       } finally {
         setIsScanning(false);
       }

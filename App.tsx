@@ -27,6 +27,7 @@ import { KaashLogoIcon, PlusIcon, BellIcon, PiggyBankIcon, UserIcon, LogoutIcon,
 import { ExpenseCategory, SavingCategory } from './types'; 
 import { calculateLoanPaymentDetails, getEffectiveInterestRate } from './utils'; 
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, SAVING_CATEGORIES, LIABILITY_CATEGORIES, APP_NAME } from './constants';
+import { BottomNav } from './components/BottomNav';
 import { LoadingSpinner } from './components/LoadingSpinner';
 import { isConfigPlaceholder } from './firebaseConfig';
 import { ConfigurationErrorPage } from './components/ConfigurationErrorPage';
@@ -301,14 +302,23 @@ const App: React.FC = () => {
   }, [currentUser, liabilities, transactions, creditCards, creditCardBills]);
 
 
-  const navigateToDashboard = useCallback(() => { setActiveView('dashboard'); setSelectedLiabilityForEMIs(null); setIsNotificationDropdownOpen(false); closeModal();}, [closeModal]);
-  const navigateToIncomeDetails = useCallback(() => { setActiveView('incomeDetails'); setIsNotificationDropdownOpen(false); closeModal(); }, [closeModal]);
-  const navigateToExpenseDetails = useCallback(() => { setActiveView('expenseDetails'); setIsNotificationDropdownOpen(false); closeModal(); }, [closeModal]);
-  const navigateToSavingsDetails = useCallback(() => { setActiveView('savingsDetails'); setIsNotificationDropdownOpen(false); closeModal(); }, [closeModal]);
-  const navigateToLiabilityDetails = useCallback(() => { setActiveView('liabilityDetails'); setSelectedLiabilityForEMIs(null); setIsNotificationDropdownOpen(false); closeModal(); }, [closeModal]);
-  const navigateToLiabilityEMIDetail = useCallback((liability: Liability) => { setSelectedLiabilityForEMIs(liability); setActiveView('liabilityEMIDetail'); setIsNotificationDropdownOpen(false); closeModal();}, [closeModal]);
-  const navigateToEarlyLoanClosure = useCallback(() => { setActiveView('earlyLoanClosure'); setIsNotificationDropdownOpen(false); closeModal(); }, [closeModal]);
-  const navigateToCreditCards = useCallback(() => { setActiveView('creditCards'); setSelectedLiabilityForEMIs(null); setIsNotificationDropdownOpen(false); closeModal();}, [closeModal]);
+  const handleNavigate = useCallback((view: View) => {
+    setActiveView(view);
+    setIsNotificationDropdownOpen(false);
+    closeModal();
+    if (view !== 'liabilityEMIDetail') {
+      setSelectedLiabilityForEMIs(null);
+    }
+  }, [closeModal]);
+  
+  const navigateToDashboard = () => handleNavigate('dashboard');
+  const navigateToLiabilityDetails = () => handleNavigate('liabilityDetails');
+  const navigateToLiabilityEMIDetail = (liability: Liability) => { setSelectedLiabilityForEMIs(liability); handleNavigate('liabilityEMIDetail'); };
+  const navigateToIncomeDetails = () => handleNavigate('incomeDetails');
+  const navigateToExpenseDetails = () => handleNavigate('expenseDetails');
+  const navigateToSavingsDetails = () => handleNavigate('savingsDetails');
+  const navigateToEarlyLoanClosure = () => handleNavigate('earlyLoanClosure');
+  const navigateToCreditCards = () => handleNavigate('creditCards');
 
 
   useEffect(() => {
@@ -994,10 +1004,12 @@ const App: React.FC = () => {
               </div>
             </div>
              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <MonthlySummaryChart data={monthlySummaryData} />
-              </div>
-              <div className="lg:col-span-1">
+              {monthlySummaryData.length > 0 && (
+                <div className="lg:col-span-2">
+                  <MonthlySummaryChart data={monthlySummaryData} />
+                </div>
+              )}
+              <div className={monthlySummaryData.length > 0 ? "lg:col-span-1" : "lg:col-span-3"}>
                  <TransactionList 
                   title="Recent Transactions" 
                   transactions={recentTransactions} 
@@ -1011,7 +1023,7 @@ const App: React.FC = () => {
       case 'incomeDetails':
         return <IncomeDetailsPage 
                   incomeTransactions={incomeTransactions} 
-                  onBack={navigateToDashboard}
+                  onNavigate={handleNavigate}
                   onEditTransaction={handleOpenEditTransactionForm}
                   onDeleteTransaction={handleDeleteTransaction}
                   onOpenNewTransactionForm={handleOpenNewTransactionForm}
@@ -1019,7 +1031,7 @@ const App: React.FC = () => {
       case 'expenseDetails':
         return <ExpenseDetailsPage 
                   expenseTransactions={expenseTransactions} 
-                  onBack={navigateToDashboard}
+                  onNavigate={handleNavigate}
                   onEditTransaction={handleOpenEditTransactionForm}
                   onDeleteTransaction={handleDeleteTransaction}
                   onOpenNewTransactionForm={handleOpenNewTransactionForm}
@@ -1027,7 +1039,7 @@ const App: React.FC = () => {
       case 'savingsDetails':
         return <SavingsDetailsPage 
                   savingTransactions={savingTransactions} 
-                  onBack={navigateToDashboard}
+                  onNavigate={handleNavigate}
                   onEditTransaction={handleOpenEditTransactionForm}
                   onDeleteTransaction={handleDeleteTransaction}
                   onOpenNewTransactionForm={handleOpenNewTransactionForm}
@@ -1036,7 +1048,7 @@ const App: React.FC = () => {
         return <LiabilityDetailsPage 
                   liabilities={liabilities} 
                   allTransactions={transactions}
-                  onBack={navigateToDashboard}
+                  onNavigate={handleNavigate}
                   onEditLiability={handleOpenEditLiabilityForm} 
                   onDeleteLiability={handleDeleteLiability}
                   onRecordPayment={setPayingLiability}
@@ -1052,15 +1064,19 @@ const App: React.FC = () => {
           return <LiabilityEMIDetailPage 
                     liability={selectedLiabilityForEMIs} 
                     allTransactions={transactions}
-                    onBack={navigateToLiabilityDetails}
+                    onNavigate={handleNavigate}
                     onEditEMI={handleEditEMI}
                     onDeleteEMI={handleDeleteEMI}
+                    onRecordPayment={setPayingLiability}
+                    onUpdateRate={setUpdatingRateLiability}
+                    onEditLiability={handleOpenEditLiabilityForm} 
+                    onDeleteLiability={handleDeleteLiability}
                   />;
         }
         navigateToDashboard(); // Fallback if no liability selected
         return null;
       case 'earlyLoanClosure':
-        return <EarlyLoanClosurePage liabilities={liabilities} onBack={navigateToDashboard} />;
+        return <EarlyLoanClosurePage liabilities={liabilities} onNavigate={handleNavigate} />;
       case 'creditCards':
         return <CreditCardsPage
                   creditCards={creditCards}
@@ -1070,7 +1086,7 @@ const App: React.FC = () => {
                   onAddOrEditBill={handleAddOrEditCreditCardBill}
                   onDeleteBill={handleDeleteCreditCardBill}
                   onUpdateBillPaidStatus={handleUpdateCreditCardBillPaidStatus}
-                  onBack={navigateToDashboard}
+                  onNavigate={handleNavigate}
                 />;
       default:
         return <p>Unknown view</p>;
@@ -1108,7 +1124,7 @@ const App: React.FC = () => {
               <button
                 id="main-menu-button"
                 onClick={toggleMenu}
-                className="p-2 rounded-md text-gray-400 hover:text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-sky-500" 
+                className="hidden sm:block p-2 rounded-md text-gray-400 hover:text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-sky-500" 
                 aria-label="Open side menu"
                 aria-expanded={isMenuOpen}
               >
@@ -1220,11 +1236,6 @@ const App: React.FC = () => {
       <SideMenu 
         isOpen={isMenuOpen} 
         onClose={toggleMenu} 
-        onOpenIncomeForm={() => handleOpenNewTransactionForm(TransactionType.INCOME)}
-        onOpenExpenseForm={() => handleOpenNewTransactionForm(TransactionType.EXPENSE)}
-        onOpenSavingForm={() => handleOpenNewTransactionForm(TransactionType.SAVING)}
-        onOpenLiabilityForm={handleOpenNewLiabilityForm}
-        onOpenReceiptScanner={() => setShowReceiptScanner(true)}
         onNavigateToEarlyLoanClosure={navigateToEarlyLoanClosure}
         onNavigateToCreditCards={navigateToCreditCards}
       />
@@ -1236,7 +1247,7 @@ const App: React.FC = () => {
       {/* Modals */}
       {showTransactionModal && currentTransactionType && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg border border-slate-700">
+          <div className="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg border border-slate-700 max-h-[90vh] overflow-y-auto">
             <TransactionForm
               key={forceFormCategoryResetKey + (editingTransaction?.id || 'new') + (initialTransactionData ? 'prefilled' : '')} // Reset form when category lists change
               type={currentTransactionType}
@@ -1276,7 +1287,7 @@ const App: React.FC = () => {
 
       {showLiabilityForm && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg border border-slate-700">
+          <div className="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg border border-slate-700 max-h-[90vh] overflow-y-auto">
             <LiabilityForm
               key={forceFormCategoryResetKey + (editingLiability?.id || 'new-liability')}
               onSubmit={handleLiabilityFormSubmit}
@@ -1294,7 +1305,7 @@ const App: React.FC = () => {
 
       {payingLiability && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg border border-slate-700">
+          <div className="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg border border-slate-700 max-h-[90vh] overflow-y-auto">
             <RecordLiabilityPaymentForm
               liability={payingLiability}
               onSubmit={(paymentAmount, paymentDate, newNextDueDate, notes, isPartPayment) => 
@@ -1308,7 +1319,7 @@ const App: React.FC = () => {
       
       {updatingRateLiability && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg border border-slate-700">
+          <div className="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg border border-slate-700 max-h-[90vh] overflow-y-auto">
             <UpdateInterestRateForm
               liability={updatingRateLiability}
               onSubmit={(newRate, effectiveDate) => 
@@ -1332,6 +1343,17 @@ const App: React.FC = () => {
           onClose={closeModal}
         />
       )}
+
+      <BottomNav
+        onNavigateToDashboard={navigateToDashboard}
+        onNavigateToCreditCards={navigateToCreditCards}
+        onNavigateToEarlyLoanClosure={navigateToEarlyLoanClosure}
+        onOpenIncomeForm={() => handleOpenNewTransactionForm(TransactionType.INCOME)}
+        onOpenExpenseForm={() => handleOpenNewTransactionForm(TransactionType.EXPENSE)}
+        onOpenSavingForm={() => handleOpenNewTransactionForm(TransactionType.SAVING)}
+        onOpenLiabilityForm={handleOpenNewLiabilityForm}
+        onOpenReceiptScanner={() => setShowReceiptScanner(true)}
+      />
     </div>
   );
 }; 

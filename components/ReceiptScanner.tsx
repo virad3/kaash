@@ -45,7 +45,11 @@ export const ReceiptScanner: React.FC<ReceiptScannerProps> = ({ onAddExpense, on
         }
     } catch (err: any) {
         console.error(err);
-        setStatusMessage(`Error: ${err.message}`);
+        let errorMsg = err.message;
+        if (errorMsg.includes('API key not valid') || errorMsg.includes('API_KEY_INVALID') || errorMsg.includes('Missing API Key')) {
+            errorMsg = 'Invalid Gemini API Key. Please update it in the Settings > Secrets panel.';
+        }
+        setStatusMessage(`Error: ${errorMsg}`);
     } finally {
         setIsScanning(false);
         if (fileInputRef.current) {

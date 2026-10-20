@@ -14,12 +14,7 @@ interface MonthlySummaryChartProps {
 
 export const MonthlySummaryChart: React.FC<MonthlySummaryChartProps> = ({ data }) => {
   if (!data || data.length === 0) {
-    return (
-      <div className="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-xl border border-slate-700 text-center">
-        <h3 className="text-xl sm:text-2xl font-semibold mb-3 text-sky-400">Monthly Summary</h3>
-        <p className="text-gray-400">Not enough data for the monthly summary chart yet.</p>
-      </div>
-    );
+    return null;
   }
 
   return (

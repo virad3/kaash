@@ -1,14 +1,21 @@
 
 import React, { useState, useMemo } from 'react';
+import { motion } from 'motion/react';
 import { Liability, LiabilityCategory, Transaction, TransactionType } from '../types'; // Added TransactionType
+import { LiabilityItem } from './LiabilityItem';
 import { LiabilityList } from './LiabilityList'; 
-import { BackIcon, PlusIcon } from './icons'; 
+import { PlusIcon } from './icons'; 
+import { FilterDropdown } from './FilterDropdown';
+import { PageNavigationDropdown } from './PageNavigationDropdown';
+import { PieChart, Landmark, CreditCard, Home, MoreHorizontal, ChevronDown, Car, GraduationCap, User, Briefcase, Stethoscope } from 'lucide-react';
 import { LIABILITY_CATEGORIES } from '../constants';
+
+
 
 interface LiabilityDetailsPageProps {
   liabilities: Liability[];
   allTransactions: Transaction[]; 
-  onBack: () => void;
+  onNavigate: (view: import("../types").View) => void;
   onEditLiability: (liability: Liability) => void;
   onDeleteLiability: (id: string) => void;
   onRecordPayment: (liability: Liability) => void;
@@ -20,7 +27,7 @@ interface LiabilityDetailsPageProps {
 export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({ 
   liabilities, 
   allTransactions, 
-  onBack, 
+  onNavigate, 
   onEditLiability, 
   onDeleteLiability, 
   onRecordPayment, 
@@ -78,94 +85,175 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
         <header className="sticky top-0 z-30 bg-slate-800/95 backdrop-blur-md border-b border-slate-700 py-2 sm:py-3">
             <div className="flex items-center justify-between h-full px-2 sm:px-4 lg:px-6">
                  <div className="flex-none">
-                    <button
-                        onClick={onBack}
-                        className="flex items-center space-x-1 text-sky-400 hover:text-sky-300 p-1.5 sm:p-2 rounded-md hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-800"
-                        aria-label="Back to Dashboard"
-                    >
-                        <BackIcon className="h-5 w-5" />
-                        <span className="text-xs sm:text-sm font-medium hidden sm:inline">Back</span>
-                    </button>
+                    <PageNavigationDropdown currentView="liabilityDetails" onNavigate={onNavigate} />
                 </div>
                 <div className="flex-grow text-center px-2">
                     <h1 className="text-lg sm:text-xl font-semibold text-orange-400 truncate">
                         Liability Details
                     </h1>
                 </div>
-                 <div className="flex-none w-10 sm:w-[70px]"> 
-                </div>
+                 <div className="flex-none flex items-center">
+                  <button
+                    onClick={() => onOpenNewLiabilityForm()}
+                    className="flex items-center space-x-1 bg-slate-700 hover:bg-slate-600 text-sky-400 hover:text-sky-300 px-3 py-1.5 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    title="Add Liability"
+                  >
+                    <PlusIcon className="w-5 h-5" />
+                    <span className="hidden sm:inline text-sm font-medium">Add</span>
+                  </button>
+              </div>
             </div>
         </header>
-        <div className="mt-6 p-3 sm:p-4 lg:p-6 space-y-6 lg:grid lg:grid-cols-12 lg:gap-x-8 lg:space-y-0">
-         <p className="text-center text-gray-400 text-sm -mt-2 mb-6 lg:col-span-12">Track and manage your liabilities easily.</p>
-          {/* Left Sidebar: Filters and Summary */}
-          <div className="lg:col-span-4 xl:col-span-3 space-y-6">
-            <div className="p-3 sm:p-4 bg-slate-800 rounded-lg border border-slate-700 space-y-4">
-              <h3 className="text-xl font-semibold text-gray-100 mb-4">Filter Options</h3>
-              <div>
-                <label htmlFor="categoryFilter" className="block text-sm font-medium text-gray-200 mb-1.5">Filter by Category:</label>
-                <select
-                  id="categoryFilter"
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 text-gray-200 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"
-                >
-                  <option value="all">All Categories</option>
-                  {uniqueCategories.map(category => (
-                    <option key={category} value={category}>{category}</option>
-                  ))}
-                </select>
+        
+        <div className="mt-6 p-3 sm:p-4 lg:p-6 space-y-6 max-w-5xl mx-auto">
+          {/* New Liability Summary Card */}
+          {liabilities.length === 0 ? (
+              <div className="text-center py-16 bg-[#0d1323] rounded-3xl border border-slate-800/80 shadow-2xl">
+                  <p className="text-xl text-slate-400">No liabilities recorded yet.</p>
+                  <p className="text-slate-500 mt-2 mb-6">Click "Add" in the header to get started.</p>
+                  <button
+                      onClick={() => onOpenNewLiabilityForm()}
+                      className="inline-flex items-center space-x-2 bg-[#1c2340] hover:bg-slate-700 text-sky-400 px-6 py-3 rounded-xl transition-colors font-medium border border-slate-700/50"
+                  >
+                      <PlusIcon className="w-5 h-5" />
+                      <span>Add Liability</span>
+                  </button>
               </div>
-            </div>
+          ) : (
+            (() => {
+              const total = summaryFigures.totalOutstanding;
+              const sortedLiabilities = [...filteredLiabilities].sort((a, b) => new Date(a.nextDueDate).getTime() - new Date(b.nextDueDate).getTime());
 
-            <div className="p-3 sm:p-4 bg-slate-800 rounded-lg border border-slate-700 text-left space-y-2">
-              <h3 className="text-lg sm:text-xl font-semibold text-gray-100 mb-1 sm:mb-2">Liabilities Summary</h3>
-              <div>
-                <span className="text-xs text-gray-400 block">Total Initial Amount:</span>
-                <p className="text-xl sm:text-2xl font-semibold text-gray-200">₹{summaryFigures.totalInitialAmount.toFixed(2)}</p>
-              </div>
-              <div>
-                <span className="text-xs text-gray-400 block">Total Principal Repaid:</span>
-                <p className="text-xl sm:text-2xl font-semibold text-green-400">₹{summaryFigures.totalPrincipalRepaid.toFixed(2)}</p>
-              </div>
-              <div>
-                <span className="text-xs text-gray-400 block">Total Interest Paid:</span>
-                <p className="text-xl sm:text-2xl font-semibold text-yellow-400">₹{summaryFigures.totalInterestPaid.toFixed(2)}</p>
-              </div>
-              <div className="pt-1 mt-1 border-t border-slate-700">
-                <span className="text-xs text-gray-400 block">Total Outstanding:</span>
-                <p className="text-2xl sm:text-3xl font-bold text-orange-400">₹{summaryFigures.totalOutstanding.toFixed(2)}</p>
-              </div>
-            </div>
+              const PALETTE = [
+                { color: 'bg-[#8370f8]', dotColor: 'bg-[#8370f8]', iconBg: 'bg-[#2c2b5d]', iconColor: 'text-[#cdc5ff]' },
+                { color: 'bg-[#2fa861]', dotColor: 'bg-[#2fa861]', iconBg: 'bg-[#193a2e]', iconColor: 'text-[#ccf7de]' },
+                { color: 'bg-[#dc8734]', dotColor: 'bg-[#dc8734]', iconBg: 'bg-[#422c22]', iconColor: 'text-[#ffe2cc]' },
+                { color: 'bg-[#e54d58]', dotColor: 'bg-[#e54d58]', iconBg: 'bg-[#452129]', iconColor: 'text-[#ffd6d9]' },
+                { color: 'bg-[#3b82f6]', dotColor: 'bg-[#3b82f6]', iconBg: 'bg-[#1e3a8a]', iconColor: 'text-[#bfdbfe]' },
+                { color: 'bg-[#ec4899]', dotColor: 'bg-[#ec4899]', iconBg: 'bg-[#831843]', iconColor: 'text-[#fbcfe8]' },
+                { color: 'bg-[#14b8a6]', dotColor: 'bg-[#14b8a6]', iconBg: 'bg-[#115e59]', iconColor: 'text-[#ccfbf1]' },
+                { color: 'bg-[#eab308]', dotColor: 'bg-[#eab308]', iconBg: 'bg-[#713f12]', iconColor: 'text-[#fef08a]' },
+              ];
 
-            <button
-              onClick={onOpenNewLiabilityForm}
-              className="w-full px-6 py-3 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-75 flex items-center justify-center gap-2"
-              aria-label="Add new liability"
-            >
-              <PlusIcon className="h-5 w-5" /> Add Liability
-            </button>
-          </div>
+              const activeLiabilitiesData = sortedLiabilities
+                .filter(l => (l.initialAmount - l.amountRepaid) > 0)
+                .map((l, index) => {
+                    const outstanding = l.initialAmount - l.amountRepaid;
+                    const theme = PALETTE[index % PALETTE.length];
+                    
+                    let Icon = Landmark;
+                    switch(l.category) {
+                      case 'Mortgage/Home Loan': Icon = Home; break;
+                      case 'Auto Loan': Icon = Car; break;
+                      case 'Student Loan': Icon = GraduationCap; break;
+                      case 'Personal Loan': Icon = User; break;
+                      case 'Credit Card Debt': Icon = CreditCard; break;
+                      case 'Medical Bill': Icon = Stethoscope; break;
+                      case 'Business Loan': Icon = Briefcase; break;
+                      case 'Tax Debt': Icon = Landmark; break;
+                      default: Icon = MoreHorizontal;
+                    }
 
-          {/* Right Main Content: Liability List */}
-          <div className="lg:col-span-8 xl:col-span-9 space-y-6">
-            {liabilities.length === 0 && filteredLiabilities.length === 0 ? (
-                <div className="text-center py-10 bg-slate-800 rounded-lg border border-slate-700">
-                    <p className="text-xl text-gray-400">No liabilities recorded yet.</p>
-                    <p className="text-gray-500 mt-2 mb-4">Click "Add Liability" in the sidebar to get started.</p>
-                </div>
-            ) : (
-                <LiabilityList
-                  liabilities={filteredLiabilities}
-                  allTransactions={allTransactions} 
-                  onDelete={onDeleteLiability}
-                  onEdit={onEditLiability}
-                  onRecordPayment={onRecordPayment}
-                  onUpdateRate={onUpdateRate}
-                  onViewEMIs={onViewEMIs}
-                />
-            )}
-          </div>
+                    return {
+                        id: l.id,
+                        name: l.name || l.category,
+                        amount: outstanding,
+                        percentage: total > 0 ? (outstanding / total) * 100 : 0,
+                        ...theme,
+                        Icon
+                    };
+                });
+
+              return (
+                <div className="bg-[#0d1323] rounded-3xl p-6 sm:p-8 md:p-10 border border-slate-800/80 shadow-2xl">
+                  {/* Main Metric & Filter */}
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-start mb-10 gap-6">
+                    <div>
+                      <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-slate-100 tracking-tight mb-2">
+                        ₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </h1>
+                      <p className="text-slate-400 text-lg">Total Liabilities</p>
+                    </div>
+                    
+                    {/* Category Filter */}
+                    <div className="w-full sm:w-48">
+                        <FilterDropdown
+                            label=""
+                            allLabel="All Categories"
+                            selectedValue={selectedCategory}
+                            onSelect={setSelectedCategory}
+                            options={uniqueCategories.map(category => ({
+                                value: category,
+                                label: category
+                            }))}
+                        />
+                    </div>
+                  </div>
+
+                  {/* Cards Grid */}
+                  {activeLiabilitiesData.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+                        {activeLiabilitiesData.map((data) => (
+                          <div 
+                            key={data.id} 
+                            onClick={() => onViewEMIs && onViewEMIs(data.id)}
+                            className="bg-[#12182b] border border-slate-700/50 p-5 rounded-3xl flex flex-col justify-between h-44 shadow-inner hover:bg-[#161d33] transition-colors cursor-pointer group"
+                          >
+                            <div className={`w-14 h-14 rounded-2xl ${data.iconBg} flex items-center justify-center mb-4 transition-transform group-hover:scale-110`}>
+                              <data.Icon className={`w-7 h-7 ${data.iconColor}`} />
+                            </div>
+                            <div>
+                              <p className="text-slate-400 text-sm mb-1 truncate">{data.name}</p>
+                              <p className="text-slate-100 font-bold text-xl leading-tight mb-1 truncate">
+                                 ₹{data.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </p>
+                              <p className="text-slate-500 text-sm font-medium">{data.percentage.toFixed(1)}%</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div className="flex h-6 rounded-full overflow-hidden mb-8 bg-[#1a233a] gap-[2px]">
+                        {activeLiabilitiesData.map((data) => {
+                          if (data.percentage === 0) return null;
+                          return (
+                            <div 
+                              key={data.id}
+                              className={`h-full ${data.color}`}
+                              style={{ width: `${data.percentage}%` }}
+                              title={`${data.name}: ${data.percentage.toFixed(1)}%`}
+                            />
+                          );
+                        })}
+                      </div>
+
+                      {/* Legend */}
+                      <div className="flex flex-wrap gap-x-6 gap-y-4 px-2">
+                        {activeLiabilitiesData.map((data) => (
+                          <div key={data.id} className="flex flex-col gap-1.5 min-w-[120px]">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-3.5 h-3.5 rounded-full ${data.dotColor}`} />
+                              <span className="text-slate-300 text-sm font-medium truncate max-w-[150px]" title={data.name}>{data.name}</span>
+                            </div>
+                            <span className="text-slate-400 text-sm pl-5.5 font-mono">
+                              ₹{data.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-12">
+                        <p className="text-slate-500">All matched liabilities are fully paid off.</p>
+                    </div>
+                  )}
+
+                  </div>
+              );
+            })()
+          )}
         </div>
       </div>
     </div>

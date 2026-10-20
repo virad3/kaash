@@ -1,7 +1,8 @@
 
 import React, { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react';
 import { CreditCard, CreditCardBill } from '../types';
-import { BackIcon, PlusIcon, MagicIcon } from './icons';
+import { PlusIcon, MagicIcon } from './icons';
+import { PageNavigationDropdown } from './PageNavigationDropdown';
 import { CreditCardItem } from './CreditCardItem';
 import { AddCreditCardForm } from './AddCreditCardForm';
 import { AddCreditCardBillForm } from './AddCreditCardBillForm';
@@ -15,7 +16,7 @@ interface CreditCardsPageProps {
   onAddOrEditBill: (data: Omit<CreditCardBill, 'id' | 'createdAt' | 'userId'> & { id?: string }) => Promise<void>;
   onDeleteBill: (id: string) => void;
   onUpdateBillPaidStatus: (bill: CreditCardBill, isPaid: boolean) => void;
-  onBack: () => void;
+  onNavigate: (view: import("../types").View) => void;
 }
 
 export const CreditCardsPage: React.FC<CreditCardsPageProps> = ({
@@ -26,7 +27,7 @@ export const CreditCardsPage: React.FC<CreditCardsPageProps> = ({
   onAddOrEditBill,
   onDeleteBill,
   onUpdateBillPaidStatus,
-  onBack
+  onNavigate
 }) => {
   const [showCardForm, setShowCardForm] = useState(false);
   const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
@@ -63,7 +64,7 @@ export const CreditCardsPage: React.FC<CreditCardsPageProps> = ({
     if (focusedCardId) {
       setFocusedCardId(null);
     } else {
-      onBack();
+      onNavigate("dashboard");
     }
   };
 
@@ -150,10 +151,7 @@ export const CreditCardsPage: React.FC<CreditCardsPageProps> = ({
       <header className="sticky top-0 z-30 bg-slate-800/95 backdrop-blur-md border-b border-slate-700 py-2 sm:py-3">
         <div className="flex items-center justify-between h-full px-2 sm:px-4 lg:px-6">
           <div className="flex-none">
-            <button onClick={handleBack} className="flex items-center space-x-1 text-sky-400 hover:text-sky-300 p-2 rounded-md hover:bg-slate-700">
-              <BackIcon className="h-5 w-5" />
-              <span className="text-sm font-medium hidden sm:inline">Back</span>
-            </button>
+            <PageNavigationDropdown currentView="creditCards" onNavigate={onNavigate} />
           </div>
           <h1 className="text-lg sm:text-xl font-semibold text-indigo-400 truncate">
             {focusedCardId ? 'Card Details' : 'My Credit Cards'}

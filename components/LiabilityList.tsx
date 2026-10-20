@@ -5,14 +5,10 @@ import { LiabilityItem } from './LiabilityItem';
 interface LiabilityListProps {
   liabilities: Liability[];
   allTransactions: Transaction[]; // New prop
-  onDelete: (id: string) => void;
-  onEdit: (liability: Liability) => void;
-  onRecordPayment: (liability: Liability) => void;
-  onUpdateRate: (liability: Liability) => void;
   onViewEMIs?: (liabilityId: string) => void; 
 }
 
-export const LiabilityList: React.FC<LiabilityListProps> = ({ liabilities, allTransactions, onDelete, onEdit, onRecordPayment, onUpdateRate, onViewEMIs }) => {
+export const LiabilityList: React.FC<LiabilityListProps> = ({ liabilities, allTransactions, onViewEMIs }) => {
   const totalOutstandingLiabilities = liabilities.reduce((sum, l) => sum + (l.initialAmount - l.amountRepaid), 0);
 
   // Sort by next due date, soonest first
@@ -21,7 +17,7 @@ export const LiabilityList: React.FC<LiabilityListProps> = ({ liabilities, allTr
   return (
     <div className="bg-slate-800 p-3 sm:p-4 md:p-6 rounded-xl shadow-xl border border-slate-700 flex flex-col">
       <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-3 sm:mb-4">
-        <h3 className="text-xl sm:text-2xl font-semibold text-sky-400 mb-1 sm:mb-0">Liabilities</h3>
+        <h3 className="text-xl sm:text-2xl font-semibold text-sky-400 mb-1 sm:mb-0">Added Liabilities</h3>
         <div className="flex items-center space-x-2 sm:space-x-3 mt-2 sm:mt-0">
           {liabilities.length > 0 && (
             <div className="text-left sm:text-right">
@@ -40,11 +36,7 @@ export const LiabilityList: React.FC<LiabilityListProps> = ({ liabilities, allTr
             <LiabilityItem 
               key={liability.id} 
               liability={liability} 
-              allTransactions={allTransactions} // Pass down
-              onDelete={onDelete}
-              onEdit={onEdit}
-              onRecordPayment={onRecordPayment}
-              onUpdateRate={onUpdateRate}
+              allTransactions={allTransactions}
               onViewEMIs={onViewEMIs} 
             />
           ))}
