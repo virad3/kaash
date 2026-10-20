@@ -85,17 +85,30 @@ export const BillScanner: React.FC<BillScannerProps> = ({ creditCards, onAddBill
         
         let combinedText = "";
         for (const msg of messages) {
+          try {
             const msgRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`, {
-                headers: { Authorization: `Bearer ${token}` }
+              headers: { Authorization: `Bearer ${token}` }
             });
+            if (!msgRes.ok) continue;
             const msgData = await msgRes.json();
             const snippet = msgData.snippet || "";
-            combinedText += `Email Snippet: ${snippet}\n\n`;
+            if (snippet) {
+              combinedText += `Email Snippet: ${snippet}\n\n`;
+            }
+          } catch (fetchErr) {
+            console.warn("Failed to fetch message details for", msg.id, fetchErr);
+          }
+        }
+
+        if (!combinedText.trim()) {
+          setStatusMessage("No readable content in recent bill emails.");
+          setIsScanning(false);
+          return;
         }
 
         const bills = await extractBillDetails(combinedText);
         setScannedBills(bills);
-        setStatusMessage(bills.length > 0 ? "Scan complete!" : "No bills extracted from emails.");
+        setStatusMessage(bills.length > 0 ? `Found ${bills.length} bill(s)!` : "No bills extracted from emails.");
 
     } catch (error: any) {
         console.error(error);
@@ -118,7 +131,7 @@ export const BillScanner: React.FC<BillScannerProps> = ({ creditCards, onAddBill
       try {
         const bills = await extractBillDetails(text);
         setScannedBills(bills);
-        setStatusMessage(bills.length > 0 ? "Scan complete!" : "No bills found in text.");
+        setStatusMessage(bills.length > 0 ? `Found ${bills.length} bill(s)!` : "No bills found in text.");
       } catch (error: any) {
         let errorMsg = error?.message || "Error analyzing text.";
         if (errorMsg.includes('API key not valid') || errorMsg.includes('API_KEY_INVALID') || errorMsg.includes('Missing API Key')) {
@@ -132,31 +145,47 @@ export const BillScanner: React.FC<BillScannerProps> = ({ creditCards, onAddBill
 
   const handlePasteAndScan = async () => {
     try {
-      const text = await navigator.clipboard.readText();
-      if (text) {
-        setManualText(text);
-        handleScanText(text);
-      } else {
-        setStatusMessage("Clipboard is empty.");
+      if (!navigator?.clipboard?.readText) {
+        setStatusMessage("Direct clipboard access is not supported. Please paste into the box below.");
+        return;
       }
-    } catch (err) {
-      setStatusMessage("Failed to read clipboard. Please paste manually.");
+      const text = await navigator.clipboard.readText();
+      if (text && text.trim()) {
+        setManualText(text);
+        await handleScanText(text);
+      } else {
+        setStatusMessage("Clipboard is empty. Please paste your bill text into the box.");
+      }
+    } catch (err: any) {
+      console.warn("Clipboard access warning:", err);
+      // Avoid raw 'The string did not match the expected pattern' or permission errors
+      setStatusMessage("Could not read clipboard automatically. Please paste directly into the box below.");
     }
   };
 
   const handleAddScannedBill = async (bill: ExtractedBill, cardId: string) => {
       try {
+          const formatDate = (dateStr?: string): string => {
+            if (!dateStr) return new Date().toISOString().split('T')[0];
+            const parsed = new Date(dateStr);
+            if (!isNaN(parsed.getTime())) {
+              return parsed.toISOString().split('T')[0];
+            }
+            return new Date().toISOString().split('T')[0];
+          };
+
           await onAddBill({
               creditCardId: cardId,
               amount: bill.amount,
-              billDate: bill.billDate ? bill.billDate.split('T')[0] : new Date().toISOString().split('T')[0],
-              paymentDueDate: bill.dueDate ? bill.dueDate.split('T')[0] : new Date().toISOString().split('T')[0],
+              billDate: formatDate(bill.billDate),
+              paymentDueDate: formatDate(bill.dueDate),
               isPaid: false,
               notes: `Auto-scanned via Gemini (${bill.bankName})`
           });
           setScannedBills(prev => prev.filter(b => b !== bill));
-      } catch (e) {
-          alert("Failed to add bill.");
+          setStatusMessage("Bill added successfully!");
+      } catch (e: any) {
+          setStatusMessage(`Failed to add bill: ${e?.message || 'Unknown error'}`);
       }
   };
 

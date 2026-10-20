@@ -3,12 +3,9 @@ import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { Liability, LiabilityCategory, Transaction, TransactionType } from '../types'; // Added TransactionType
 import { LiabilityItem } from './LiabilityItem';
-import { LiabilityList } from './LiabilityList'; 
 import { PlusIcon } from './icons'; 
-import { FilterDropdown } from './FilterDropdown';
 import { PageNavigationDropdown } from './PageNavigationDropdown';
 import { PieChart, Landmark, CreditCard, Home, MoreHorizontal, ChevronDown, Car, GraduationCap, User, Briefcase, Stethoscope } from 'lucide-react';
-import { LIABILITY_CATEGORIES } from '../constants';
 
 
 
@@ -35,33 +32,17 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
   onViewEMIs,
   onOpenNewLiabilityForm
 }) => {
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-
-  const uniqueCategories = useMemo(() => {
-    const categoriesFromLiabilities = new Set<string>();
-    liabilities.forEach(l => categoriesFromLiabilities.add(l.category));
-    const allUnique = new Set([...LIABILITY_CATEGORIES, ...Array.from(categoriesFromLiabilities)]);
-    return Array.from(allUnique).sort();
-  }, [liabilities]);
-
-  const filteredLiabilities = useMemo(() => {
-    return liabilities.filter(l => {
-      const categoryMatch = selectedCategory === 'all' || l.category === selectedCategory;
-      return categoryMatch;
-    });
-  }, [liabilities, selectedCategory]);
-
   const summaryFigures = useMemo(() => {
-    const totalInitialAmount = filteredLiabilities.reduce((sum, l) => sum + l.initialAmount, 0);
-    const totalPrincipalRepaid = filteredLiabilities.reduce((sum, l) => sum + l.amountRepaid, 0);
+    const totalInitialAmount = liabilities.reduce((sum, l) => sum + l.initialAmount, 0);
+    const totalPrincipalRepaid = liabilities.reduce((sum, l) => sum + l.amountRepaid, 0);
     const totalOutstanding = totalInitialAmount - totalPrincipalRepaid;
 
-    const filteredLiabilityIds = new Set(filteredLiabilities.map(l => l.id));
+    const liabilityIds = new Set(liabilities.map(l => l.id));
     const totalEMIsPaid = allTransactions.reduce((sum, t) => {
       if (
         t.type === TransactionType.EXPENSE &&
         t.relatedLiabilityId &&
-        filteredLiabilityIds.has(t.relatedLiabilityId)
+        liabilityIds.has(t.relatedLiabilityId)
       ) {
         return sum + t.amount;
       }
@@ -77,7 +58,7 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
       totalInterestPaid,
       totalOutstanding,
     };
-  }, [filteredLiabilities, allTransactions]);
+  }, [liabilities, allTransactions]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-gray-100 selection:bg-sky-400 selection:text-sky-900">
@@ -122,7 +103,7 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
           ) : (
             (() => {
               const total = summaryFigures.totalOutstanding;
-              const sortedLiabilities = [...filteredLiabilities].sort((a, b) => new Date(a.nextDueDate).getTime() - new Date(b.nextDueDate).getTime());
+              const sortedLiabilities = [...liabilities].sort((a, b) => new Date(a.nextDueDate).getTime() - new Date(b.nextDueDate).getTime());
 
               const PALETTE = [
                 { color: 'bg-[#8370f8]', dotColor: 'bg-[#8370f8]', iconBg: 'bg-[#2c2b5d]', iconColor: 'text-[#cdc5ff]' },
@@ -156,7 +137,7 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
 
                     return {
                         id: l.id,
-                        name: l.name || l.category,
+                        name: l.name || 'Liability',
                         amount: outstanding,
                         percentage: total > 0 ? (outstanding / total) * 100 : 0,
                         ...theme,
@@ -166,28 +147,12 @@ export const LiabilityDetailsPage: React.FC<LiabilityDetailsPageProps> = ({
 
               return (
                 <div className="bg-[#0d1323] rounded-3xl p-6 sm:p-8 md:p-10 border border-slate-800/80 shadow-2xl">
-                  {/* Main Metric & Filter */}
-                  <div className="flex flex-col sm:flex-row justify-between sm:items-start mb-10 gap-6">
-                    <div>
-                      <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-slate-100 tracking-tight mb-2">
-                        ₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </h1>
-                      <p className="text-slate-400 text-lg">Total Liabilities</p>
-                    </div>
-                    
-                    {/* Category Filter */}
-                    <div className="w-full sm:w-48">
-                        <FilterDropdown
-                            label=""
-                            allLabel="All Categories"
-                            selectedValue={selectedCategory}
-                            onSelect={setSelectedCategory}
-                            options={uniqueCategories.map(category => ({
-                                value: category,
-                                label: category
-                            }))}
-                        />
-                    </div>
+                  {/* Main Metric */}
+                  <div className="mb-10">
+                    <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-slate-100 tracking-tight mb-2">
+                      ₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </h1>
+                    <p className="text-slate-400 text-lg">Total Liabilities</p>
                   </div>
 
                   {/* Cards Grid */}

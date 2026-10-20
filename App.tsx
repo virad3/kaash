@@ -922,6 +922,11 @@ const App: React.FC = () => {
   const savingCategoryHandlers = useMemo(() => createCategoryHandlers(TransactionType.SAVING, SAVING_CATEGORIES), [currentUser, createCategoryHandlers]);
   const liabilityCategoryHandlers = useMemo(() => createCategoryHandlers('liability', LIABILITY_CATEGORIES), [currentUser, createCategoryHandlers]);
 
+  const allAvailableExpenseCategories = useMemo(() => {
+    const combined = [...EXPENSE_CATEGORIES, ...userDefinedCategories.expense];
+    return Array.from(new Set(combined)).sort((a, b) => a.localeCompare(b));
+  }, [userDefinedCategories.expense]);
+
 
   const incomeTransactions = useMemo(() => transactions.filter(t => t.type === TransactionType.INCOME), [transactions]);
   const expenseTransactions = useMemo(() => transactions.filter(t => t.type === TransactionType.EXPENSE), [transactions]);
@@ -1341,6 +1346,7 @@ const App: React.FC = () => {
         <ReceiptScanner
           onAddExpense={handleScanReceiptComplete}
           onClose={closeModal}
+          availableCategories={allAvailableExpenseCategories}
         />
       )}
 

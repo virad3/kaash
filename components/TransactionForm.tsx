@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Transaction, TransactionType, IncomeCategory, ExpenseCategory, SavingCategory } from '../types';
 import { CustomCategorySelect } from './CustomCategorySelect'; // Import the new component
-// PlusIcon is used internally by CustomCategorySelect, no longer needed directly here for category button
+import { matchExpenseCategory } from '../categoryMatcher';
 
 interface TransactionFormProps {
   type: TransactionType;
@@ -80,8 +80,18 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       setAmount(initialData.amount ? initialData.amount.toString() : '');
       setDate(initialData.date ? initialData.date.split('T')[0] : new Date().toISOString().split('T')[0]);
       
-      if (initialData.category && allAvailableMergedCategories.includes(initialData.category)) {
-        setSelectedCategory(initialData.category);
+      let targetCategory = '';
+      if (type === TransactionType.EXPENSE) {
+        targetCategory = matchExpenseCategory(initialData.category, initialData.description, allAvailableMergedCategories);
+      } else if (initialData.category) {
+        const exactMatch = allAvailableMergedCategories.find(c => c.toLowerCase() === initialData.category!.toLowerCase());
+        targetCategory = exactMatch || '';
+      }
+
+      if (targetCategory && allAvailableMergedCategories.includes(targetCategory)) {
+        setSelectedCategory(targetCategory);
+      } else if (allAvailableMergedCategories.includes('Other')) {
+        setSelectedCategory('Other');
       } else if (currentUserDefinedCategories.length > 0) {
         setSelectedCategory(currentUserDefinedCategories[0]);
       } else if (predefinedCategories.length > 0) {

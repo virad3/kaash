@@ -2,6 +2,7 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
+import { matchExpenseCategory } from "./categoryMatcher";
 
 async function startServer() {
   const app = express();
@@ -9,6 +10,11 @@ async function startServer() {
 
   // Use JSON middleware with increased limit for base64 images
   app.use(express.json({ limit: '50mb' }));
+
+  // Health check route
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
 
   // API Route for Gemini receipt extraction
   app.post("/api/gemini/extract-expense", async (req, res) => {
@@ -27,13 +33,38 @@ async function startServer() {
         }
       });
       
-      const { base64Image, mimeType } = req.body;
+      const { base64Image, mimeType, availableCategories } = req.body;
       if (!base64Image || !mimeType) {
         return res.status(400).json({ error: "Missing image data" });
       }
 
+      const validCategories: string[] = (Array.isArray(availableCategories) && availableCategories.length > 0)
+        ? availableCategories
+        : ['Food', 'Transport', 'Housing', 'Utilities', 'Entertainment', 'Healthcare', 'Education', 'Clothing', 'Other'];
+
+      const promptText = `Analyze this receipt, bill, or invoice image carefully.
+Extract the following transaction details:
+1. amount: The final total amount paid as a positive number.
+2. description: Merchant, restaurant, or store name, optionally with a short summary of purchased items (e.g., "Starbucks - Coffee", "Whole Foods - Groceries", "Shell - Fuel", "CVS - Medicine", "Zara - Shirt").
+3. date: Date of the transaction formatted as YYYY-MM-DD.
+4. category: Choose the single most accurate category strictly from this list of allowed categories:
+[${validCategories.join(', ')}]
+
+Category Guidelines:
+- "Food": Groceries, supermarkets, restaurants, cafes, fast food, coffee shops, bakeries, snacks, food delivery (e.g., Walmart groceries, Trader Joe's, McDonald's, Uber Eats).
+- "Transport": Fuel/gas stations, petrol, diesel, rideshares (Uber, Lyft), taxis, parking, tolls, public transit, flights, auto maintenance.
+- "Housing": Home improvement, hardware (Home Depot, Lowe's), furniture, rent, repairs, home decor.
+- "Utilities": Electricity, water, natural gas, internet, mobile phone bills, waste.
+- "Entertainment": Movies, streaming, gaming, concerts, events, hobbies, night clubs.
+- "Healthcare": Pharmacies, prescription medicines, doctor visits, dental, clinics, hospital bills, optical/glasses.
+- "Clothing": Clothes, shoes, fashion apparel, accessories, laundry, dry cleaning.
+- "Education": Books, textbooks, stationery, school supplies, tuition, courses.
+- "Other": Use only if it does not belong to any other category.
+
+You MUST return a JSON object with amount (number), description (string), category (string from allowed list), and date (YYYY-MM-DD string).`;
+
       const response = await dynamicAi.models.generateContent({
-        model: 'gemini-3.8-flash',
+        model: 'gemini-3.1-flash-lite',
         contents: {
           parts: [
             {
@@ -43,7 +74,7 @@ async function startServer() {
               }
             },
             {
-              text: "Analyze this receipt or bill. Extract the total amount paid, a short description (merchant name or items), a suggested expense category (e.g. Food, Groceries, Utilities, Shopping, Travel, Entertainment, Health, Other), and the date of the transaction. Return a JSON object with amount (number), description (string), category (string), and date (YYYY-MM-DD string)."
+              text: promptText
             }
           ]
         },
@@ -69,6 +100,14 @@ async function startServer() {
         jsonText = jsonText.replace(/^```\s*/, "").replace(/\s*```$/, "");
       }
       const result = JSON.parse(jsonText || "{}");
+      
+      // Normalize and validate category against allowed categories
+      result.category = matchExpenseCategory(result.category, result.description, validCategories);
+
+      if (result.date) {
+        result.date = result.date.split('T')[0];
+      }
+
       res.json(result);
     } catch (error: any) {
       console.error("Server-side Gemini extraction error:", error);
@@ -83,12 +122,69 @@ async function startServer() {
     }
   });
 
+  // Helper function for regex-based fallback bill extraction
+  function extractBillFallback(text: string) {
+    const bills: any[] = [];
+    const banks = ["HDFC", "SBI", "ICICI", "Axis", "Kotak", "Amex", "American Express", "Citi", "Citibank", "IndusInd", "RBL", "Standard Chartered", "Yes Bank", "HSBC", "Bank of Baroda", "PNB"];
+    
+    let detectedBank = "Credit Card";
+    for (const bank of banks) {
+      if (new RegExp(`\\b${bank}\\b`, 'i').test(text)) {
+        detectedBank = bank;
+        break;
+      }
+    }
+
+    // Amount regex patterns
+    const amountMatch = text.match(/(?:total\s+amount\s+due|amt\s+due|amount\s+due|total\s+due|bill\s+amount|due\s+amount|due\s+of)\s*[:=-]?\s*(?:rs\.?|inr|₹)?\s*([0-9]+(?:,[0-9]+)*(?:\.[0-9]{1,2})?)/i)
+      || text.match(/(?:rs\.?|inr|₹)\s*([0-9]+(?:,[0-9]+)*(?:\.[0-9]{1,2})?)/i);
+
+    const amount = amountMatch ? parseFloat(amountMatch[1].replace(/,/g, '')) : null;
+
+    // Due date regex patterns
+    let dueDate: string | null = null;
+    const dueMatch = text.match(/(?:payment\s+due\s+date|due\s+date|due\s+on|due\s+by|pay\s+by)\s*[:=-]?\s*([0-9]{1,4}[-/][0-9]{1,2}[-/][0-9]{1,4}|[0-9]{1,2}\s+[A-Za-z]{3,9}\s+[0-9]{2,4})/i);
+    if (dueMatch) {
+      const parsedDate = new Date(dueMatch[1]);
+      if (!isNaN(parsedDate.getTime())) {
+        dueDate = parsedDate.toISOString().split('T')[0];
+      }
+    }
+
+    // Card last 4 digits
+    let last4Digits = "";
+    const cardMatch = text.match(/(?:ending\s+in|ending\s+with|card\s+no\.?|card\s+ending|[xX]{2,4})\s*[:#]?\s*([0-9]{4})/i);
+    if (cardMatch) {
+      last4Digits = cardMatch[1];
+    }
+
+    if (amount !== null && !isNaN(amount) && amount > 0) {
+      bills.push({
+        bankName: detectedBank,
+        amount: amount,
+        billDate: new Date().toISOString().split('T')[0],
+        dueDate: dueDate || new Date().toISOString().split('T')[0],
+        last4Digits: last4Digits,
+        minimumDue: undefined
+      });
+    }
+
+    return bills;
+  }
+
   // API Route for Gemini bill extraction (text)
   app.post("/api/gemini/extract-bill", async (req, res) => {
+    const { text } = req.body;
+    if (!text) {
+      return res.status(400).json({ error: "Missing text" });
+    }
+
     try {
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
-        throw new Error("Missing API Key. Please configure GEMINI_API_KEY.");
+        // Fallback to local heuristic extraction if no API key
+        const fallback = extractBillFallback(text);
+        return res.json(fallback);
       }
       
       const dynamicAi = new GoogleGenAI({
@@ -99,14 +195,9 @@ async function startServer() {
           }
         }
       });
-      
-      const { text } = req.body;
-      if (!text) {
-        return res.status(400).json({ error: "Missing text" });
-      }
 
       const response = await dynamicAi.models.generateContent({
-        model: 'gemini-3.8-flash',
+        model: 'gemini-3.1-flash-lite',
         contents: `Analyze the following text (which may contain email snippets, SMS messages, or OCR text) and extract credit card bill details.
       
       Focus on extracting:
@@ -146,9 +237,19 @@ async function startServer() {
         jsonText = jsonText.replace(/^```\s*/, "").replace(/\s*```$/, "");
       }
       const result = JSON.parse(jsonText || "[]");
-      res.json(result);
+      if (Array.isArray(result) && result.length > 0) {
+        return res.json(result);
+      }
+      // If AI didn't find bills, try fallback
+      const fallback = extractBillFallback(text);
+      res.json(fallback.length > 0 ? fallback : result);
     } catch (error: any) {
-      console.error("Server-side Gemini bill extraction error:", error);
+      console.warn("Server-side Gemini bill extraction warning, attempting fallback:", error?.message);
+      // Seamlessly fall back to pattern extraction so the user request succeeds
+      const fallback = extractBillFallback(text);
+      if (fallback.length > 0) {
+        return res.json(fallback);
+      }
       let message = error.message || "Failed to process text with AI";
       try {
         const parsed = JSON.parse(message);
