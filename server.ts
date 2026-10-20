@@ -1,15 +1,22 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import apiApp from "./api/index";
+import healthHandler from "./api/health";
+import extractExpenseHandler from "./api/gemini/extract-expense";
+import extractBillHandler from "./api/gemini/extract-bill";
+import indexHandler from "./api/index";
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Mount API router/app with limit support
   app.use(express.json({ limit: "50mb" }));
-  app.use(apiApp);
+
+  // Mount API endpoints identical to Vercel serverless routes
+  app.all("/api/health", (req, res) => healthHandler(req, res));
+  app.all("/api/gemini/extract-expense", (req, res) => extractExpenseHandler(req, res));
+  app.all("/api/gemini/extract-bill", (req, res) => extractBillHandler(req, res));
+  app.all("/api", (req, res) => indexHandler(req, res));
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

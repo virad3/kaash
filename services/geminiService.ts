@@ -71,12 +71,16 @@ async function parseJsonResponse<T>(response: Response, fallbackErrorMessage: st
   try {
     data = JSON.parse(text);
   } catch {
-    // If not valid JSON, it might be an HTML error page from proxy/Cloud Run
+    // If not valid JSON, check for common Vercel or gateway responses
     if (!response.ok) {
       if (response.status === 404) {
-        throw new Error("AI service endpoint not found (404). Please ensure the backend server is running.");
+        throw new Error("AI service endpoint not found (404). Check deployment and vercel.json routing.");
       }
-      throw new Error(`Server returned error (${response.status})`);
+      if (text.includes("FUNCTION_INVOCATION_FAILED")) {
+        throw new Error("Vercel Serverless Function error (FUNCTION_INVOCATION_FAILED). Ensure GEMINI_API_KEY is configured in Vercel Project Settings > Environment Variables.");
+      }
+      const cleanSnippet = text.replace(/<[^>]*>?/gm, '').trim().slice(0, 150);
+      throw new Error(cleanSnippet || `Server returned error (${response.status})`);
     }
     throw new Error(fallbackErrorMessage);
   }
