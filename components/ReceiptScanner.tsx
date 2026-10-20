@@ -15,37 +15,93 @@ export const ReceiptScanner: React.FC<ReceiptScannerProps> = ({ onAddExpense, on
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
+  const processImageFile = (file: File): Promise<{ base64String: string; mimeType: string }> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('Failed to read image file'));
+      reader.onload = () => {
+        const resultStr = reader.result?.toString() || '';
+        const img = new Image();
+        img.onerror = () => {
+          // Fallback to direct base64 if image rendering fails
+          const parts = resultStr.split(',');
+          if (parts.length > 1) {
+            resolve({ base64String: parts[1], mimeType: file.type || 'image/jpeg' });
+          } else {
+            reject(new Error('Invalid image data'));
+          }
+        };
+        img.onload = () => {
+          try {
+            const maxDimension = 1600;
+            let width = img.width;
+            let height = img.height;
+            if (width > maxDimension || height > maxDimension) {
+              if (width > height) {
+                height = Math.round((height * maxDimension) / width);
+                width = maxDimension;
+              } else {
+                width = Math.round((width * maxDimension) / height);
+                height = maxDimension;
+              }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+              const parts = resultStr.split(',');
+              resolve({ base64String: parts[1] || '', mimeType: file.type || 'image/jpeg' });
+              return;
+            }
+            ctx.drawImage(img, 0, 0, width, height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            const base64String = dataUrl.split(',')[1] || '';
+            resolve({ base64String, mimeType: 'image/jpeg' });
+          } catch {
+            const parts = resultStr.split(',');
+            resolve({ base64String: parts[1] || '', mimeType: file.type || 'image/jpeg' });
+          }
+        };
+        img.src = resultStr;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
+    const isImage = file.type.startsWith('image/') || /\.(jpe?g|png|webp|heic|heif|gif|bmp)$/i.test(file.name);
+    if (!isImage) {
         setStatusMessage('Please upload a valid image file.');
         return;
     }
 
     setIsScanning(true);
-    setStatusMessage('Analyzing receipt with Gemini...');
+    setStatusMessage('Optimizing image and analyzing with Gemini AI...');
     
     try {
-        const base64Data = await convertFileToBase64(file);
-        const mimeType = file.type;
-        // strip the 'data:image/...;base64,' part
-        const base64String = base64Data.toString().split(',')[1];
+        const { base64String, mimeType } = await processImageFile(file);
         
         const expenseDetails = await extractExpenseFromReceipt(base64String, mimeType);
         
         if (expenseDetails && expenseDetails.amount > 0) {
+            // Ensure clean YYYY-MM-DD date string
+            if (expenseDetails.date) {
+                expenseDetails.date = expenseDetails.date.split('T')[0];
+            }
             setStatusMessage('Scan complete! Preparing form...');
             setTimeout(() => {
                 onAddExpense(expenseDetails);
-            }, 500);
+            }, 400);
         } else {
             setStatusMessage('Could not extract expense details from this image.');
         }
     } catch (err: any) {
         console.error(err);
-        let errorMsg = err.message;
+        let errorMsg = err.message || 'Error analyzing image';
         if (errorMsg.includes('API key not valid') || errorMsg.includes('API_KEY_INVALID') || errorMsg.includes('Missing API Key')) {
             errorMsg = 'Invalid Gemini API Key. Please update it in the Settings > Secrets panel.';
         }
@@ -59,15 +115,6 @@ export const ReceiptScanner: React.FC<ReceiptScannerProps> = ({ onAddExpense, on
             cameraInputRef.current.value = ''; // Reset input
         }
     }
-  };
-
-  const convertFileToBase64 = (file: File): Promise<string | ArrayBuffer | null> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = error => reject(error);
-    });
   };
 
   return (

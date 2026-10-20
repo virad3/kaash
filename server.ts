@@ -15,7 +15,7 @@ async function startServer() {
     try {
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
-        throw new Error("Missing API Key");
+        throw new Error("Missing API Key. Please configure GEMINI_API_KEY.");
       }
       
       const dynamicAi = new GoogleGenAI({
@@ -33,7 +33,7 @@ async function startServer() {
       }
 
       const response = await dynamicAi.models.generateContent({
-        model: 'gemini-3.6-flash',
+        model: 'gemini-3.8-flash',
         contents: {
           parts: [
             {
@@ -62,12 +62,24 @@ async function startServer() {
         }
       });
 
-      const jsonText = response.text || "{}";
-      const result = JSON.parse(jsonText);
+      let jsonText = (response.text || "").trim();
+      if (jsonText.startsWith("```json")) {
+        jsonText = jsonText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
+      } else if (jsonText.startsWith("```")) {
+        jsonText = jsonText.replace(/^```\s*/, "").replace(/\s*```$/, "");
+      }
+      const result = JSON.parse(jsonText || "{}");
       res.json(result);
     } catch (error: any) {
       console.error("Server-side Gemini extraction error:", error);
-      res.status(500).json({ error: error.message });
+      let message = error.message || "Failed to process image with AI";
+      try {
+        const parsed = JSON.parse(message);
+        if (parsed?.error?.message) {
+          message = parsed.error.message;
+        }
+      } catch {}
+      res.status(500).json({ error: message });
     }
   });
 
@@ -76,7 +88,7 @@ async function startServer() {
     try {
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
-        throw new Error("Missing API Key");
+        throw new Error("Missing API Key. Please configure GEMINI_API_KEY.");
       }
       
       const dynamicAi = new GoogleGenAI({
@@ -94,7 +106,7 @@ async function startServer() {
       }
 
       const response = await dynamicAi.models.generateContent({
-        model: 'gemini-3.6-flash',
+        model: 'gemini-3.8-flash',
         contents: `Analyze the following text (which may contain email snippets, SMS messages, or OCR text) and extract credit card bill details.
       
       Focus on extracting:
@@ -127,12 +139,24 @@ async function startServer() {
         }
       });
 
-      const jsonText = response.text || "[]";
-      const result = JSON.parse(jsonText);
+      let jsonText = (response.text || "").trim();
+      if (jsonText.startsWith("```json")) {
+        jsonText = jsonText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
+      } else if (jsonText.startsWith("```")) {
+        jsonText = jsonText.replace(/^```\s*/, "").replace(/\s*```$/, "");
+      }
+      const result = JSON.parse(jsonText || "[]");
       res.json(result);
     } catch (error: any) {
       console.error("Server-side Gemini bill extraction error:", error);
-      res.status(500).json({ error: error.message });
+      let message = error.message || "Failed to process text with AI";
+      try {
+        const parsed = JSON.parse(message);
+        if (parsed?.error?.message) {
+          message = parsed.error.message;
+        }
+      } catch {}
+      res.status(500).json({ error: message });
     }
   });
 

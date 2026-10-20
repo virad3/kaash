@@ -15,6 +15,26 @@ export interface ExtractedBill {
   minimumDue?: number;
 }
 
+async function parseJsonResponse<T>(response: Response, fallbackErrorMessage: string): Promise<T> {
+  const text = await response.text();
+  let data: any = null;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    // If not valid JSON, it might be an HTML error page from proxy/Cloud Run
+    if (!response.ok) {
+      throw new Error(`Server returned error (${response.status})`);
+    }
+    throw new Error(fallbackErrorMessage);
+  }
+
+  if (!response.ok) {
+    throw new Error(data?.error || fallbackErrorMessage);
+  }
+
+  return data as T;
+}
+
 export const extractBillDetails = async (text: string): Promise<ExtractedBill[]> => {
   try {
     const response = await fetch("/api/gemini/extract-bill", {
@@ -23,12 +43,7 @@ export const extractBillDetails = async (text: string): Promise<ExtractedBill[]>
       body: JSON.stringify({ text }),
     });
     
-    if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || "Failed to extract bill details");
-    }
-    
-    return await response.json() as ExtractedBill[];
+    return await parseJsonResponse<ExtractedBill[]>(response, "Failed to extract bill details");
   } catch (error: any) {
     console.error("Gemini extraction error:", error);
     throw new Error(error.message || "Failed to extract bill details");
@@ -43,12 +58,7 @@ export const extractExpenseFromReceipt = async (base64Image: string, mimeType: s
       body: JSON.stringify({ base64Image, mimeType }),
     });
     
-    if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || "Failed to extract expense details");
-    }
-    
-    return await response.json() as ExtractedExpense;
+    return await parseJsonResponse<ExtractedExpense>(response, "Failed to extract expense details");
   } catch (error: any) {
     console.error("Gemini expense extraction error:", error);
     throw new Error(error.message || "Failed to extract expense details");

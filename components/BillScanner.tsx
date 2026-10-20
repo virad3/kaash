@@ -149,8 +149,8 @@ export const BillScanner: React.FC<BillScannerProps> = ({ creditCards, onAddBill
           await onAddBill({
               creditCardId: cardId,
               amount: bill.amount,
-              billDate: bill.billDate || new Date().toISOString().split('T')[0],
-              paymentDueDate: bill.dueDate || new Date().toISOString().split('T')[0],
+              billDate: bill.billDate ? bill.billDate.split('T')[0] : new Date().toISOString().split('T')[0],
+              paymentDueDate: bill.dueDate ? bill.dueDate.split('T')[0] : new Date().toISOString().split('T')[0],
               isPaid: false,
               notes: `Auto-scanned via Gemini (${bill.bankName})`
           });
